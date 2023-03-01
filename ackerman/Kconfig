@@ -1,0 +1,10 @@
+
+config APP_ACKERMAN
+	tristate "4 wheel ackerman car application"
+	default n
+	---help---
+		Enable ackerman application
+
+if APP_ACKERMAN
+
+endif
