@@ -1,0 +1,10 @@
+
+config APP_QTIAMRBOOT
+	tristate "QTI AMR bootloader application"
+	default n
+	---help---
+		Enable QTI AMR bootloader application
+
+if APP_QTIAMRBOOT
+
+endif
