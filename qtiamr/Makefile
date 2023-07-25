@@ -45,8 +45,8 @@ C_INCLUDES +=  \
     -I$(CAR_DIR)/imu \
     -I$(CAR_DIR)/roscom \
     -I$(CAR_DIR)/rc \
-	-I$(CAR_DIR)/auto_charging \
-	-I$(CAR_DIR)/misc \
+    -I$(CAR_DIR)/auto_charging \
+    -I$(CAR_DIR)/misc \
 
 MAINSRC = amr_main.c
 CSRCS += $(CAR_DIR)/motion/kinematics.c
