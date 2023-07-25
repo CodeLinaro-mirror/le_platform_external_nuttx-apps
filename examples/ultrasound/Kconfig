@@ -1,0 +1,30 @@
+config EXAMPLES_ULTRASOUND
+        tristate "Ultrasound test example"
+        default n
+        ---help---
+                Enable the \"Ultrasound test\" example
+
+if EXAMPLES_ULTRASOUND
+
+config EXAMPLES_ULTRASOUND_PROGNAME
+        string "Program name"
+        default "ultrasound"
+        ---help---
+                This is the name of the program that will be used when the NSH ELF
+                program is installed.
+
+config EXAMPLES_ULTRASOUND_DEVPATH
+        string "ultrasound device path"
+        default "/dev/ttyS3"
+        ---help---
+            The default path to the ultrasound device
+
+config EXAMPLES_ULTRASOUND_PRIORITY
+        int "ultrasound task priority"
+        default 100
+
+config EXAMPLES_ULTRASOUND_STACKSIZE
+        int "ultrasound stack size"
+        default DEFAULT_TASK_STACKSIZE
+
+endif
