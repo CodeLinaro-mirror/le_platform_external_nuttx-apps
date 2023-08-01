@@ -17,17 +17,20 @@
 #include "flash.h"
 #include "xmodem.h"
 
-
+#define VERSION (1.001)
 
 int main(int argc, FAR char *argv[])
 {
+    printf("\nbootloader version:%.3f\n\n\n",VERSION);
 
-	if (OK != xmodem_init())
-		return -1;
+    if (OK != xmodem_init())
+    {
+        return -1;
+    }
 
-	bootloader_workflow();
+    bootloader_workflow();
 
-	xmodem_deinit();
-	return OK;
+    xmodem_deinit();
+    return OK;
 }
 
