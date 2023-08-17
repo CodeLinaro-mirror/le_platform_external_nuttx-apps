@@ -6,8 +6,8 @@
  ****************************************************************************/
 
 
-#ifndef __APP_QCOMAMR_MOTOR_CONTROLLER_H
-#define __APP_QCOMAMR_MOTOR_CONTROLLER_H
+#ifndef __APP_QTIAMR_MOTOR_CONTROLLER_H
+#define __APP_QTIAMR_MOTOR_CONTROLLER_H
 /****************************************************************************
  * Included Files
  ****************************************************************************/
@@ -16,7 +16,7 @@
 #include <nuttx/fs/fs.h>
 
 
-#ifdef CONFIG_APP_QCOMAMR
+#ifdef CONFIG_APP_QTIAMR
 
 #define MC_STACK_PRIORITY    100
 #define MC_STACK_STACKSIZE  (2048)

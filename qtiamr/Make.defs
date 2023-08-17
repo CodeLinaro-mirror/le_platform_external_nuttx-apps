@@ -1,4 +1,3 @@
-
-ifneq ($(CONFIG_APP_QCOMAMR),)
-CONFIGURED_APPS += $(APPDIR)/qcomamr
+ifneq ($(CONFIG_APP_QTIAMR),)
+CONFIGURED_APPS += $(APPDIR)/qtiamr
 endif

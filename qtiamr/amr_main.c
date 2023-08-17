@@ -15,13 +15,17 @@
 #include <sched.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <syslog.h>
 
 #include "main.h"
 #include "imu.h"
-#include "motor_controller.h"
+#include "ultrasound.h"
 
+#include "motion_task.h"
+#include "rc.h"
+#include "ros_com.h"
+#include "auto_charging.h"
 
-#define TASK_NUM	(2)
 
 struct amr_task_s {
 	const char  *name;
@@ -31,9 +35,23 @@ struct amr_task_s {
 	char	*argv;
 };
 
+struct task_signal_info task_info[TASK_NUM] =
+{
+  {0,SIGUSR1},
+  {0,SIGUSR1},
+  {0,SIGUSR1},
+  {0,SIGUSR1},
+  {0,SIGUSR1},
+};
+//TODO: get_task_info
+
+/*modify enum task_list when modify the sequence of the task*/
 static struct amr_task_s  tasks[TASK_NUM] = {
-	{"motor_control", MC_STACK_PRIORITY, MC_STACK_STACKSIZE, amr_mc_task, NULL},
-	{"imu_task", CAR_IMU_PRIORITY, CAR_IMU_STACKSIZE, imu_task, NULL},
+	{"rc_task", CAR_RC_PRIORITY, CAR_RC_STACKSIZE, rc_task, NULL},
+	{"motion_task", MOTION_PRIORITY, MOTION_STACKSIZE, motion_task, NULL},
+	{"ros_com_task", ROS_COM_PRIORITY, ROS_COM_STACKSIZE, ros_com_task, NULL},
+	{"ultrasound_task", CAR_ULTRASOUND_PRIORITY, CAR_ULTRASOUND_STACKSIZE, ultrasound_task, NULL },
+	{"auto_charging_task", CAR_AUTO_CHARGING_PRIORITY, CAR_AUTO_CHARGING_STACKSIZE, auto_charging_task, NULL },
 };
 
 int main(int argc, FAR char *argv[])
@@ -45,19 +63,18 @@ int main(int argc, FAR char *argv[])
 /******************** start tasks **********************************/
 	for (index = 0; index < TASK_NUM; index ++) {
 		ret = task_create(tasks[index].name, tasks[index].priority,
-						tasks[index].stack_size, tasks[index].task_func,
-						tasks[index].argv);
+				  tasks[index].stack_size, tasks[index].task_func,
+				  tasks[index].argv);
 		if (ret < 0) {
-			errcode = errno;
-			printf("car_main: ERROR: Failed to start %s: %d\n",
-					tasks[index].name,errcode);
-			return EXIT_FAILURE;
+		    errcode = errno;
+		    //syslog(LOG_INFO,"car_main: ERROR: Failed to start %s: %d\n", tasks[index].name,errcode);
+		    return EXIT_FAILURE;
 		}
-		printf("amr_main: Starting the task %s\n",tasks[index].name);
+		//syslog(LOG_INFO, "amr_main: Starting the pid %d\n", ret);
+		task_info[index].task_id = ret;
 	}
 
-	printf("main: app-qcomamr  main started\n");
+	//syslog(LOG_INFO, "main: app-qtiamr  main started\n");
 
 	return EXIT_SUCCESS;
 }
-

@@ -1,10 +1,13 @@
-
-config APP_QCOMAMR
-	tristate "Qualcomm AMR application"
+config APP_QTIAMR
+	tristate "QTI AMR application"
 	default n
 	---help---
 		Enable QC AMR application
 
-if APP_QCOMAMR
+config APP_QTIAMR_DXO
+	tristate "QTI AMR DXO application"
+	default n
+
+if APP_QTIAMR
 
 endif
