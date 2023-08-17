@@ -18,8 +18,6 @@
 
 #define QTIAMR_DEBUG    1
 
-#define CAR_RC_PRIORITY   110
-#define CAR_RC_STACKSIZE  (4*2048)
 
 #define  RC_ANGLE_DEV "/dev/capture1"
 #define  RC_SPEED_DEV "/dev/capture0"
@@ -34,20 +32,21 @@
 
 struct rc_data_s
 {
-	int		speed_fd;
-    int		angle_fd;
-    uint8_t angle_duty;
-    uint8_t speed_duty;
-    float speed_x;
-    float speed_z;
-    uint32_t sample_time;  /* sampling interval/ms */
-    bool rc_attached;      /* RC mode  */
-    bool rc_data_ready;     /* false: data not ready; true: rc_data ready */
+	int speed_fd;
+	int angle_fd;
+	uint8_t angle_duty;
+	uint8_t speed_duty;
+	float speed_x;
+	float speed_z;
+	uint32_t sample_time;  /* sampling interval/ms */
+	bool rc_attached;      /* RC mode  */
+	bool rc_data_ready;     /* false: data not ready; true: rc_data ready */
+	uint32_t timestamp;
 };
 
 
 int rc_task(int argc, char *argv[]);
-int get_rc_goal_speed(float* vx, float* vz);
+int get_rc_goal_speed(float* vx, float* vz, uint32_t* vt);
 
 
 
