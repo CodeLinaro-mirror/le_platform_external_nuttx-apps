@@ -1,0 +1,3 @@
+ifneq ($(CONFIG_EXAMPLES_ULTRASOUND),)
+CONFIGURED_APPS += $(APPDIR)/examples/ultrasound
+endif
