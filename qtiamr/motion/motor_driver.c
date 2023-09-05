@@ -425,7 +425,7 @@ int motor_speed_read(amr_motor_data_t *data)
 		{
 			syslog(LOG_WARNING, "speed read timestamp failed \n");
 		}
-
+	}
 	return ret;
 }
 
