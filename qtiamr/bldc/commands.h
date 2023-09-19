@@ -6,15 +6,15 @@
  ****************************************************************************/
 
 
-#ifndef __APP_QCOMAMR_COMMANDS_H
-#define __APP_QCOMAMR_COMMANDS_H
+#ifndef __APP_QTIAMR_COMMANDS_H
+#define __APP_QTIAMR_COMMANDS_H
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 #include <stdio.h>
 #include <stdint.h>
 
-#ifdef CONFIG_APP_QCOMAMR
+#ifdef CONFIG_APP_QTIAMR
 
 #define RS485    /* Controller RS485 bus */
 #define RS485_MSG_LEN (16) /* 8 bytes message len & 8 for extern */
