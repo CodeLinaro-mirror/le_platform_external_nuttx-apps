@@ -81,6 +81,16 @@ void control_update_state_set(bool update)
 	g_amr_motion.control_mode_update = update;
 }
 
+void quick_stop_status_set(bool enable)
+{
+	g_amr_motion.quick_stop_enable = enable;
+}
+
+bool motor_stop_status_get()
+{
+	return g_amr_motion.motor_stop_once;
+}
+
 int motion_task(int argc, char *argv[])
 {
 	struct motor_control_s *motor_left;
@@ -94,8 +104,8 @@ int motion_task(int argc, char *argv[])
 	int left_cnt = 0, right_cnt = 0;
 	int sub_mode = 0;
 	bool last_target_reached = false;
-	uint32_t v_time = 0;
-	static bool motor_stop_once = false;
+    uint32_t v_time = 0;
+	g_amr_motion.motor_stop_once = false;
 
 	int ret = OK;
 
@@ -117,6 +127,7 @@ int motion_task(int argc, char *argv[])
 	g_amr_motion.target_reached = false;
 	g_amr_motion.target_control_mode = CAR_VELOCITY_MODE;
 	g_amr_motion.control_mode_update = false;
+	g_amr_motion.quick_stop_enable = true;
 	syslog(LOG_DEBUG, "mode update:%d\n", g_amr_motion.control_mode_update);
 	motor_left = &g_amr_motion.motor_left;
 	motor_right = &g_amr_motion.motor_right;
@@ -198,18 +209,19 @@ int motion_task(int argc, char *argv[])
 		}
 		clock_gettime(CLOCK_MONOTONIC, &tp_end);
 		delta = tp_end.tv_nsec - tp_start.tv_nsec;
-		if (motor_need_stop())
+	    
+		if (motor_need_stop() && g_amr_motion.quick_stop_enable)
 		{
-			if (motor_stop_once == false)
+			if (g_amr_motion.motor_stop_once == false)
 			{
 				motor_quick_stop();
 			}
-			motor_stop_once = true;
+			g_amr_motion.motor_stop_once = true;
 		}
-		else if (motor_stop_once == true)
+		else if (g_amr_motion.motor_stop_once == true)
 		{
 			motor_resume_enable(g_amr_motion.control_mode);
-			motor_stop_once = false;
+			g_amr_motion.motor_stop_once = false;
 		}
     }
 
