@@ -47,6 +47,7 @@ struct task_signal_info task_info[TASK_NUM] =
 
 /*modify enum task_list when modify the sequence of the task*/
 static struct amr_task_s  tasks[TASK_NUM] = {
+	{"imu_task", AMR_IMU_PRIORITY, AMR_IMU_STACKSIZE, imu_task, NULL},
 	{"rc_task", CAR_RC_PRIORITY, CAR_RC_STACKSIZE, rc_task, NULL},
 	{"motion_task", MOTION_PRIORITY, MOTION_STACKSIZE, motion_task, NULL},
 	{"ros_com_task", ROS_COM_PRIORITY, ROS_COM_STACKSIZE, ros_com_task, NULL},
