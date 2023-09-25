@@ -44,7 +44,7 @@ typedef struct
     uint8_t addr;
     float dist;
     float temp;
-    float alert_limit;
+    float alert_limit[2];
     bool status;
     void (*avoidance_handle)(void* this);
 } us_data_s;
