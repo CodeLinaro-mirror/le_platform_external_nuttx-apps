@@ -555,26 +555,33 @@ int publish_pos_odom_to_ros(void)
 
 int publish_status_to_ros(void)
 {
-	int ret = 0;
-	struct standard_frame_s send_data = {0};
+    int ret =0;
+	struct extend_frame_s send_data =  {0};
+	static struct timespec tp;
 
-	send_data.frame_header = STANDARD_FRAME_HEADER;
+	clock_gettime(CLOCK_MONOTONIC, &tp);
+
+	send_data.frame_header = EXTEND_FRAME_HEADER;
 	send_data.cmd = CMD_EXCEPTION_STATUS;
-	send_data.frame_tail = STANDARD_FRAME_TRAILER;
+	send_data.frame_tail = EXTEND_FRAME_TRAILER;
 
-	send_data.data1 = 0xff;
-	send_data.data2 = 0xff;
-	send_data.data3 = 0xff;
-	send_data.data4 = motor_stop_status_get() & 0xff;
-	send_data.data5 = 0xff;
-	send_data.data6 = 0xff;
+	send_data.data1 = (tp.tv_sec >> 24) & 0xff;
+	send_data.data2 = (tp.tv_sec >> 16) & 0xff;
+	send_data.data3 = (tp.tv_sec >> 8) & 0xff;
+	send_data.data4 = (tp.tv_sec) & 0xff;
+	send_data.data5 = ((tp.tv_nsec/1000000) >> 8) & 0xff;
+	send_data.data6 = (tp.tv_nsec/1000000) & 0xff;
 
-	send_data.check_sum = data_check_sum(&send_data, sizeof(struct standard_frame_s) - 2 );
+	send_data.data7 = motor_stop_status_get() & 0xff;
 
-	ret = ros_cmd_send(&send_data, sizeof(struct standard_frame_s));
+	syslog(LOG_DEBUG, "publish quick stop status: %d \n", send_data.data7);
+
+	send_data.check_sum = data_check_sum(&send_data, sizeof(struct extend_frame_s) - 2 );
+	ret = ros_cmd_send(&send_data, sizeof(struct extend_frame_s));
+
 	if (ret < 0)
 	{
-		syslog(LOG_WARNING, "publish status failed!\n");
+		syslog(LOG_WARNING, "publish battery voltage data failed!\n");
 		return ERROR;
 	}
 
