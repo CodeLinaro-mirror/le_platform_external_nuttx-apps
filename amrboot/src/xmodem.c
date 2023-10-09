@@ -185,6 +185,7 @@ static uint8_t xmodem_error_handler(uint8_t *error_number, uint8_t max_error_num
 static void xmodem_receive(void)
 {
     volatile uint8_t status = XMODEM_OK;
+	enum boot_flash_status flash_status;
     uint8_t packet_status;
     uint8_t error_number = 0u;
     uint8_t header = 0x00u;
@@ -192,6 +193,7 @@ static void xmodem_receive(void)
     uint8_t protocol;
     uint8_t data_len =0;
     uint8_t retry = 0;
+	uint8_t last_data = 0x0;
 
     /* Loop until there isn't any error (or until we jump to the user application). */
     while (XMODEM_OK == status)
@@ -274,11 +276,21 @@ static void xmodem_receive(void)
             /* End of Transmission. */
             case X_EOT:
                 /* ACK, feedback to user (as a text), then jump to user application. */
-                printf("debug xmodem_receive data_len = %d \n",data_len);
+		flash_status = boot_flash_write(&last_data, 1, true);
+		if (flash_status != FLASH_OK){
+			printf("error: flash the last package failed \n");
+			protocol = X_CAN;
+			write(g_boot_xmodem.fd, &protocol, 1);
+		}else {
                 protocol = X_ACK;
                 write(g_boot_xmodem.fd, &protocol, 1);
+				write(g_boot_xmodem.fd, &protocol, 1);
+				write(g_boot_xmodem.fd, &protocol, 1);
+				write(g_boot_xmodem.fd, &protocol, 1);
+				write(g_boot_xmodem.fd, &protocol, 1);
                 printf("debug xmodem_receive X_EOT start  jump_to_app \n");
                 boot_flash_jump_to_app();
+			}
                 break;
 
             case X_CAN:
