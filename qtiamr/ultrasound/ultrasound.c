@@ -21,7 +21,7 @@ static void bottom_avoidance_handle(void* this)
 {
     us_data_s* us_data = ((us_data_s*)(this));
 
-    if(us_data->dist >= us_data->alert_limit)
+    if(us_data->dist >= us_data->alert_limit[parameter_data.car_type])
     {
         us_data->status = true;
         syslog(LOG_DEBUG, "bottom_%d Waring: Hanging ahead! height = %.2fmm\n",us_data->addr, us_data->dist);
@@ -38,7 +38,7 @@ static void side_avoidance_handle(void* this)
 {
     us_data_s* us_data = ((us_data_s*)(this));
 
-    if(us_data->dist <= us_data->alert_limit)
+    if(us_data->dist <= us_data->alert_limit[parameter_data.car_type])
     {
         us_data->status = true;
         syslog(LOG_DEBUG, "side_%d Waring: Obstacle ahead! dist = %.2fmm\n",us_data->addr, us_data->dist);
@@ -52,13 +52,13 @@ static void side_avoidance_handle(void* this)
 }
 
 static us_data_s us_arr[ULRTUSOUND_NUM_MAX] = {
-    {{0x01},{0.0},{0.0},{100},false,{*bottom_avoidance_handle}},
-    {{0x02},{0.0},{0.0},{100},false,{*bottom_avoidance_handle}},
-    {{0x03},{0.0},{0.0},{150},false,{*side_avoidance_handle}},
-    {{0x04},{0.0},{0.0},{150},false,{*side_avoidance_handle}},
-    {{0x05},{0.0},{0.0},{150},false,{*side_avoidance_handle}},
-    {{0x06},{0.0},{0.0},{150},false,{*side_avoidance_handle}},
-    {{0x07},{0.0},{0.0},{150},false,{*side_avoidance_handle}},
+    {{0x01},{0.0},{0.0},{100,100},false,{*bottom_avoidance_handle}},
+    {{0x02},{0.0},{0.0},{100,100},false,{*bottom_avoidance_handle}},
+    {{0x03},{0.0},{0.0},{150,150},false,{*side_avoidance_handle}},
+    {{0x04},{0.0},{0.0},{150,150},false,{*side_avoidance_handle}},
+    {{0x05},{0.0},{0.0},{150,150},false,{*side_avoidance_handle}},
+    {{0x06},{0.0},{0.0},{150,150},false,{*side_avoidance_handle}},
+    {{0x07},{0.0},{0.0},{150,150},false,{*side_avoidance_handle}},
 };
 
 bool motor_need_stop()
