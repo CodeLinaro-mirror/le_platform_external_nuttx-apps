@@ -276,21 +276,22 @@ static void xmodem_receive(void)
             /* End of Transmission. */
             case X_EOT:
                 /* ACK, feedback to user (as a text), then jump to user application. */
-		flash_status = boot_flash_write(&last_data, 1, true);
-		if (flash_status != FLASH_OK){
-			printf("error: flash the last package failed \n");
-			protocol = X_CAN;
-			write(g_boot_xmodem.fd, &protocol, 1);
-		}else {
-                protocol = X_ACK;
-                write(g_boot_xmodem.fd, &protocol, 1);
-				write(g_boot_xmodem.fd, &protocol, 1);
-				write(g_boot_xmodem.fd, &protocol, 1);
-				write(g_boot_xmodem.fd, &protocol, 1);
-				write(g_boot_xmodem.fd, &protocol, 1);
-                printf("debug xmodem_receive X_EOT start  jump_to_app \n");
-                boot_flash_jump_to_app();
-			}
+                flash_status = boot_flash_write(&last_data, 1, true);
+                if (flash_status != FLASH_OK){
+                    printf("error: flash the last package failed \n");
+                    protocol = X_CAN;
+                    write(g_boot_xmodem.fd, &protocol, 1);
+                }else {
+                    protocol = X_ACK;
+                    write(g_boot_xmodem.fd, &protocol, 1);
+                    write(g_boot_xmodem.fd, &protocol, 1);
+                    write(g_boot_xmodem.fd, &protocol, 1);
+                    write(g_boot_xmodem.fd, &protocol, 1);
+                    write(g_boot_xmodem.fd, &protocol, 1);
+                    write(g_boot_xmodem.fd, &protocol, 1);
+                    printf("debug xmodem_receive X_EOT start  jump_to_app \n");
+                    boot_flash_jump_to_app();
+		}
                 break;
 
             case X_CAN:
