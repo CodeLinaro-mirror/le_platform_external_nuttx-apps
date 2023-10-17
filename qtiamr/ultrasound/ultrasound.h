@@ -19,7 +19,6 @@
 #include <sys/ioctl.h>
 #include <stdint.h>
 #include <syslog.h>
-#include "task_config.h"
 
 #ifdef CONFIG_APP_QTIAMR
 
@@ -45,7 +44,7 @@ typedef struct
     uint8_t addr;
     float dist;
     float temp;
-    float alert_limit[CAR_TYPE_NUM];
+    float alert_limit[2];
     bool status;
     void (*avoidance_handle)(void* this);
 } us_data_s;
