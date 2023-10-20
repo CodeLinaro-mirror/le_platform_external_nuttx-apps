@@ -584,7 +584,7 @@ int publish_imu_to_ros(void)
 		return ERROR;
 	}
 
-	syslog(LOG_DEBUG, "publish imu data: accel_x(%x, %x), accel_y(%x,%x)\n", send_data.data7, send_data.data8, send_data.data9, send_data.data10);
+	// syslog(LOG_DEBUG, "publish imu data: accel_x(%x, %x), accel_y(%x,%x)\n", send_data.data7, send_data.data8, send_data.data9, send_data.data10);
 	return OK;
 }
 

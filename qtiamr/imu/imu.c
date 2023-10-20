@@ -27,6 +27,7 @@
 static struct amr_imu_s  g_amr_imu;
 
 static uint8_t deviation_count = DEVIATION_COUNT;
+static uint8_t log_ctl;
 
 /*  Sensor driver have configured:
  *  pwr_mgmt reset,
@@ -97,8 +98,12 @@ static int imu_data_transform(int16_t *raw_imu_data, uint8_t len){
 	data->xg = ((float)raw_imu_data[4]/MAX_IMU_DATA_ROW)*MAX_IMU_GYRO;
 	data->yg = ((float)raw_imu_data[5]/MAX_IMU_DATA_ROW)*MAX_IMU_GYRO;
 	data->zg = ((float)raw_imu_data[6]/MAX_IMU_DATA_ROW)*MAX_IMU_GYRO;
-	syslog(LOG_INFO,"imu data: accel speed x:%.2f, y:%.2f, z %.2f \n",data->xa, data->ya, data->za);
-	syslog(LOG_INFO,"imu data: gyro speed x:%.2f, y:%.2f, z %.2f \n\n",data->xg, data->yg, data->zg);
+
+	if (++log_ctl % 100 == 0) {
+	    syslog(LOG_DEBUG, "imu data: accel speed x:%.2f, y:%.2f, z %.2f \n",data->xa, data->ya, data->za);
+	    syslog(LOG_DEBUG, "imu data: gyro speed x:%.2f, y:%.2f, z %.2f \n\n",data->xg, data->yg, data->zg);
+		log_ctl = 0;
+	}
 	/* zero bias*/
 	if (deviation_count == 0){ 
 		d_data = &g_amr_imu.deviation_data;
@@ -108,7 +113,7 @@ static int imu_data_transform(int16_t *raw_imu_data, uint8_t len){
 		data->xg = data->xg - d_data->xg;
 		data->yg = data->yg - d_data->yg;
 		data->zg = data->zg - d_data->zg;
-		syslog(LOG_INFO, "imu data: actual speed x:%f, y:%f,z %f \n\n", data->xa, data->ya, data->za);
+		//syslog(LOG_INFO, "imu data: actual speed x:%f, y:%f,z %f \n\n", data->xa, data->ya, data->za);
 	}
 
 	return OK;
