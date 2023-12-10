@@ -53,6 +53,9 @@ struct amr_motion_s
 	bool target_reached;
 	uint8_t target_control_mode;
 	bool control_mode_update;
+
+	bool quick_stop_enable;
+	bool motor_stop_once;
 };
 
 void smooth_speed_control(float vx, float step);
@@ -65,6 +68,8 @@ void get_motor_driver_velocity(float *vx, float *vz);
 void rpm_transfer_to_odom(amr_motor_data_t *data);
 int motion_task(int argc, char *argv[]);
 amr_motor_data_t* get_motor_odom(void);
+void quick_stop_status_set(bool enable);
+bool motor_stop_status_get();
 
 #endif
 #endif

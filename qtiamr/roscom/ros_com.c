@@ -15,6 +15,7 @@
 #include "main.h"
 #include "motion_task.h"
 #include "motor_driver.h"
+#include "imu.h"
 
 extern volatile struct amr_motion_s g_amr_motion;
 
@@ -259,12 +260,14 @@ static void parse_ros_data(void)
 	struct ros_receive_data_s ack_data;
 	int ret = OK;
 	uint8_t control_mode = 0;
+    uint8_t quick_stop_enable = 0;
+    
+    switch (g_amr_ros.ros_receive_data.cmd)
+    {
+        case(CMD_SPEED_CONTROL):
+	    parse_speed_data();
+	    break;
 
-	switch (g_amr_ros.ros_receive_data.cmd)
-	{
-		case(CMD_SPEED_CONTROL):
-			parse_speed_data();
-			break;
 		case(CMD_TIME_LOOP):
 			ros_cmd_send(&g_amr_ros.ros_receive_data, sizeof(struct ros_receive_data_s));
 			syslog(LOG_INFO, "ack ping\n");
@@ -328,13 +331,19 @@ static void parse_ros_data(void)
 			ack_data.data4 = (tp.tv_sec) & 0xff;
 			ack_data.data5 = ((tp.tv_nsec/1000000) >> 8) & 0xff;
 			ack_data.data6 = (tp.tv_nsec/1000000) & 0xff;
+		    
+		    ack_data.cmd = CMD_TIME_GET;
+		    ack_data.frame_header = ROS_FRAME_HEAD;
+	    	    ack_data.frame_tail = ROS_FRAME_TAIL;
+		    ack_data.check_sum = data_check_sum(&ack_data, sizeof(struct ros_receive_data_s) - 2 );
+		    ros_cmd_send(&ack_data, sizeof(struct ros_receive_data_s));
+		    syslog(LOG_INFO, "get time %d: %ds %dns\n", ret, tp.tv_sec, tp.tv_nsec);
+		    break;
 
-			ack_data.cmd = CMD_TIME_GET;
-			ack_data.frame_header = ROS_FRAME_HEAD;
-			ack_data.frame_tail = ROS_FRAME_TAIL;
-			ack_data.check_sum = data_check_sum(&ack_data, sizeof(struct ros_receive_data_s) - 2 );
-			ros_cmd_send(&ack_data, sizeof(struct ros_receive_data_s));
-			syslog(LOG_INFO, "get time %d: %ds %dns\n", ret, tp.tv_sec, tp.tv_nsec);
+		case(CMD_QUICK_STOP_ENABLE):
+			quick_stop_enable = g_amr_ros.ros_receive_data.data1;
+			syslog(LOG_INFO, "quick_stop_enable %d\n", quick_stop_enable);
+			quick_stop_status_set(quick_stop_enable);
 			break;
 		default:
 			syslog(LOG_INFO,"parse_ros_data: cmd invalid 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n", g_amr_ros.ros_receive_data.frame_header, \
@@ -542,7 +551,76 @@ int publish_pos_odom_to_ros(void)
 
 
 	return OK;
+}
 
+int publish_imu_to_ros(void)
+{
+	int ret =0;
+
+	struct extend_frame_s send_data =  {0};
+	static struct timespec tp;
+
+	clock_gettime(CLOCK_MONOTONIC, &tp);
+
+	send_data.frame_header = EXTEND_FRAME_HEADER;
+	send_data.cmd = CMD_IMU;
+	send_data.frame_tail = EXTEND_FRAME_TRAILER;
+
+	send_data.data1 = (tp.tv_sec >> 24) & 0xff;
+	send_data.data2 = (tp.tv_sec >> 16) & 0xff;
+	send_data.data3 = (tp.tv_sec >> 8) & 0xff;
+	send_data.data4 = (tp.tv_sec) & 0xff;
+	send_data.data5 = ((tp.tv_nsec/1000000) >> 8) & 0xff;
+	send_data.data6 = (tp.tv_nsec/1000000) & 0xff;
+
+	memcpy(&send_data.data7, get_imu_data(), 12);
+
+	send_data.check_sum = data_check_sum(&send_data, sizeof(struct extend_frame_s) - 2);
+	ret = ros_cmd_send(&send_data, sizeof(struct extend_frame_s));
+
+	if (ret < 0)
+	{
+		syslog(LOG_WARNING, "publish imu sensor data failed!\n");
+		return ERROR;
+	}
+
+	// syslog(LOG_DEBUG, "publish imu data: accel_x(%x, %x), accel_y(%x,%x)\n", send_data.data7, send_data.data8, send_data.data9, send_data.data10);
+	return OK;
+}
+
+int publish_status_to_ros(void)
+{
+    int ret =0;
+	struct extend_frame_s send_data =  {0};
+	static struct timespec tp;
+
+	clock_gettime(CLOCK_MONOTONIC, &tp);
+
+	send_data.frame_header = EXTEND_FRAME_HEADER;
+	send_data.cmd = CMD_EXCEPTION_STATUS;
+	send_data.frame_tail = EXTEND_FRAME_TRAILER;
+
+	send_data.data1 = (tp.tv_sec >> 24) & 0xff;
+	send_data.data2 = (tp.tv_sec >> 16) & 0xff;
+	send_data.data3 = (tp.tv_sec >> 8) & 0xff;
+	send_data.data4 = (tp.tv_sec) & 0xff;
+	send_data.data5 = ((tp.tv_nsec/1000000) >> 8) & 0xff;
+	send_data.data6 = (tp.tv_nsec/1000000) & 0xff;
+
+	send_data.data7 = motor_stop_status_get() & 0xff;
+
+	syslog(LOG_DEBUG, "publish quick stop status: %d \n", send_data.data7);
+
+	send_data.check_sum = data_check_sum(&send_data, sizeof(struct extend_frame_s) - 2 );
+	ret = ros_cmd_send(&send_data, sizeof(struct extend_frame_s));
+
+	if (ret < 0)
+	{
+		syslog(LOG_WARNING, "publish battery voltage data failed!\n");
+		return ERROR;
+	}
+
+	return OK;
 }
 
 
@@ -691,16 +769,17 @@ bool ros_connection_check(void)
 /* roscom task */
 int ros_com_task(int argc, char *argv[])
 {
-	int ret;
-	int i = 0;
+    int ret;
+	int i = 0, j = 0;
+	
+    ret = ros_com_init();
+    if (ret != OK)
+    {
+        syslog(LOG_INFO,"ros_com_task: init failed\n");
+    }
 
-	ret = ros_com_init();
-	if (ret != OK)
-	{
-		syslog(LOG_INFO,"ros_com_task: init failed\n");
-	}
-	while(1)
-	{
+    while(1)
+    {
 		usleep(1000000/ROSCOM_FREQUENCY);
 		/* read qrc data*/
 		ros_cmd_receive();
@@ -721,6 +800,15 @@ int ros_com_task(int argc, char *argv[])
 				else
 				{
 					publish_pos_odom_to_ros();
+				}
+
+				if (j++ % ROSCOM_FREQUENCY == 0)
+				{
+					publish_status_to_ros();
+				}
+				if(!amr_imu_check())
+				{
+					publish_imu_to_ros();
 				}
 			}
 			if (g_amr_ros.notify_mode_switch)
