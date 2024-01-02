@@ -1,0 +1,28 @@
+/****************************************************************************
+ *
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ *
+ ****************************************************************************/
+
+#ifndef __APP_CHARGER_CONTROLLER_H
+#define __APP_CHARGER_CONTROLLER_H
+
+/****************************************************************************
+ * Included Files
+ ****************************************************************************/
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+
+/********************************************************************************
+ * Pre-processor Definitions
+ ********************************************************************************/
+
+
+
+void charger_main();
+
+
+
+#endif
