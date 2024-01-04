@@ -5,80 +5,135 @@
  *
  ****************************************************************************/
 
+#include <nuttx/config.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <debug.h>
+
+#include "robot_controller.h"
+#include "motion_management.h"
+#include "motion_msg.h"
+
+/* switch done cb register need to do  */
+
 
 /****************************************************************************
- * Included Files
+ * Pre-processor Definitions
  ****************************************************************************/
-#include <nuttx/config.h>
-#include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <sched.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
 
-#include "commands.h"
-#include "motor_controller.h"
+/****************************************************************************
+ * Private Types
+ ****************************************************************************/
 
+/****************************************************************************
+ * Private Function Prototypes
+ ****************************************************************************/
 
+static void robot_control_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response);
+static void robot_control_msg_parse(struct qrc_pipe_s *pipe, struct motion_control_msg_s *control_msg);
 
-static struct motor_controller_s  g_motor_controller;
+/****************************************************************************
+ * Private Data
+ ****************************************************************************/
+struct qrc_pipe_s *g_robot_control_pipe = NULL;
 
-static int amr_mc_init(void)
+/****************************************************************************
+ * Public Data
+ ****************************************************************************/
+
+/****************************************************************************
+ * Private Functions
+ ****************************************************************************/
+
+static void robot_control_msg_parse(struct qrc_pipe_s *pipe, struct motion_control_msg_s *control_msg)
 {
-	int ret;
-	int fd;
+  enum control_msg_type_e msg_type;
+  enum control_client_e client = ROBOT_CONTROLLER;
 
-	
-	/* open imu fd */
-	fd = open(MOTOR_CONTROLLER_DEV, O_RDWR);
-	if (fd < 0){
-		printf("amr_mc_init: open %s failed: %d\n",
-									MOTOR_CONTROLLER_DEV, errno);
-		return fd;
-	}
-	printf("amr_mc_init: opened %s\n",MOTOR_CONTROLLER_DEV);
-	g_motor_controller.mc_fd = fd;
+  if (pipe == NULL || control_msg ==NULL)
+    {
+      return;
+    }
 
-	return OK;
+  msg_type = control_msg->msg_type;
+  switch(msg_type)
+    {
+      case SET_SPEED:
+        {
+          motion_speed_control(client,control_msg->data.speed_cmd.vx, control_msg->data.speed_cmd.vz);
+          break;
+        }
+      case SWITCH_MODE:
+        {
+          motion_switch_mode(control_msg->mode);
+          /* switch done callback need to be registered */
+          break;
+        }
+      case SET_EMERGENCY:
+        {
+          motion_set_emergency(control_msg->emergency);
+        }
+      case SET_POSITION:
+      default:
+        {
+          syslog(LOG_ERR,"Robot control msg type is invalid %d\n",msg_type);
+        }
+    }
 }
 
+/* robot controller qrc msg callback */
 
+static void robot_control_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response)
+{
 
+  struct motion_control_msg_s *control_msg;
 
-int amr_mc_task(int argc, char *argv[]){
-	int ret, i;
-	int fd;
-	
-
-	/** this task used to check amr motor controller if worked **/
-	ret = amr_mc_init();
-	if (ret != OK){
-		printf("amr_mc_task: init failed\n");
-	}
-	
-	fd = g_motor_controller.mc_fd;
-
-	i = 3;
-	while(i > 1){
-
-		mc_init(fd);
-		sleep(5);
-		mc_set_speed(50, 50, fd);
-		sleep(10);
-		mc_set_speed(-50, 50, fd);
-		sleep(10);
-		mc_set_speed(0, 0, fd);
-		sleep(5);
-		//test_ultrasound(fd);
-		usleep(500000);
-	}
-	amr_mc_deinit();
-	return ret;
+  if (pipe == NULL || data ==NULL)
+    {
+      return;
+    }
+  if (len == sizeof(struct motion_control_msg_s))
+    {
+      control_msg = (struct motion_control_msg_s *)data;
+      robot_control_msg_parse(pipe, control_msg);
+    }
 }
 
+/****************************************************************************
+ * Public Functions
+ ****************************************************************************/
 
-void  amr_mc_deinit(void)
+/****************************************************************************
+ * Name: robot controller Thread function
+ ****************************************************************************/
+
+int robot_controller(int argc, char *argv[]){
 {
-	close(g_motor_controller.mc_fd);
+  char pipe_name[] = MOTION_PIPE;
+
+  struct qrc_pipe_s *pipe;
+
+  /* get pipe */
+  pipe =  qrc_get_pipe(pipe_name);
+  if (pipe == NULL)
+    {
+      /* notify error */
+      return -1;
+    }
+
+  if (!qrc_register_message_cb(pipe, robot_control_qrc_msg_cb))
+    {
+      syslog(LOG_ERR,"qrc register robot control cb error\n");
+      /* notify error */
+      return -1;
+    }
+
+  /* notify ok */
+
+  return 0;
 }
