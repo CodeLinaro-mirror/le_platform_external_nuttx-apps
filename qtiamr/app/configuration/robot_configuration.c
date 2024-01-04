@@ -97,19 +97,18 @@ static void config_set_initialization_status(bool status);
  ****************************************************************************/
 /* Index match with enum mcb_task_id_e */
 static struct mcb_task_s mcb_tasks[] = {
-  {"IMU",                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"MOTION_MANAGEMENT",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"CHARGER_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"RC_MANAGEMENT",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"AVOID_MANAGEMENT",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
   {"TIME_SYNC",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"IMU",                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
   {"MISC",                DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
   {"MOTION_ODOM",         DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
   {"ROBOT_CONTROLLER",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
   {"CHARGER_CONTROLLER",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
   {"REMOTE_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
   {"EMERGENCY",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"QRC_MSG_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"MOTION_MANAGEMENT",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"CHARGER_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"RC_MANAGEMENT",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"AVOID_MANAGEMENT",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
 };
 
 static bool g_initialized;
@@ -329,21 +328,23 @@ static enum mcb_task_id_e start_mcb_task(void)
     {
       /* start tasks */
 
-      ret = task_create(mcb_tasks[index].name,
+      if (NULL != mcb_tasks[index].task_func)
+        {
+          ret = task_create(mcb_tasks[index].name,
                         mcb_tasks[index].priority,
                         mcb_tasks[index].stack_size,
                         mcb_tasks[index].task_func,
                         mcb_tasks[index].argv);
-      if (ret < 0)
-        {
-          errcode = errno;
-          syslog(LOG_INFO,"car_main: ERROR: Failed to start %s: %d\n",
+          if (ret < 0)
+            {
+              errcode = errno;
+              syslog(LOG_INFO,"car_main: ERROR: Failed to start %s: %d\n",
                             mcb_tasks[index].name,errcode);
-          return index;
+              return index;
+            }
+            syslog(LOG_INFO, "start_mcb_task: Starting the pid %d\n", ret);
+            mcb_tasks[index].task_id = ret;
         }
-
-      syslog(LOG_INFO, "start_mcb_task: Starting the pid %d\n", ret);
-      mcb_tasks[index].task_id = ret;
 
       /* clear initialization tatus */
       config_clear_initialization_status();
