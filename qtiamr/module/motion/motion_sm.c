@@ -60,7 +60,7 @@ static int do_action_drv_error(struct motion_control_data_s data);
 static int do_action_speed(struct motion_control_data_s data);
 static int do_action_switch_done(struct motion_control_data_s data);
 
-/* 还需要实现position done 和switch done 的回调注册 */
+/* need to do: position done & switch done callback function */
 
 /****************************************************************************
  * Private Data

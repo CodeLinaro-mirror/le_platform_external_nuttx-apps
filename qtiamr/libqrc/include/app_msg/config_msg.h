@@ -28,12 +28,28 @@ enum config_msg_type_e
   APPLY,
 };
 
+enum mcb_task_id_e
+{
+  IMU = 0,
+  TIME_SYNC,
+  MISC,
+  MOTION_ODOM,
+  ROBOT_CONTROLLER,
+  CHARGER_CONTROLLER,
+  REMOTE_CONTROLLER,
+  EMERGENCY,
+  QRC_MSG_MANAGEMENT,
+  MOTION_MANAGEMENT,
+  CHARGER_MANAGEMENT,
+  RC_MANAGEMENT,
+  AVOID_MANAGEMENT,
+  MAX_TASK_ID,
+};
+
 struct config_apply_s
 {
-  // 0 is success, not 0 is failed
-  uint8_t status;
-  // which parameter cause error
-  enum config_msg_type_e error_type;
+  uint8_t status;	  /* 0 is success, not 0 is failed */
+  enum mcb_task_id_e error_type;	/* which task caused error */
 };
 
 enum car_model_e
@@ -56,7 +72,7 @@ struct config_car_s
   enum kinematic_model_e kinematic_model;
   double wheel_space;
   double wheel_radius;
-};
+}__attribute__((aligned(4)));
 
 struct config_motion_s
 {
@@ -67,7 +83,7 @@ struct config_motion_s
   double pid_speed[3];
   double pid_position[3];
   uint32_t odom_frequency;
-};
+}__attribute__((aligned(4)));
 
 struct config_scale_s
 {
@@ -75,24 +91,24 @@ struct config_scale_s
   double position_scale[2];
   double speed_odom_scale[2];
   double position_odom_scale[2];
-};
+}__attribute__((aligned(4)));
 
 struct config_sensor_s
 {
   uint8_t imu_enable;
   uint8_t ultra_enable;
   uint8_t ultra_quantity;
-};
+}__attribute__((aligned(4)));
 
 struct config_remote_controller_s
 {
   double max_speed;
-};
+}__attribute__((aligned(4)));
 
 struct config_obstacle_avoidance_s
 {
   double safe_distance;
-};
+}__attribute__((aligned(4)));
 
 struct config_msg_s
 {

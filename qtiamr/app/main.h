@@ -16,7 +16,7 @@
 int get_configuration_parameters(enum config_msg_type_e type, void *parameters);
 
 void config_notify_completed(bool initialized);
-int config_parameter_init(int argc, char *argv[]);
+int config_parameter_init(int argc, char *argv[]);  /* called by main */
 
 
 #endif

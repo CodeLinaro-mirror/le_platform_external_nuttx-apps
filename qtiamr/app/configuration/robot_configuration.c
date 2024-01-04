@@ -25,7 +25,6 @@
 #define DEFAULT_PRIORITY  (110)
 #define DEFAULT_STACK_SIZE  (2048)
 
-
 #define CONFIG_TIMEOUT  (2) /* second */
 
 #define PI (3.14159f)
@@ -55,28 +54,9 @@
 
 #define DEFAULT_SAFE_DISTANCE   (0.050f)
 
-
 /****************************************************************************
  * Private Types
  ****************************************************************************/
-
-enum task_id_e
-{
-  IMU = 0,
-  TIME_SYNC,
-  MISC,
-  MOTION_ODOM,
-  ROBOT_CONTROLLER,
-  CHARGER_CONTROLLER,
-  REMOTE_CONTROLLER,
-  EMERGENCY,
-  QRC_MSG_MANAGEMENT,
-  MOTION_MANAGEMENT,
-  CHARGER_MANAGEMENT,
-  RC_MANAGEMENT,
-  AVOID_MANAGEMENT,
-  MAX_START_ID,
-};
 
 struct config_parameters_s
 {
@@ -86,12 +66,13 @@ struct config_parameters_s
 
 } __attribute__((aligned(4)));
 
-struct task_s {
-  enum task_id_e id;
-	uint32_t	priority;
+struct mcb_task_s {
+  const char  *name;
+  uint32_t	priority;
 	uint32_t	stack_size;
 	int	(*task_func)(int argc, char *argv[]);
-	char	*argv;
+  char	*argv;
+  int task_id;
 };
 
 struct mcb_config_parameters_s {
@@ -105,7 +86,7 @@ struct mcb_config_parameters_s {
  ****************************************************************************/
 
 static void config_parameter_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response);
-static void config_parameter_msg_parse(struct qrc_pipe_s *pipe, struct motion_control_msg_s *control_msg);
+static void config_parameter_msg_parse(struct qrc_pipe_s *pipe, struct config_msg_s *config_msg);
 
 static void config_wait_notify(void);
 static void config_clear_initialization_status(void);
@@ -114,22 +95,22 @@ static void config_set_initialization_status(bool status);
 /****************************************************************************
  * Private Data
  ****************************************************************************/
+/* Index match with enum mcb_task_id_e */
 static struct mcb_task_s mcb_tasks[] = {
-  {IMU,                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
-  {TIME_SYNC,           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
-  {MISC,                DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
-  {MOTION_ODOM,         DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
-  {ROBOT_CONTROLLER,    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
-  {CHARGER_CONTROLLER,  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
-  {REMOTE_CONTROLLER,   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
-  {EMERGENCY,           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
-  {QRC_MSG_MANAGEMENT,  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
-  {MOTION_MANAGEMENT,   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
-  {CHARGER_MANAGEMENT,  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
-  {RC_MANAGEMENT,       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
-  {AVOID_MANAGEMENT,    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL},
+  {"IMU",                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"TIME_SYNC",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"MISC",                DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"MOTION_ODOM",         DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"ROBOT_CONTROLLER",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"CHARGER_CONTROLLER",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"REMOTE_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"EMERGENCY",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"QRC_MSG_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"MOTION_MANAGEMENT",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"CHARGER_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"RC_MANAGEMENT",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"AVOID_MANAGEMENT",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
 };
-
 
 static bool g_initialized;
 static struct config_parameters_s g_config_parameter;
@@ -226,7 +207,7 @@ static int config_wait_notify(void)
         }
       else
         {
-          syslog(LOG_ERR,"config_wait_notify: 
+          syslog(LOG_ERR,"config_wait_notify:
                   ERROR pthread_cond_timedwait failed, status=%d\n", status);
           ASSERT(false);
         }
@@ -234,7 +215,7 @@ static int config_wait_notify(void)
   else
     {
       syslog(LOG_ERR,"config_wait_notify: ERROR
-             pthread_cond_timedwait returned without timeout, status=%d\n",
+              pthread_cond_timedwait returned without timeout, status=%d\n",
               status);
       ASSERT(false);
     }
@@ -263,28 +244,122 @@ static void config_set_initialization_status(bool status)
 
 static void config_parameter_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response)
 {
+  struct config_msg_s *config_msg;
 
-
+  if (pipe == NULL || data ==NULL)
+    {
+      return;
+    }
+  if (len == sizeof(struct config_msg_s))
+    {
+      config_msg = (struct config_msg_s *)data;
+      config_parameter_msg_parse(pipe, config_msg);
+    }
+  else
+    {
+      syslog(LOG_ERR,"config_parameter_qrc_msg_cb: message size mismatch\n");
+    }
 }
 
 static void config_parameter_msg_parse(struct qrc_pipe_s *pipe, struct config_msg_s *config_msg)
 {
   enum config_msg_type_e type;
   void * parameters;
+  size_t length;
+  struct config_msg_s config_msg_reply;
+  struct config_apply_s *apply;
+  enum mcb_task_id_e task_error_id;
+  uint8_t apply_status;
+  enum qrc_write_status_e result;
 
-
-  struct motion_control_msg_s *control_msg;
-
-  if (pipe == NULL || data ==NULL)
+  if (pipe == NULL || config_msg ==NULL)
     {
       return;
     }
-  if (len == sizeof(struct motion_control_msg_s))
+
+  type = config_msg->type;
+  if ( type >= 0 && type >= CONFIG_MSG_TYPE_MAX)
     {
-      control_msg = (struct motion_control_msg_s *)data;
-      robot_control_msg_parse(pipe, control_msg);
+      /* save parameters */
+      parameters = parameters_list[type];
+      length = parameters_list[type].length;
+      memcpy(parameters, &config_msg->data, length);
+    }
+  else if (APPLY == type)
+    {
+      apply = (struct config_apply_s *)&config_msg->data;
+      if (apply ->status == 0)  /* 0 is success, not 0 is failed */
+        {
+          /* do boot function */
+          task_error_id = start_mcb_task();
+          /* check, if completed and reply it */
+          if (task_error_id == MAX_TASK_ID)
+            {
+              /* all tasks startup completed */
+              apply_status = 0;
+            }
+          else
+            {
+              apply_status = -1;
+            }
+          /* send status msg to RB5 */
+          config_msg_reply.type = APPLY;
+          config_msg_reply.data.status = apply_status;
+          config_msg_reply.data.error_type = task_error_id;
+          result = qrc_write(g_odom_pipe, (void *)&motion_odom, sizeof(struct motion_odom_s), false);
+          if (result != SUCCESS)
+            {
+              syslog(LOG_ERR, "config_parameter_msg_parse msg send failed %d\n", result);
+            }
+        }
+    }
+  else
+    {
+      syslog(LOG_ERR, "config_parameter_msg_parse type is invalid %d\\n", type);
+    }
+}
+
+static enum mcb_task_id_e start_mcb_task(void)
+{
+  int index;
+  int ret;
+  int errcode;
+
+  for (index = 0; index < MAX_TASK_ID; index ++)
+    {
+      /* start tasks */
+
+      ret = task_create(mcb_tasks[index].name,
+                        mcb_tasks[index].priority,
+                        mcb_tasks[index].stack_size,
+                        mcb_tasks[index].task_func,
+                        mcb_tasks[index].argv);
+      if (ret < 0)
+        {
+          errcode = errno;
+          syslog(LOG_INFO,"car_main: ERROR: Failed to start %s: %d\n",
+                            mcb_tasks[index].name,errcode);
+          return index;
+        }
+
+      syslog(LOG_INFO, "start_mcb_task: Starting the pid %d\n", ret);
+      mcb_tasks[index].task_id = ret;
+
+      /* clear initialization tatus */
+      config_clear_initialization_status();
+
+      /* wait notify */
+      config_wait_notify();
+
+      /* check status */
+      if (false == g_initialized)
+        {
+        break;
+        }
+      syslog(LOG_INFO, "start_mcb_task: Started the task %s\n", tasks[index].name);
     }
 
+  return index;
 }
 
 /****************************************************************************
