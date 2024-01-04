@@ -5,36 +5,28 @@
  *
  ****************************************************************************/
 
+#ifndef __ROBOT_CONTROLLER_H
+#define __ROBOT_CONTROLLER_H
 
-#ifndef __APP_QTIAMR_MOTOR_CONTROLLER_H
-#define __APP_QTIAMR_MOTOR_CONTROLLER_H
 /****************************************************************************
  * Included Files
  ****************************************************************************/
-#include <stdio.h>
-#include <stdint.h>
-#include <nuttx/fs/fs.h>
+
+#include <nuttx/config.h>
+
+/****************************************************************************
+ * Pre-processor Definitions
+ ****************************************************************************/
+
+/****************************************************************************
+ * Public Types
+ ****************************************************************************/
 
 
-#ifdef CONFIG_APP_QTIAMR
+/****************************************************************************
+ * Public Function Prototypes
+ ****************************************************************************/
+/* robot controller */
+int robot_controller(int argc, char *argv[]);
 
-#define MC_STACK_PRIORITY    100
-#define MC_STACK_STACKSIZE  (2048)
-
-
-
-#define MOTOR_CONTROLLER_DEV  "/dev/ttyS1"
-
-struct motor_controller_s {
-	int mc_fd;
-	uint8_t bus_mode;	/* 0: can bus ; 1:rs485 bus  */
-};
-
-static int amr_mc_init(void);
-
-int amr_mc_task(int argc, char *argv[]);
-void  amr_mc_deinit(void);
-
-
-#endif
-#endif
+#endif /* __ROBOT_CONTROLLER_H */
