@@ -36,13 +36,11 @@ C_INCLUDES +=  \
     -I$(CAR_DIR) \
     -I$(CAR_DIR)/app \
     -I$(CAR_DIR)/modules/qrc_msg_management/ \
-    -I$(CAR_DIR)/utils/ \
 
 
 MAINSRC = $(CAR_DIR)/app/main.c
 
 #CSRCS += $(CAR_DIR)/modules/qrc_msg_management/qrc_msg_management.c
-CSRCS += $(CAR_DIR)/utils/amr_signal.c
 
 
 CFLAGS += $(C_INCLUDES)
