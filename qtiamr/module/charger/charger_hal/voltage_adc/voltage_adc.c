@@ -5,59 +5,49 @@
  *
  ****************************************************************************/
 
-#include <nuttx/config.h>
-#include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <sched.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
+volt_adc_dev_t g_volt_adc_dev;
 
-#include "amr_adc.h"
-
-struct car_adc_s g_adc_power;
 
 /* Get adc sample */
-static int get_adc_sample(uint32_t *pdata, struct car_adc_s *adc, uint8_t channel){
+static int get_adc_sample(uint32_t *pdata, volt_adc_dev_t adc_dev_p){
+
 	struct adc_msg_s *sample;
 	size_t readsize;
 	uint8_t groups;
 	ssize_t nbytes;
 	int fd;
-	int ret, i;
+	int i;
+	int ret;
 
-	ret = ERROR;
-	if (NULL == pdata && NULL == adc)
-		return ERROR;
-
-	if (adc->initialized){
-		sample = &adc->samples;
-		fd = open(adc->adc_devpath, O_RDONLY);
-		if (fd < 0){
-			printf("adc: open %s failed: %d\n", adc->adc_devpath, errno);
-			return errno;
-		}
+	if (NULL == pdata){
+		goto err_out;
+	}
+	if (adc_dev_p->initialized){
+		fd = adc_dev_p->fd;
+		sample = &adc_dev_p->samples;
+	
 		/* Issue the software trigger to start ADC conversion */
 		ret = ioctl(fd, ANIOC_TRIGGER, 0);
 		if (ret < 0) {
 			printf("get_adc_sample: ANIOC_TRIGGER ioctl failed: %d\n", errno);
+			goto err_out;
 		}
-
 		readsize = ADC_MAX_GROUPSIZE * sizeof(struct adc_msg_s);
 		nbytes = read(fd, sample, readsize);
 		/* Handle unexpected return values */
 		if (nbytes < 0){
 			printf("get_adc_sample: read adc failed: %d\n", errno);
+			goto err_out;
 		}
 		else if (nbytes == 0) {
 			printf("get_adc_sample: No data read, Ignoring\n");
 		}
 		else {/* get right adc data */
-			if (0 == (nbytes % sizeof(struct adc_msg_s))) {
+			if (0 == (nbytes % sizeof(struct adc_msg_s))){
 				groups = nbytes / sizeof(struct adc_msg_s);
-
-				for (i = 0; i < groups; i++) {
-					if (channel == sample[i].am_channel) {
+				
+				for (i = 0; i < groups; i++){
+					if (adc_dev_p->channel == sample[i].am_channel){
 						*pdata = sample[i].am_data;
 						break;
 					}
@@ -65,39 +55,46 @@ static int get_adc_sample(uint32_t *pdata, struct car_adc_s *adc, uint8_t channe
 				if (i == groups)
 					printf("ERROR: adc channel not matched /n/n");
 				}
-				else
-					printf("get_adc_sample: read(size:%d) data invalid\n ", nbytes);
+			else
+				printf("get_adc_sample: read(size:%d) data invalid\n ", nbytes);
 		}
+		return OK;
 	}
-	close(fd);
-	return OK;
+err_out:
+	return ERROR;
 }
 
-int get_power_voltage(float *voltage) {
+bool adc_get_voltage(float *voltage) {
+	volt_adc_dev_t * adc_dev_p = &g_volt_adc_dev;
 	uint32_t data;
-	int ret;
 
-	if (g_adc_power.initialized) {
-		ret = get_adc_sample(&data, &g_adc_power, ADC_POWER_CHANNEL);
-		if (OK == ret){
-			*voltage = ( (3.3 * (float)data) / ADC_MAX_RANGE)* 11.0;
-			return ret;
+	if (adc_dev_p->initialized){
+		if(get_adc_sample(&data, adc_dev_p) == OK){
+			*voltage = ( ((float)data) * ADC_VOLT_PER_COUNT)* ADC_VOTL_DIV;
+			return OK;
 		}
 	}
 	return ERROR;
 }
 
 
-/* Init adc */
-int amr_adc_init(void) {
-
-	g_adc_power.adc_devpath = strdup(DEV_VOLTAGE);
-	g_adc_power.initialized = true;
-
+bool charger_voltage_adc_init(void)
+{
+	volt_adc_dev_t * adc_dev_p = &g_volt_adc_dev;
+	if(adc_dev_p->initialized == TRUE){
+    syslog(LOG_ERR, "CHARGER: charger_voltage_adc_init: has been Initialized!\n");
+		return ERROR;
+	}
+	memset(adc_dev_p, 0, sizeof(volt_adc_dev_t));
+	adc_dev_p->adc_devpath = strdup(ADC_VOLT_PATH);
+	adc_dev_p->channel = ADC_VOLTAGE_CHANNEL;
+	adc_dev_p->fd = open(adc_dev_p->adc_devpath, O_RDONLY);
+	if (adc_dev_p->fd < 0){
+		syslog(LOG_ERR,"CHARGER: charger_voltage_adc_init: open %s failed: %d\n", adc_dev_p->adc_devpath, errno);
+		return ERROR;
+	}
+    adc_dev_p->initialized = TRUE;
+    syslog(LOG_DEBUG,"CHARGER: charger_voltage_adc_init: open %s successfully!\n", adc_dev_p->adc_devpath);
 	return OK;
 }
 
-void amr_adc_deinit(void)
-{
-	return;
-}

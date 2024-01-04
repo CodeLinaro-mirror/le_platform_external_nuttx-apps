@@ -3,146 +3,188 @@
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 ****************************************************************************/
 
-#include "auto_charging.h"
+#include "charger_core.h"
+#include "ec130.h"
+#include "voltage_adc.h"
 
-#define CAN_OFLAGS O_RDONLY
-#define CONFIG_EXAMPLES_CAN_DEVPATH "/dev/can1"
-#define PRI_CAN_ID PRIu16
 
-int fd;
-static audo_charging_data_s g_charging_data;
 
-int auto_charging_init(){
-	int ret;
+ec130_dev_t g_ec130_dev;
 
-	struct canioc_bittiming_s bt;
-	long minid    = 1;
-	long maxid    = 0x07ff;
 
-	long nmsgs    = 1;
-	int errval    = 0;
-
-	syslog(LOG_INFO,"nmsgs: %ld\n", nmsgs);
-	syslog(LOG_INFO,"min ID: %ld max ID: %ld\n", minid, maxid);
-
-	fd = open(CONFIG_EXAMPLES_CAN_DEVPATH, CAN_OFLAGS);
-	if (fd < 0){
-		syslog(LOG_INFO,"ERROR: open %s failed: %d\n", CONFIG_EXAMPLES_CAN_DEVPATH, errno);
-		errval = 2;
-	}
-
-	ret = ioctl(fd, CANIOC_GET_BITTIMING, (unsigned long)((uintptr_t)&bt));
-	if (ret < 0)
-	{
-		syslog(LOG_INFO,"Bit timing not available: %d\n", errno);
-	}
-	else
-	{
-		syslog(LOG_INFO,"Bit timing:\n");
-		syslog(LOG_INFO,"   Baud: %lu\n", (unsigned long)bt.bt_baud);
-		syslog(LOG_INFO,"  TSEG1: %u\n", bt.bt_tseg1);
-		syslog(LOG_INFO,"  TSEG2: %u\n", bt.bt_tseg2);
-		syslog(LOG_INFO,"    SJW: %u\n", bt.bt_sjw);
-	}
-	return 0;
-}
-
-int get_charging_goal_speed(float* vx, float* vz, uint32_t* vt)
-{
-	*vx = 0;
-	*vz = 0;
-	*vt = g_charging_data.timestamp;
-	if(g_charging_data.If_charging != 1)
-	{
-		*vx = - (g_charging_data.vx / 30);
-		*vz = - (g_charging_data.vz / 8 );
-		*vt = g_charging_data.timestamp;
-	}
-	return OK;
-}
 
 int g_i;
-static void charging_data_sync(infrared_dock_cmd_s *buff, int len)
-{
-	float vx;
-	float vz;
-	float current;
+void ec130_raw_data_parse(ec130_raw_data_s *buff){
+	ec130_data_t *ec130_data_p = &g_ec130_dev.ec130_data;
+	ec130_data_p->vx = (((buff->vx_h << 8) + buff->vx_l) - (( buff->vx_h >> 7) * (0xFFFF + 1)) );//0.001m/s
+	ec130_data_p->vz = (((buff->vz_h << 8) + buff->vz_l) - (( buff->vz_h >> 7) * (0xFFFF + 1)) );//0.001rad/s
+	ec130_data_p->If_infrared = buff->flags & (0x01 << 1);
+	ec130_data_p->If_charging = buff->flags & (0x01);
+	ec130_data_p->current = ( buff->current - ((buff->current >> 7) * (0xFF + 1)))* CHARGING_CURR_UNIT;
+	ec130_data_p->timestamp = clock_systime_ticks();
 
-	bool If_infrared = false;
-	bool If_charging = false;
-	g_charging_data.vx = (((buff->vx_h << 8) + buff->vx_l) - (( buff->vx_h >> 7) * (0xFFFF + 1)) )/50;
-	g_charging_data.vz = (((buff->vz_h << 8) + buff->vz_l) - (( buff->vz_h >> 7) * (0xFFFF + 1)) )/100;
-	g_charging_data.If_infrared = buff->flags & (0x01 << 1);
-	g_charging_data.If_charging = buff->flags & (0x01);
-	g_charging_data.current = 0.033 * ( buff->current - ((buff->current >> 7) * (0xFF + 1)));
-	g_charging_data.timestamp = clock_systime_ticks();
-	if((g_i++ % 50) == 0)
+	if(ec130_data_p->If_infrared == 0) ec130_data_p->vx = ec130_data_p->vz = 0;
+	if(ec130_data_p->If_charging) ec130_data_p->vx = ec130_data_p->vz = 0;
+	if((g_i++ % 100) == 0)
 	{
 		g_i = 1;
-		syslog(LOG_DEBUG, "receive data: \n");
-		syslog(LOG_INFO,"vx_h = 0x%02x ", buff->vx_h);
-		syslog(LOG_INFO,"vx_l = 0x%02x \n", buff->vx_l);
-		syslog(LOG_INFO,"vz_h = 0x%02x ", buff->vz_h);
-		syslog(LOG_INFO,"vz_l = 0x%02x \n", buff->vz_l);
-		syslog(LOG_INFO,"flags = 0x%02x \n", buff->flags);
-		syslog(LOG_INFO,"current = 0x%02x \n", buff->current);
-
-		syslog(LOG_INFO,"vx = %.2fmm/s, vz = %.2frad/s\n", g_charging_data.vx, g_charging_data.vz);
-		syslog(LOG_INFO,"If_infrared = %d, If_charging = %d\n", g_charging_data.If_infrared, g_charging_data.If_charging);
-		syslog(LOG_INFO,"current = %.2fA\n", g_charging_data.current);
+		syslog(LOG_DEBUG,"receive data: \n");
+		syslog(LOG_DEBUG,"vx_h = 0x%02x ", buff->vx_h);
+		syslog(LOG_DEBUG,"vx_l = 0x%02x \n", buff->vx_l);
+		syslog(LOG_DEBUG,"vz_h = 0x%02x ", buff->vz_h);
+		syslog(LOG_DEBUG,"vz_l = 0x%02x \n", buff->vz_l);
+		syslog(LOG_DEBUG,"flags = 0x%02x \n", buff->flags);
+		syslog(LOG_DEBUG,"current = 0x%02x \n", buff->current);
+		syslog(LOG_DEBUG,"parse data: \n");
+		syslog(LOG_DEBUG,"vx = %.2fmm/s, vz = %.2frad/s\n", ec130_data_p->vx, ec130_data_p->vz);
+		syslog(LOG_DEBUG,"If_infrared = %d, If_charging = %d\n", ec130_data_p->If_infrared, ec130_data_p->If_charging);
+		syslog(LOG_DEBUG,"current = %.2fA\n", ec130_data_p->current);
 	}
 }
 
-static uint8_t auto_chanrging_get_data(void){
-	size_t msgsize;
+static bool ec130_get_can_data(){
+	ec130_dev_t *ec130_dev_p = &g_ec130_dev;
+	int ret = OK;
+	int fd;
 	ssize_t nbytes;
-	infrared_dock_cmd_s charging_buf;
 	struct can_msg_s rxmsg;
 	long nmsgs = 1;
 	long msgno;
-	int msgdlc;
-	int errval = 0;
-	uint8_t rev_buff[CAN_MAXDATALEN];
+	if(!ec130_dev_p->initialized){
+		return ERROR;
+	}
+	fd = ec130_dev_p->fd;
 	for (msgno = 0; !nmsgs || msgno < nmsgs; msgno++){
 		/* Flush any output before the loop entered or from the previous pass
 		 * * through the loop.
 		 * */
 		fflush(stdout);
-		msgsize = sizeof(struct can_msg_s);
-		nbytes = read(fd, &rxmsg, msgsize);
-		if (nbytes < CAN_MSGLEN(0) || nbytes > msgsize)
+		nbytes = read(fd, &rxmsg, sizeof(struct can_msg_s));
+		if (nbytes < CAN_MSGLEN(0) || nbytes > sizeof(struct can_msg_s))
 		{
-			syslog(LOG_INFO,"ERROR: read(%ld) returned %ld\n", (long)msgsize, (long)nbytes);
-			errval = 4;
+			syslog(LOG_ERR,"ERROR: read(%ld) returned %ld\n", (long)sizeof(struct can_msg_s), (long)nbytes);
+			ret = ERROR;
 		}
-
 		//printf("  ID: %4u DLC: %u\n", rxmsg.cm_hdr.ch_id, rxmsg.cm_hdr.ch_dlc);
-		msgdlc = rxmsg.cm_hdr.ch_dlc;
-
-		//printf("Data received:\n");
-		if(rxmsg.cm_hdr.ch_id == 0x182)
-		{
-			memcpy(&charging_buf, &rxmsg.cm_data, CAN_MAXDATALEN);
+		if(rxmsg.cm_hdr.ch_id == AUTO_CHARGER_MSG_ID){
+			ec130_raw_data_parse((ec130_raw_data_s)&rxmsg.cm_data);
 		}
+		else
+			ret = ERROR;
 	}
-	charging_data_sync(&charging_buf, msgdlc);
+	return ret;
+} 
+
+
+bool ec130_get_wheel_speed(float *vx, float *vz){
+	
+	ec130_data_t *ec130_data_p = &g_ec130_dev.ec130_data;
+	if(ec130_get_can_data() < 0)
+		return ERROR;
+
+	*vx = -(ec130_data_p->vx / WHELL_SPEED_VX_DIV);
+	*vz = -(ec130_data_p->vz / WHELL_SPEED_VZ_DIV);
+	//speed->timestamp = ec130_data_p->timestamp;
+
+	return OK;
 }
 
-static auto_charging_sync_power_voltage(void)
-{
-	int ret=0;
-	float power_voltage;
-	ret = get_power_voltage(&power_voltage);
+bool ec130_get_current(float *curr){
+	ec130_data_t *ec130_data_p = &g_ec130_dev.ec130_data;
+	if(ec130_get_can_data() < 0)
+		return ERROR;
+	*curr = ec130_data_p->current;
+	return OK;
 }
 
-int auto_charging_task(int argc, char *argv[]){
-	g_i =0;
-	auto_charging_init();
-	amr_adc_init();
-	while(1){
-		auto_charging_sync_power_voltage();
-		auto_chanrging_get_data();
-		usleep(100);
-	}
-	return 0;
+bool ec130_infrared_sig_stat(bool *stat){
+	ec130_data_t *ec130_data_p = &g_ec130_dev.ec130_data;
+	if(ec130_get_can_data() < 0)
+		return ERROR;
+	*stat = ec130_data_p->If_infrared;
+	return OK;
 }
+
+bool ec130_if_charging_stat(bool *stat){
+	ec130_data_t *ec130_data_p = &g_ec130_dev.ec130_data;
+	if(ec130_get_can_data() < 0)
+		return ERROR;
+	*stat = ec130_data_p->If_charging;
+	return OK;
+}
+
+
+static const chr_drv_ops_t ec130_drv_ops = {
+	.get_voltage		= adc_get_voltage,
+	.get_current		= ec130_get_current,
+	.get_wheel_speed	= ec130_get_wheel_speed,
+	.chr_if_charging	= ec130_if_charging_stat,
+	.chr_pile_sig_stat  = ec130_infrared_sig_stat,
+};
+
+
+bool ec130_can_init(){
+	int ret = OK;
+	int fd;
+	struct canioc_bittiming_s bt;
+	long minid    = 1;
+	long maxid    = 0x07ff;
+	long nmsgs    = 1;
+
+	syslog(LOG_DEBUG,"nmsgs: %ld\n", nmsgs);
+	syslog(LOG_DEBUG,"min ID: %ld max ID: %ld\n", minid, maxid);
+
+	fd = open(CONFIG_EXAMPLES_CAN_DEVPATH, O_RDONLY);
+	if (fd < 0){
+		syslog(LOG_ERR,"ERROR: open %s failed: %d\n", CONFIG_EXAMPLES_CAN_DEVPATH, errno);
+		ret = ERROR;
+	}
+	g_ec130_dev.fd = fd;
+	ret = ioctl(fd, CANIOC_GET_BITTIMING, (unsigned long)((uintptr_t)&bt));
+	if (ret < 0){
+		syslog(LOG_ERR,"Bit timing not available: %d\n", errno);
+		ret = ERROR;
+	}
+	else{
+		syslog(LOG_DEBUG,"Bit timing:\n");
+		syslog(LOG_DEBUG,"   Baud: %lu\n", (unsigned long)bt.bt_baud);
+		syslog(LOG_DEBUG,"  TSEG1: %u\n", bt.bt_tseg1);
+		syslog(LOG_DEBUG,"  TSEG2: %u\n", bt.bt_tseg2);
+		syslog(LOG_DEBUG,"    SJW: %u\n", bt.bt_sjw);
+	}
+	return ret;
+}
+
+
+bool ec130_driver_init(){
+	int ret;
+	if (g_ec130_dev.initialized){
+    syslog(LOG_ERR, "CHARGER: ec130_driver_init: has been Initialized!\n");
+		return ERROR;
+	}
+	memset(&g_ec130_dev, 0, sizeof(ec130_dev_t));
+	ret = ec130_can_init();
+	if(ret < 0)
+  { 
+    syslog(LOG_ERR, "CHARGER: ec130_driver_init: ec130 can init failed!\n");
+    return ERROR;
+  }
+	chr_core_drv_ops_register("ec130",&ec130_drv_ops);
+
+	g_ec130_dev.initialized = true;
+  syslog(LOG_DEBUG,"CHARGER: ec130_driver_init: ec130 Initialize successfully!\n");
+  
+	return OK;
+}
+
+bool ec130_and_adc_driver_init(){
+
+	if(charger_voltage_adc_init() != TRUE)
+		return ERROR;
+	if(ec130_driver_init() != TRUE)
+		return ERROR;
+	return OK;
+}
+
+
+
