@@ -18,13 +18,14 @@ extern "C" {
 
 enum config_msg_type_e
 {
-  APPLY,
-  CAR,
+  CAR = 0x0,
   MOTION,
   SCALE,
   SENSOR,
   REMOTE_CONTROLLER,
   OBSTACLE_AVOIDANCE,
+  CONFIG_MSG_TYPE_MAX,
+  APPLY,
 };
 
 struct config_apply_s
@@ -35,45 +36,57 @@ struct config_apply_s
   enum config_msg_type_e error_type;
 };
 
+enum car_model_e
+{
+  CYCLE_CAR,
+  AMR_6040,
+  CAR_MODE_MAX,
+};
+
+enum kinematic_model_e
+{
+  DIFF_CAR,
+  ACKERMAN_CAR,
+  KINEMATIC_MODEL_MAX,
+};
+
 struct config_car_s
 {
-  uint8_t model;
-  double length;
-  double width;
-  double height;
+  enum car_model_e car_model;
+  enum kinematic_model_e kinematic_model;
   double wheel_space;
   double wheel_radius;
-  uint8_t kinematic_model;
 };
 
 struct config_motion_s
 {
-  double max_speed[2];
-  double max_position[2];
+  double max_speed;
+  double max_position;
+  double max_position_line_speed;
+  double max_position_angle_speed;
   double pid_speed[3];
   double pid_position[3];
-  uint32_t hz_odom;
+  uint32_t odom_frequency;
 };
 
 struct config_scale_s
 {
-  double speed[2];
-  double position[2];
-  double odom_speed[2];
-  double odom_position[2];
+  double speed_scale[2];
+  double position_scale[2];
+  double speed_odom_scale[2];
+  double position_odom_scale[2];
 };
 
 struct config_sensor_s
 {
   uint8_t imu_enable;
   uint8_t ultra_enable;
-  uint8_t ultra_count;
+  uint8_t ultra_quantity;
 };
 
 struct config_remote_controller_s
 {
-  double max_speed[2];
-  double max_position[2];
+  double max_speed;
 };
 
 struct config_obstacle_avoidance_s
