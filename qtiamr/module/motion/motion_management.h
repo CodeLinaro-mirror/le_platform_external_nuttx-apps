@@ -5,71 +5,77 @@
  *
  ****************************************************************************/
 
-#ifndef __APP_QTIAMR_MOTION_TASK_H
-#define __APP_QTIAMR_MOTION_TASK_H
+#ifndef __MOTION_MANAGEMENT_H
+#define __MOTION_MANAGEMENT_H
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
-#include <stdio.h>
-#include <stdint.h>
-#include "canopen.h"
-#include "motor_driver.h"
 
+#include <nuttx/config.h>
 
-#ifdef CONFIG_APP_QTIAMR
+/****************************************************************************
+ * Pre-processor Definitions
+ ****************************************************************************/
 
-/* motion task running frequency */
-#define CONTROL_FREQUENCY    (50)
+/****************************************************************************
+ * Public Types
+ ****************************************************************************/
 
+typedef void (*control_sm_notify_cb)(enum control_sm_e state);  /* control sm cb for state switch */
 
-#define PI_MATH                   (3.1416f)
+typedef void (*motion_odom_cb)(struct motion_odom_s motion_odom);  /* motion odom cb */
 
-#define MAX_SPEED                 0.7         //(5 * QTIAMR1_WHEEL_PERIMETER)
-#define MAX_ANGULAR_VELOCITY      2
-#define SMOOTH_STEP               (0.03)      // Max speed : Max accelerate = 1:1.5
+/* Pose type, used to position control */
+#define POSE_ANGLE (false)
+#define POSE_DIST (true)
 
-
-
-enum position_sub_mode
+struct motion_pid_s
 {
-	POS_SUB_DISTANCE,
-	POS_SUB_ANGLE,
+  float kp;
+  float ki;
+  float kd;
 };
 
-struct motor_control_s
+/* motion result */
+
+enum motion_result_e
 {
-    int rpm_goal;
-    int rpm_actual;
+  ERROR = -1,
+  OK=0,
+  DRV_BUSY,
+  CLIENT_ERR,
+  SM_ERR,
 };
 
-struct amr_motion_s
+struct motion_management_s
 {
-    struct motor_control_s motor_left;
-    struct motor_control_s motor_right;
+  bool initialized;
+  struct motion_sm_s *motion_sm;
+  struct control_sm_s *control_sm;
+}__attribute__((aligned(4)));
 
-    float smooth_speed;
-	uint8_t control_mode;
-	bool velocity_zero;
-	bool target_reached;
-	uint8_t target_control_mode;
-	bool control_mode_update;
 
-	bool quick_stop_enable;
-	bool motor_stop_once;
-};
 
-void smooth_speed_control(float vx, float step);
-void get_motor_actual_speed(int *left, int *right);
-void get_motor_goal_speed(int *left, int *right);
+/****************************************************************************
+ * Public Function Prototypes
+ ****************************************************************************/
+/* Client control SM */
 
-void inverse_kinematics(float vx, float vz, int *rpm_l, int *rpm_r);
-void inverse_kinematics_pos(float vx, float vz, int sub_mode, int *count_l, int *count_r);
-void get_motor_driver_velocity(float *vx, float *vz);
-void rpm_transfer_to_odom(amr_motor_data_t *data);
-int motion_task(int argc, char *argv[]);
-amr_motor_data_t* get_motor_odom(void);
-void quick_stop_status_set(bool enable);
-bool motor_stop_status_get();
+void client_sm_init(void);
+enum control_client_e get_current_client(void);
+int set_control_client(enum control_client_e client);
+bool client_control_sm_register_notify_cb(control_sm_notify_cb fun_cb);
 
-#endif
-#endif
+/* Motion management */
+enum motion_result_e motion_speed_control(enum control_client_e client,
+                                          float vx, float vz);
+enum motion_result_e motion_position_control(enum control_client_e client,
+                                              float pose,int pose_type);
+enum motion_result_e motion_switch_mode(enum control_mode_e mode);
+
+enum motion_result_e motion_set_emergency(bool enable);
+
+void register_motion_odom_cb(motion_odom_cb cb_fun);
+
+#endif /* __MOTION_MANAGEMENT_H */

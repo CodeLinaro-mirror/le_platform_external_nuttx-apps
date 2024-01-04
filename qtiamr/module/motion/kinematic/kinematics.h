@@ -36,10 +36,10 @@ enum kinematic_mode_e
 
 struct kinematic_parameter_s
 {
-  float input_line_scale;
-  float input_angle_scale;
-  float odom_line_scale;
-  float odom_angle_scale;
+  float speed_line_scale;
+  float speed_angle_scale;
+  float speed_odom_line_scale;
+  float speed_odom_angle_scale;
   float wheel_perimeter;
   float wheel_space;
   float speed_max;
