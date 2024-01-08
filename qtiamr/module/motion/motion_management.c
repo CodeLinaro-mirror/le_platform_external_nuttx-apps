@@ -15,7 +15,6 @@
 #include <debug.h>
 
 #include "motion_management.h"
-#include "motor_management.h"
 #include "motion_sm.h"
 
 /****************************************************************************
@@ -25,10 +24,6 @@
 /****************************************************************************
  * Private Types
  ****************************************************************************/
-
-/* message callback function format */
-
-typedef void (*motion_action_done_cb)(struct qrc_pipe_s *pipe,void * data, size_t len, bool response);
 
 /****************************************************************************
  * Private Function Prototypes
@@ -58,11 +53,11 @@ enum motion_result_e motion_speed_control(enum control_client_e client,
                                           float vx, float vz)
 {
   enum motion_result_e result;
-  struct motion_control_data_s data;
+  union motion_control_data_u data;
   enum motion_sm_event_e  motion_event = EV_CMD_SPEED;
 
   /* check client if fit  */
-  if (client == get_current_client(void))
+  if (client == get_current_client())
     {
       /* check motion_sm if fit  */
       if (ST_SPEED == get_motion_sm_state())
@@ -84,8 +79,10 @@ enum motion_result_e motion_speed_control(enum control_client_e client,
 
 enum motion_result_e motion_set_emergency(bool enable)
 {
-  struct motion_control_data_s data.emergency = enable;
-  enum motion_sm_event_e  motion_event.emergency = enable;
+  union motion_control_data_u data;
+  enum motion_sm_event_e  motion_event;
+
+  data.emergency = enable;
 
   if (enable)
     {
@@ -104,7 +101,7 @@ enum motion_result_e motion_set_emergency(bool enable)
 enum motion_result_e motion_switch_mode(enum control_mode_e mode)
 {
   enum motion_result_e result;
-  struct motion_control_data_s data;
+  union motion_control_data_u data;
   enum motion_sm_event_e  motion_event;
 
   if (mode == SPEED)
@@ -124,12 +121,11 @@ enum motion_result_e motion_switch_mode(enum control_mode_e mode)
   result = motion_sm_event(motion_event,data);
 
   return result;
-
 }
 
 enum motion_result_e motion_position_control(enum control_client_e client,
                                               float pose,int pose_type,
-                                              motion_cb position_done_cb,
+                                              motion_action_done_cb position_done_cb,
                                               void *arg)
 {
   return ERROR;

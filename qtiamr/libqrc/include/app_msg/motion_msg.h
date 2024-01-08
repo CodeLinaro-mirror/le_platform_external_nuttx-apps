@@ -49,39 +49,31 @@ enum motor_err_e
   OTHER_ERR
 };
 
-struct motion_control_data_s
+struct speed_cmd_s
 {
-  union {
-    struct 
-    {
-      float vx;
-      float vz;
-    }speed_cmd;
-    struct 
-    {
-      bool pose_type;
-      float pose;
-    }position_cmd;
-    bool emergency;
-    enum control_mode_e mode;
-  }
-}__attribute__((aligned(4)));
+	  float vx;
+	  float vz;
+};
+
+struct position_cmd_s
+{
+  bool pose_type;
+  float pose;
+};
+
+union motion_control_data_u
+{
+  struct speed_cmd_s speed_cmd;
+  struct position_cmd_s position_cmd;
+  bool emergency;
+  enum control_mode_e mode;
+} __attribute__((aligned(4)));
 
 struct motion_control_msg_s
 {
   enum control_msg_type_e msg_type;
-  struct motion_control_data_s data;
-}__attribute__((aligned(4)));
-
-/* motion odom structure */
-struct motion_odom_s
-{
-  struct timespec timestamp;
-  uint8_t odom_type;
-	float x;
-	float z;
-}__attribute__((aligned(4)));
-
+  union motion_control_data_u data;
+} __attribute__((aligned(4)));
 
 /* motion odom structure */
 struct motion_odom_s
@@ -90,6 +82,6 @@ struct motion_odom_s
   struct timespec timestamp;
 	float x;
 	float z;
-}__attribute__((aligned(4)));
+} __attribute__((aligned(4)));
 
 #endif

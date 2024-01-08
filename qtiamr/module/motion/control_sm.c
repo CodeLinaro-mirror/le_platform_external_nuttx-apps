@@ -23,15 +23,6 @@
  * Private Types
  ****************************************************************************/
 
-/* control state machine state */
-
-enum control_sm_state_e
-{
-  ST_ROBOT_CONTROLLING = 0x00,
-  ST_CHARGER_CONTROLLING,
-  ST_REMOTE_CONTROLLING
-};
-
 /* control state machine event */
 
 enum control_sm_event_e
@@ -56,15 +47,14 @@ struct control_sm_s
   enum control_sm_state_e control_state;
   pthread_rwlock_t control_rwlock;
   control_sm_notify_cb cb_list[MAX_CLIENT];
-}__attribute__((aligned(4)));
+} __attribute__((aligned(4)));
 
 /****************************************************************************
  * Private Function Prototypes
  ****************************************************************************/
 
-static void client_sm_change_state(enum control_sm_e state);
-static int client_sm_state(enum control_sm_e state *state);
-static enum control_sm_e client_sm_state(void);
+static int client_sm_state(enum control_sm_state_e *state);
+
 static int client_contrl_sm_event(enum control_sm_event_e event);
 
 static int control_sm_state_trans(struct control_sm_transform_s *statetrans);
@@ -105,7 +95,7 @@ struct control_sm_transform_s statetrans_remote_control[]={
 static int control_sm_state_trans(struct control_sm_transform_s *statetrans)
 {
   enum control_sm_state_e *curr_state;
-  int result;
+  int status;
 
   if(NULL == statetrans)
     {
@@ -139,27 +129,28 @@ static int control_sm_state_trans(struct control_sm_transform_s *statetrans)
       ASSERT(false);
     }
 
-  return OK;
+  return status;
 }
 
 /* control sm action function */
 static void do_action(enum control_sm_state_e state)
 {
   int num;
+  control_sm_notify_cb fun_cb;
 
   for(num = 0; num < MAX_CLIENT; num++)
     {
-      control_sm_notify_cb cb_list[MAX_CLIENT];
-      if (NULL != cb_list[num])
+      if (NULL != g_control_sm.cb_list[num])
         {
-          cb_list[num](state);
+          fun_cb = g_control_sm.cb_list[num];
+          fun_cb(state);
         }
     }
 }
 
 static int client_sm_state(enum control_sm_state_e *state)
 {
-  int result;
+  int status;
 
   status = pthread_rwlock_tryrdlock(&g_control_sm.control_rwlock);
   if (status == 0)
@@ -313,8 +304,7 @@ int set_control_client(enum control_client_e client)
           syslog(LOG_ERR, "ERROR client =%d\n", client);
           return ERROR;
         }
-
     }
 
-  return client_contrl_sm_event(EV_CMD_ROBOT_CONTROL);
+  return client_contrl_sm_event(client);
 }

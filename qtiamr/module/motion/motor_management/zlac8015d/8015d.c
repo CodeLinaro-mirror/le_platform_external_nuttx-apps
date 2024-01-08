@@ -14,11 +14,11 @@
 #include <errno.h>
 #include <debug.h>
 
-#include "8015d.h"
+
 #include "motor_management.h"
 #include "canopen.h"
 #include "motion_management.h"
-#include "motion_msg.h"
+#include "8015d.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -39,11 +39,7 @@
  * Private Types
  ****************************************************************************/
 
-/* message callback function format */
-
-typedef void (*motion_action_done_cb)(struct qrc_pipe_s *pipe,void * data, size_t len, bool response);
-
-enum 8015d_control_code_e {
+enum zlac_8015d_control_code_e {
 	CODE_DEBUG_CC = 0,
 	CODE_MOTOR_STATUS,
 	CODE_CAN_ASYNC,
@@ -90,18 +86,18 @@ enum 8015d_control_code_e {
 
 struct driver_sdo_data_s
 {
-    uint8_t sdo_cmd;
-    uint8_t index_l;
-    uint8_t index_h;
-    uint8_t sub_index;
-    uint8_t data1_l;
-    uint8_t data1_h;
-    uint8_t data2_l;
-    uint8_t data2_h;
+  uint8_t sdo_cmd;
+  uint8_t index_l;
+  uint8_t index_h;
+  uint8_t sub_index;
+  uint8_t data1_l;
+  uint8_t data1_h;
+  uint8_t data2_l;
+  uint8_t data2_h;
 };
 
 struct mc_cmd_s {
-	enum 8015d_control_code_e cmd;
+	enum zlac_8015d_control_code_e cmd;
 	struct driver_sdo_data_s command;
 };
 
@@ -110,24 +106,24 @@ struct mc_cmd_s {
  * Private Function Prototypes
  ****************************************************************************/
 
-static 8015d_write_single_opcode(struct motor_8015d_s *motor, enum 8015d_control_code_e opcode, int value);
+static zlac_8015d_write_single_opcode(struct motor_zlac_8015d_s *motor, enum zlac_8015d_control_code_e opcode, int value);
 
 
-static bool 8015d_init(void *motor);
-static void 8015d_deinit(void *motor);
+static bool zlac_8015d_init(void *motor);
+static void zlac_8015d_deinit(void *motor);
 
-static int 8015d_switch_mode(void *motor, enum control_mode_e mode);
-static int 8015d_set_pid(void *motor, enum control_mode_e, struct motion_pid_s pid);
-static int 8015d_sync_speed(void *motor, int16_t left_rpm, int16_t right_rpm);
-static int 8015d_set_position(void *motor, int left_count, int right_count);
-static int 8015d_quick_stop(void *motor);
+static int zlac_8015d_switch_mode(void *motor, enum control_mode_e mode);
+static int zlac_8015d_set_pid(void *motor, enum control_mode_e, struct motion_pid_s pid);
+static int zlac_8015d_sync_speed(void *motor, int16_t left_rpm, int16_t right_rpm);
+static int zlac_8015d_set_position(void *motor, int left_count, int right_count);
+static int zlac_8015d_quick_stop(void *motor);
 
-static int 8015d_read_rpm(void *motor, int *left_rpm, int *right_rpm);
-static int 8015d_velocity_zero_check(void *motor, bool *zero);
+static int zlac_8015d_read_rpm(void *motor, float *left_rpm, float *right_rpm);
+static int zlac_8015d_velocity_zero_check(void *motor, bool *zero);
 
-static int 8015d_pos_count(float *left_count, float *right_count);
-static int 8015d_status_code(void *motor, enum motor_err_e * motor_status);
-static bool 8015d_target_reached_check(void *motor);
+static int zlac_8015d_pos_count(void *motor, int *left_count, int *right_count);
+static int zlac_8015d_status_code(void *motor, enum motor_err_e * motor_status);
+static bool zlac_8015d_target_reached_check(void *motor);
 
 /****************************************************************************
  * Private Data
@@ -183,35 +179,36 @@ const struct mc_cmd_s g_command_list[] = {
  * Public Data
  ****************************************************************************/
 
-struct motor_8015d_s g_8015d;
+struct motor_zlac_8015d_s g_zlac_8015d;
 
-struct motor_hal_ops 8015d_ops = {
-  .motor_hal_init = 8015d_init,
-  .motor_hal_deinit= 8015d_deinit,
-  .switch_mode = 8015d_switch_mode,
-  .set_pid = 8015d_set_pid,
-  .set_speed = 8015d_sync_speed,
-  .set_position = 8015d_set_position,
-  .quick_stop = 8015d_quick_stop,
-  .get_rpm = 8015d_read_rpm,
-  .get_count = 8015d_pos_count,
-  .get_motor_status_code = 8015d_status_code,
-  .check_pose_reach = 8015d_target_reached_check
+struct motor_hal_ops zlac_8015d_ops = {
+  .motor_hal_init = zlac_8015d_init,
+  .motor_hal_deinit= zlac_8015d_deinit,
+  .switch_mode = zlac_8015d_switch_mode,
+  .set_pid = zlac_8015d_set_pid,
+  .set_speed = zlac_8015d_sync_speed,
+  .set_position = zlac_8015d_set_position,
+  .quick_stop = zlac_8015d_quick_stop,
+  .get_rpm = zlac_8015d_read_rpm,
+  .get_count = zlac_8015d_pos_count,
+  .get_motor_status_code = zlac_8015d_status_code,
+  .check_pose_reach = zlac_8015d_target_reached_check,
 };
 
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
 
-static int  8015d_write_single_opcode(struct motor_8015d_s *motor, enum 8015d_control_code_e opcode, int value)
+static int  zlac_8015d_write_single_opcode(struct motor_zlac_8015d_s *motor, enum zlac_8015d_control_code_e opcode, int value)
 {
   struct driver_sdo_data_s data;
   struct driver_sdo_data_s rec_buff;
   int fd = motor->driver_fd;
+  size_t data_len = sizeof(struct driver_sdo_data_s);
 
   if (fd < 0)
     {
-      syslog(LOG_ERR,"8015d file desc invalid %d \n",fd);
+      syslog(LOG_ERR,"zlac_8015d file desc invalid %d \n",fd);
       return ERROR;
 	}
 
@@ -224,182 +221,190 @@ static int  8015d_write_single_opcode(struct motor_8015d_s *motor, enum 8015d_co
 	}
 
   pthread_mutex_lock(&motor->motor_mutex);
-  canopen_send(fd, &can_data, data_len);
+  canopen_send(fd, &data, data_len);
   usleep(2000);
-  canopen_receive(fd, rec_buff, sizeof(struct driver_sdo_data_s));
+  canopen_receive(fd, &rec_buff, data_len);
+
   pthread_mutex_unlock(&motor->motor_mutex);
 
   if (rec_buff.index_l == data.index_l && rec_buff.index_h == data.index_h)
 	return OK;
   else
     {
-	  syslog(LOG_ERR,"8015d write opcode check error \n");
+	  syslog(LOG_ERR,"zlac_8015d write opcode check error \n");
 	  return ERROR;
 	}
 }
 
-static int  8015d_read_single_opcode(struct motor_8015d_s *motor, enum 8015d_control_code_e opcode, int16_t *low, int16_t *high)
+static int  zlac_8015d_read_single_opcode(struct motor_zlac_8015d_s *motor, enum zlac_8015d_control_code_e opcode, int16_t *low, int16_t *high)
 {
   struct driver_sdo_data_s data;
   struct driver_sdo_data_s rec_buff;
   int fd = motor->driver_fd;
+  size_t data_len = sizeof(struct driver_sdo_data_s);
 
   if (fd < 0)
     {
-      syslog(LOG_ERR,"8015d file desc invalid %d \n",fd);
+      syslog(LOG_ERR,"zlac_8015d file desc invalid %d \n",fd);
       return ERROR;
 	}
 
   data = g_command_list[opcode].command;
 
   pthread_mutex_lock(&motor->motor_mutex);
-  canopen_send(fd, &can_data, data_len);
+  canopen_send(fd, &data, data_len);
   usleep(2000);
-  canopen_receive(fd, rec_buff, sizeof(struct driver_sdo_data_s));
+  canopen_receive(fd, &rec_buff, data_len);
   pthread_mutex_unlock(&motor->motor_mutex);
 
   if (rec_buff.index_l == data.index_l && rec_buff.index_h == data.index_h)
-    *low = rec_buff.data1_h<<8 | rec_buff.data1_l;
-	*high = rec_buff.data2_h<<8 | rec_buff.data2_l;
-	return OK;
+    {
+      *low = rec_buff.data1_h<<8 | rec_buff.data1_l;
+	    *high = rec_buff.data2_h<<8 | rec_buff.data2_l;
+	    return OK;
+    }
   else
     {
-	  syslog(LOG_ERR,"8015d write opcode check error \n");
-	  return ERROR;
-	}
+      syslog(LOG_ERR,"zlac_8015d write opcode check error \n");
+      return ERROR;
+	  }
 }
 
-static int 8015d_enable(struct motor_8015d_s *motor)
+static int zlac_8015d_enable(struct motor_zlac_8015d_s *motor)
 {
   int result;
 
-  if (!8015d.initialized)
+  if (!motor->initialized)
 	{
-	  syslog(LOG_ERR,"8015d uninitialized\n");
+	  syslog(LOG_ERR,"zlac_8015d uninitialized\n");
 	  return ERROR;
 	}
 
-  syslog(LOG_INFO,"ENABLE 8015d motor driver\n");
+  syslog(LOG_INFO,"ENABLE zlac_8015d motor driver\n");
 
-  result = 8015d_write_single_opcode(motor, CODE_CAN_SYNC, 0);
+  result = zlac_8015d_write_single_opcode(motor, CODE_CAN_SYNC, 0);
   usleep(2000);
-  result |= 8015d_write_single_opcode(motor, CODE_CAN_ENABLE_1, 0);
+  result |= zlac_8015d_write_single_opcode(motor, CODE_CAN_ENABLE_1, 0);
   usleep(2000);
-  result |= 8015d_write_single_opcode(motor, CODE_CAN_ENABLE_2, 0);
+  result |= zlac_8015d_write_single_opcode(motor, CODE_CAN_ENABLE_2, 0);
   usleep(2000);
-  result |= 8015d_write_single_opcode(motor, CODE_CAN_ENABLE_3, 0);
+  result |= zlac_8015d_write_single_opcode(motor, CODE_CAN_ENABLE_3, 0);
 
   /* Init poloe */
   usleep(2000);
-  result |= 8015d_write_single_opcode(motor, CODE_LEFT_POLE, 0);
-  result |= 8015d_write_single_opcode(motor, CODE_RIGHT_POLE, 0);
+  result |= zlac_8015d_write_single_opcode(motor, CODE_LEFT_POLE, 0);
+  result |= zlac_8015d_write_single_opcode(motor, CODE_RIGHT_POLE, 0);
 
   return result;
 }
 
-static int 8015d_speed_mode_init(struct motor_8015d_s *motor)
+static int zlac_8015d_speed_mode_init(struct motor_zlac_8015d_s *motor)
 {
   int result;
 
-  if (!8015d.initialized)
+  if (!motor->initialized)
 	{
-	  syslog(LOG_ERR,"8015d uninitialized\n");
+	  syslog(LOG_ERR,"zlac_8015d uninitialized\n");
 	  return ERROR;
 	}
 
-  syslog(LOG_INFO,"ENABLE 8015d speed mode\n");
+  syslog(LOG_INFO,"ENABLE zlac_8015d speed mode\n");
 
   /* Set acc & dec time */
-  result = 8015d_write_single_opcode(motor, CODE_SET_SPEED_LEFT_ACC, 0);
+  result = zlac_8015d_write_single_opcode(motor, CODE_SET_SPEED_LEFT_ACC, 0);
   usleep(2000);
-  result |= 8015d_write_single_opcode(motor, CODE_SET_SPEED_RIGHT_ACC, 0);
+  result |= zlac_8015d_write_single_opcode(motor, CODE_SET_SPEED_RIGHT_ACC, 0);
   usleep(2000);
-  result |= 8015d_write_single_opcode(motor, CODE_SET_SPEED_LEFT_DEC, 0);
+  result |= zlac_8015d_write_single_opcode(motor, CODE_SET_SPEED_LEFT_DEC, 0);
   usleep(2000);
-  result |= 8015d_write_single_opcode(motor, CODE_SET_SPEED_RIGHT_DEC, 0);
+  result |= zlac_8015d_write_single_opcode(motor, CODE_SET_SPEED_RIGHT_DEC, 0);
 
   /* Set speed mode */
   usleep(2000);
-  result |= 8015d_write_single_opcode(motor, CODE_SPEED_MODE, 0);
+  result |= zlac_8015d_write_single_opcode(motor, CODE_SPEED_MODE, 0);
 
   return result;
 }
 
-static int 8015d_switch_mode(void *motor, enum control_mode_e mode)
+/****************************************************************************
+ * ops function
+ ****************************************************************************/
+
+static int zlac_8015d_switch_mode(void *motor, enum control_mode_e mode)
 {
   return ERROR;
 }
 
-static int 8015d_set_position(void *motor, int left_count, int right_count)
+static int zlac_8015d_set_position(void *motor, int left_count, int right_count)
 {
   return ERROR;
 }
 
-static int 8015d_pos_count(void *motor, int *left_count, int *right_count)
+static int zlac_8015d_pos_count(void *motor, int *left_count, int *right_count)
 {
   return ERROR;
 }
 
 
-static int 8015d_velocity_zero_check(void *motor, bool *zero)
+static int zlac_8015d_velocity_zero_check(void *motor, bool *zero)
 {
-  struct motor_8015d_s *8015d = (struct motor_8015d_s *)motor;
+  struct motor_zlac_8015d_s *zlac_8015d = (struct motor_zlac_8015d_s *)motor;
   int result = -1;
 
-  if (!8015d.initialized)
+  if (!zlac_8015d->initialized)
     {
-      syslog(LOG_ERR,"8015d uninitialized\n");
+      syslog(LOG_ERR,"zlac_8015d uninitialized\n");
       return ERROR;
 	}
   /* zero check  */
-  zero = false;
+  *zero = false;
 
   return result;
 }
 
-static int 8015d_quick_stop(void *motor)
+static int zlac_8015d_quick_stop(void *motor)
 {
-  struct motor_8015d_s *8015d = (struct motor_8015d_s *)motor;
+  struct motor_zlac_8015d_s *zlac_8015d = (struct motor_zlac_8015d_s *)motor;
   int result;
 
-  if (!8015d.initialized)
+  if (!zlac_8015d->initialized)
     {
-      syslog(LOG_ERR,"8015d uninitialized\n");
+      syslog(LOG_ERR,"zlac_8015d uninitialized\n");
       return ERROR;
 	}
 
   syslog(LOG_DEBUG,"motor quick stop\n");
-  result = 8015d_write_single_opcode(8015d, CODE_QUICK_STOP, 0);
+  result = zlac_8015d_write_single_opcode(zlac_8015d, CODE_QUICK_STOP, 0);
 
   return result;
 }
 
-static int 8015d_read_rpm(void *motor, float *left_rpm, float *right_rpm)
+static int zlac_8015d_read_rpm(void *motor, float *left_rpm, float *right_rpm)
 {
-  struct motor_8015d_s *8015d = (struct motor_8015d_s *)motor;
+  struct motor_zlac_8015d_s *zlac_8015d = (struct motor_zlac_8015d_s *)motor;
   int16_t right;
   int16_t left;
   int result;
 
-  result = 8015d_read_single_opcode(8015d, CODE_SPEED_READ, &left, &right);
+  result = zlac_8015d_read_single_opcode(zlac_8015d, CODE_SPEED_READ, &left, &right);
   if (result == OK)
-	{
-	  *left_rpm = left * 0.1;
-	  *right_rpm = right * 0.1;
-	}
+	  {
+	    *left_rpm = left * 0.1;
+	    *right_rpm = right * 0.1;
+	  }
 
   return result;
 }
 
-static int 8015d_status_code(void *motor, enum motor_err_e * motor_status)
+static int zlac_8015d_status_code(void *motor, enum motor_err_e * motor_status)
 {
-  struct motor_8015d_s *8015d = (struct motor_8015d_s *)motor;
+  struct motor_zlac_8015d_s *zlac_8015d = (struct motor_zlac_8015d_s *)motor;
   int16_t right;
   int16_t left;
   int status_code;
   int result;
 
-  result = 8015d_read_single_opcode(8015d, CODE_DEBUG_CC, &left, &right);
+  result = zlac_8015d_read_single_opcode(zlac_8015d, CODE_DEBUG_CC, &left, &right);
   status_code = right|left;
   if (result == OK)
 	{
@@ -447,23 +452,23 @@ static int 8015d_status_code(void *motor, enum motor_err_e * motor_status)
   return result;
 }
 
-static bool 8015d_target_reached_check(void *motor);
+static bool zlac_8015d_target_reached_check(void *motor)
 {
   return false;
 }
 
-static int 8015d_sync_speed(void *motor, int16_t left_rpm, int16_t right_rpm)
+static int zlac_8015d_sync_speed(void *motor, int16_t left_rpm, int16_t right_rpm)
 {
-  struct motor_8015d_s *8015d = (struct motor_8015d_s *)motor;
+  struct motor_zlac_8015d_s *zlac_8015d = (struct motor_zlac_8015d_s *)motor;
   int result;
   struct driver_sdo_data_s data;
   size_t data_len = (sizeof(struct driver_sdo_data_s));
   struct driver_sdo_data_s rec_buff;
-  int fd = motor->driver_fd;
+  int fd = zlac_8015d->driver_fd;
 
-  if (!8015d.initialized)
+  if (!zlac_8015d->initialized)
     {
-      syslog(LOG_ERR,"8015d uninitialized\n");
+      syslog(LOG_ERR,"zlac_8015d uninitialized\n");
       return ERROR;
 	}
 
@@ -476,31 +481,31 @@ static int 8015d_sync_speed(void *motor, int16_t left_rpm, int16_t right_rpm)
   data.data2_h = right_rpm>>8;
 
 
-  pthread_mutex_lock(&motor->motor_mutex);
+  pthread_mutex_lock(&zlac_8015d->motor_mutex);
   canopen_send(fd, &data, data_len);
   usleep(2000);
-  canopen_receive(fd, rec_buff, data_len);
-  pthread_mutex_unlock(&motor->motor_mutex);
+  canopen_receive(fd, &rec_buff, data_len);
+  pthread_mutex_unlock(&zlac_8015d->motor_mutex);
 
   if (rec_buff.index_l == data.index_l && rec_buff.index_h == data.index_h)
 	return OK;
   else
     {
-	  syslog(LOG_ERR,"8015d write speed check error \n");
+	  syslog(LOG_ERR,"zlac_8015d write speed check error \n");
 	  return ERROR;
 	}
 }
 
-static int 8015d_set_pid(void *motor, enum control_mode_e mode, struct motion_pid_s pid)
+static int zlac_8015d_set_pid(void *motor, enum control_mode_e mode, struct motion_pid_s pid)
 {
-  struct motor_8015d_s *8015d = (struct motor_8015d_s *)motor;
+  struct motor_zlac_8015d_s *zlac_8015d = (struct motor_zlac_8015d_s *)motor;
   int kp,ki,kd;
-  int fd = 8015d.driver_fd;
+  int fd = zlac_8015d->driver_fd;
   int result = ERROR;
 
-  if (!8015d.initialized)
+  if (!zlac_8015d->initialized)
     {
-      syslog(LOG_ERR,"8015d uninitialized\n");
+      syslog(LOG_ERR,"zlac_8015d uninitialized\n");
       return ERROR;
 	}
 
@@ -519,10 +524,10 @@ static int 8015d_set_pid(void *motor, enum control_mode_e mode, struct motion_pi
     {
 	  case SPEED :
 	    {
-		  result = 8015d_write_single_opcode(fd, CODE_SPEED_LEFT_KP, kp);
-		  result |= 8015d_write_single_opcode(fd, CODE_SPEED_RIGHT_KP, kp);
-		  result |= 8015d_write_single_opcode(fd, CODE_SPEED_LEFT_KI, ki);
-		  result |= 8015d_write_single_opcode(fd, CODE_SPEED_RIGHT_KI, ki);
+		  result = zlac_8015d_write_single_opcode(fd, CODE_SPEED_LEFT_KP, kp);
+		  result |= zlac_8015d_write_single_opcode(fd, CODE_SPEED_RIGHT_KP, kp);
+		  result |= zlac_8015d_write_single_opcode(fd, CODE_SPEED_LEFT_KI, ki);
+		  result |= zlac_8015d_write_single_opcode(fd, CODE_SPEED_RIGHT_KI, ki);
 		  break;
 		}
 	  case POSITION:
@@ -540,32 +545,32 @@ static int 8015d_set_pid(void *motor, enum control_mode_e mode, struct motion_pi
   return result;
 }
 
-static bool 8015d_init(void *motor)
+static bool zlac_8015d_init(void *motor)
 {
   int fd;
-  struct motor_8015d_s * 8015d = (struct motor_8015d_s *)motor;
+  struct motor_zlac_8015d_s *zlac_8015d = (struct motor_zlac_8015d_s *)motor;
   int status;
   struct motion_pid_s pid;
 
-  if (NULL == 8015d)
+  if (NULL == zlac_8015d)
     {
-      syslog(LOG_ERR,"8015d failed invalid pointer \n");
+      syslog(LOG_ERR,"zlac_8015d failed invalid pointer \n");
       return ERROR;
     }
-  
+
   fd = open(MOTOR_DRIVER_DEV, O_RDWR|O_NONBLOCK);
   if (fd < 0)
     {
       syslog(LOG_ERR,"ERROR: open %s failed: %d\n", MOTOR_DRIVER_DEV, errno);
-	  close(fd);
-	  return ERROR;
+      close(fd);
+      return ERROR;
     }
-  motor->driver_fd = fd;
-  motor->bus_mode = MOTOR_BUS_MODE;
+  zlac_8015d->driver_fd = fd;
+  zlac_8015d->bus_mode = MOTOR_BUS_MODE;
 
   /* Initialize the mutex */
 
-  status = pthread_mutex_init(&motor->motor_mutex, NULL);
+  status = pthread_mutex_init(&zlac_8015d->motor_mutex, NULL);
   if (status != 0)
     {
       syslog(LOG_ERR,"start_thread: "
@@ -574,29 +579,31 @@ static bool 8015d_init(void *motor)
     }
 
   /* Enable motor driver */
-  status = 8015d_enable(motor);
+  status = zlac_8015d_enable(zlac_8015d);
   /*Default mode is SPEED*/
-  status |= 8015d_speed_mode_init(motor);
+  status |= zlac_8015d_speed_mode_init(zlac_8015d);
 
   /* Set pid */
   pid.kp = SPEED_KP;
   pid.ki = SPEED_KI;
-  status |= 8015d_set_pid(motor, SPEED, pid);
+  status |= zlac_8015d_set_pid(zlac_8015d, SPEED, pid);
   if (status == OK)
-	{
-	  motor->initialized = true;
-	}
+	  {
+      zlac_8015d->initialized = true;
+	  }
   else
-	  motor->initialized = false;
+    {
+      zlac_8015d->initialized = false;
+    }
 
-  return motor->initialized;
+  return zlac_8015d->initialized;
 }
 
-static void 8015d_deinit(void *motor)
+static void zlac_8015d_deinit(void *motor)
 {
-  struct motor_8015d_s * 8015d = (struct motor_8015d_s *)motor;
+  struct motor_zlac_8015d_s * zlac_8015d = (struct motor_zlac_8015d_s *)motor;
 
-  close(motor->driver_fd);
+  close(zlac_8015d->driver_fd);
 }
 
 /****************************************************************************

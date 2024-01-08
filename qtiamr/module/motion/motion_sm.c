@@ -10,8 +10,6 @@
 #include <stdio.h>
 #include <debug.h>
 
-#include "motion_management.h"
-#include "motor_management.h"
 #include "motion_sm.h"
 
 /****************************************************************************
@@ -23,7 +21,7 @@
  ****************************************************************************/
 /* motion sm structure */
 
-typedef void (*do_action_fun)(struct motion_control_data_s data);  /* action function format */
+typedef int (*do_action_fun)(union motion_control_data_u data);  /* action function format */
 
 struct motion_sm_s
 {
@@ -49,16 +47,16 @@ struct motion_sm_transform_s
  * Private Function Prototypes
  ****************************************************************************/
 
-static int motion_sm_do_action(struct motion_sm_transform_s *statetrans, struct motion_control_data_s data);
+static int motion_sm_do_action(struct motion_sm_transform_s *statetrans, union motion_control_data_u data);
 
 static bool acquire_motion_sm_lock(void);
 static void release_motion_sm_lock(void);
 
-static int do_action_switch(struct motion_control_data_s data);
-static int do_action_emergency(struct motion_control_data_s data);
-static int do_action_drv_error(struct motion_control_data_s data);
-static int do_action_speed(struct motion_control_data_s data);
-static int do_action_switch_done(struct motion_control_data_s data);
+static int do_action_switch(union motion_control_data_u data);
+static int do_action_emergency(union motion_control_data_u data);
+static int do_action_drv_error(union motion_control_data_u data);
+static int do_action_speed(union motion_control_data_u data);
+static int do_action_switch_done(union motion_control_data_u data);
 
 /* need to do: position done & switch done callback function */
 
@@ -144,19 +142,19 @@ static bool acquire_motion_sm_lock(void)
     return false;
 }
 
-static void release_motion_sm_lock(void);
+static void release_motion_sm_lock(void)
 {
   int status;
   status = pthread_mutex_unlock(&g_motion_sm.mutex);
   if (status != 0)
     {
-      syslog(LOG_ERR,"pthread_rwlock:
-                      ERROR Failed to unlock lock. Status: %d\n", status);
+      syslog(LOG_ERR,"pthread_rwlock:"
+                      "ERROR Failed to unlock lock. Status: %d\n", status);
       ASSERT(false);
     }
 }
 
-static int motion_sm_do_action(struct motion_sm_transform_s *statetrans, struct motion_control_data_s data)
+static int motion_sm_do_action(struct motion_sm_transform_s *statetrans, union motion_control_data_u data)
 {
   enum motion_sm_state_e *curr_state;
   int result;
@@ -209,7 +207,7 @@ static int motion_sm_do_action(struct motion_sm_transform_s *statetrans, struct 
  * Action functions
  ****************************************************************************/
 
-static int do_action_switch(struct motion_control_data_s data)
+static int do_action_switch(union motion_control_data_u data)
 {
   enum control_mode_e mode = data.mode;
   int result;
@@ -221,31 +219,31 @@ static int do_action_switch(struct motion_control_data_s data)
       if (SPEED == mode)
         {
           /* send event to notify switch done */
-          motion_sm_event(EV_SPEED_SWITCH_DONE, NULL);
+          motion_sm_event(EV_SPEED_SWITCH_DONE, data);
         }
       else if (POSITION == mode)
         {
-          motion_sm_event(EV_POS_SWITCH_DONE, NULL);
+          motion_sm_event(EV_POS_SWITCH_DONE, data);
         }
     }
 
   return result;
 }
 
-static int do_action_emergency(struct motion_control_data_s data)
+static int do_action_emergency(union motion_control_data_u data)
 {
   bool emergency = data.emergency;
 
   return motor_quick_stop(emergency);
 }
 
-static void do_action_drv_error(struct motion_control_data_s data)
+static int do_action_drv_error(union motion_control_data_u data)
 {
   /* try stop motor driver */
   motor_quick_stop(true);
 }
 
-static void do_action_speed(struct motion_control_data_s data)
+static int do_action_speed(union motion_control_data_u data)
 {
   float vx = data.speed_cmd.vx;
   float vz = data.speed_cmd.vz;
@@ -253,7 +251,7 @@ static void do_action_speed(struct motion_control_data_s data)
   return motor_set_speed(vx, vz);
 }
 
-static int do_action_switch_done(struct motion_control_data_s data)
+static int do_action_switch_done(union motion_control_data_u data)
 {
   /* switch done call back*/
   if (NULL != g_motion_sm.switch_done_cb)
@@ -270,7 +268,7 @@ static int do_action_switch_done(struct motion_control_data_s data)
  * Name: get_motion_sm_state
  ****************************************************************************/
 
-enum motion_sm_state_e get_motion_sm_state(void);
+enum motion_sm_state_e get_motion_sm_state(void)
 {
   enum motion_sm_state_e present_state;
 
@@ -286,7 +284,7 @@ enum motion_sm_state_e get_motion_sm_state(void);
   return present_state;
 }
 
-int motion_sm_event(enum motion_sm_event_e event ,struct motion_control_data_s data)
+int motion_sm_event(enum motion_sm_event_e event ,union motion_control_data_u data)
 {
   enum motion_sm_state_e present_state;
   int result;
@@ -328,7 +326,7 @@ int motion_sm_event(enum motion_sm_event_e event ,struct motion_control_data_s d
         }
       default:
         {
-          syslog(LOG_ERR, "motion state invalid state=%d\n", state);
+          syslog(LOG_ERR, "motion state invalid state=%d\n", present_state);
           break;
         }
     }

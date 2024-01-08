@@ -14,13 +14,18 @@
 
 #include <nuttx/config.h>
 
+#include "client_control_msg.h"
+#include "motion_msg.h"
+
+#include "motion_sm.h"
+#include "motion_management.h"
+
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
 /* message callback function format */
 typedef void (*motor_notify_cb)(void);
-typedef  motion_odom_cb motor_odom_cb;
 
 /****************************************************************************
  * Public Types
@@ -48,7 +53,6 @@ struct motor_hal_ops {
 
 /* motor management IF */
 
-bool init_motor(void);
 int motor_set_pid(enum control_mode_e control_mode, struct motion_pid_s pid);
 int motor_set_speed(float vx, float vz);
 int motor_quick_stop(bool enable);
@@ -59,7 +63,7 @@ enum motor_err_e motor_driver_status_code(void);
 
 /* callback register for odom */
 
-void motor_register_odometry_cb(motor_odom_cb odom_cb);
+void motor_register_odometry_cb(motion_odom_cb odom_cb);
 
 /* register action done cb */
 void motor_register_position_done_cb(motor_notify_cb pose_done_cb);

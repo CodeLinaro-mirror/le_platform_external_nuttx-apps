@@ -15,29 +15,34 @@
 #include <debug.h>
 
 #include "diff_car.h"
-#include "kinematic.h"
+#include "kinematics.h"
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-#define  KINEMATIC_MODE DIFF_CAR
+#define  KINEMATIC_MODE (DIFF_CAR)
 
 /****************************************************************************
  * Private Types
  ****************************************************************************/
 
+enum kinematic_mode_e
+{
+  DIFF_CAR,
+  MODE_MAX
+};
+
 struct kinematic_s
 {
   struct kinematic_parameter_s parameters;
   struct kinematic_ops *ops;
-
 }__attribute__((aligned(4)));
 
 struct kinematic_mode_s
 {
   enum kinematic_mode_e mode;
   struct kinematic_ops *ops;
-};
+}__attribute__((aligned(4)));
 
 /****************************************************************************
  * Private Function Prototypes
@@ -49,7 +54,7 @@ struct kinematic_mode_s
 
 static const struct kinematic_mode_s g_mode_list[] = {
   {DIFF_CAR, &diff_car_ops},
-}
+};
 
 static struct kinematic_s g_kinematic_s;
 

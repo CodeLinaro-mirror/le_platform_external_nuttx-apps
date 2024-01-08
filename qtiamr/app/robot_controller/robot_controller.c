@@ -16,8 +16,7 @@
 #include <debug.h>
 
 #include "robot_controller.h"
-#include "motion_management.h"
-#include "motion_msg.h"
+
 
 /* switch done cb register need to do  */
 
@@ -70,13 +69,13 @@ static void robot_control_msg_parse(struct qrc_pipe_s *pipe, struct motion_contr
         }
       case SWITCH_MODE:
         {
-          motion_switch_mode(control_msg->mode);
+          motion_switch_mode(control_msg->data.mode);
           /* switch done callback need to be registered */
           break;
         }
       case SET_EMERGENCY:
         {
-          motion_set_emergency(control_msg->emergency);
+          motion_set_emergency(control_msg->data.emergency);
         }
       case SET_POSITION:
       default:
@@ -112,7 +111,7 @@ static void robot_control_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t
  * Name: robot controller Thread function
  ****************************************************************************/
 
-int robot_controller(int argc, char *argv[]){
+int robot_controller(int argc, char *argv[])
 {
   char pipe_name[] = MOTION_PIPE;
 

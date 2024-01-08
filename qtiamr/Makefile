@@ -35,13 +35,49 @@ DEPPATH += --dep-path app
 C_INCLUDES +=  \
     -I$(CAR_DIR) \
     -I$(CAR_DIR)/app \
-    -I$(CAR_DIR)/modules/qrc_msg_management/ \
+    -I$(CAR_DIR)/app/* \
+    -I$(CAR_DIR)/libqrc/include/app_msg \
+    -I$(CAR_DIR)/libqrc/include/module \
+    -I$(CAR_DIR)/libqrc/protocol/qrc \
+    -I$(CAR_DIR)/libqrc/protocol/qrc/tinyframe \
+    -I$(CAR_DIR)/libqrc/protocol/tinyframe \
+    -I$(CAR_DIR)/module/qrc_msg_management/ \
+    -I$(CAR_DIR)/module/motion/ \
+    -I$(CAR_DIR)/module/motion/kinematic \
+    -I$(CAR_DIR)/module/motion/kinematic/diff_car \
+    -I$(CAR_DIR)/module/motion/motor_management \
+    -I$(CAR_DIR)/module/motion/motor_management/zlac8015d \
+    -I$(CAR_DIR)/protocol/canopen/ \
 
 
 MAINSRC = $(CAR_DIR)/app/main.c
 
-#CSRCS += $(CAR_DIR)/modules/qrc_msg_management/qrc_msg_management.c
+# app source
+CSRCS += $(CAR_DIR)/app/configuration/robot_configuration.c
+CSRCS += $(CAR_DIR)/app/motion_odom/motion_odom.c
+CSRCS += $(CAR_DIR)/app/robot_controller/client.c
+CSRCS += $(CAR_DIR)/app/robot_controller/robot_controller.c
 
+# protocol/libqrc source
+CSRCS += $(CAR_DIR)/protocol/canopen/canopen.c
+
+CSRCS += $(CAR_DIR)/libqrc/protocol/qrc/qrc.c
+#CSRCS += $(CAR_DIR)/libqrc/protocol/qrc/tinyframe/TF_Config.c
+#CSRCS += $(CAR_DIR)/libqrc/protocol/tinyframe/TinyFrame.c
+
+# module source
+CSRCS += $(CAR_DIR)/module/qrc_msg_management/qrc_msg_management.c
+CSRCS += $(CAR_DIR)/module/motion/motion_management.c
+CSRCS += $(CAR_DIR)/module/motion/control_sm.c
+CSRCS += $(CAR_DIR)/module/motion/motion_sm.c
+CSRCS += $(CAR_DIR)/module/motion/kinematic/kinematics.c
+CSRCS += $(CAR_DIR)/module/motion/kinematic/diff_car/diff_car.c
+CSRCS += $(CAR_DIR)/module/motion/motor_management/motor_management.c
+CSRCS += $(CAR_DIR)/module/motion/motor_management/zlac8015d/8015d.c
+
+
+# add define
+CFLAGS += -DQRC_MCB
 
 CFLAGS += $(C_INCLUDES)
 

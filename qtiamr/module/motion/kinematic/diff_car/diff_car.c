@@ -16,6 +16,7 @@
 #include <debug.h>
 
 #include "diff_car.h"
+#include "kinematics.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -49,8 +50,8 @@ static bool diff_count2odom(const struct kinematic_parameter_s parameters,
 struct kinematic_ops diff_car_ops = {
   .speed_inverse = diff_speed_inverse_kinematics,
   .position_inverse = diff_position_inverse_kinematics,
-  .pos_count_transfer_to_odom = diff_count2odom;
-  .speed_rpm_transfer_to_odom = diff_rpm2odom
+  .pos_count_transfer_to_odom = diff_count2odom,
+  .speed_rpm_transfer_to_odom = diff_rpm2odom,
 };
 
 /****************************************************************************
@@ -58,14 +59,14 @@ struct kinematic_ops diff_car_ops = {
  ****************************************************************************/
 
 static bool diff_speed_inverse_kinematics(const struct kinematic_parameter_s parameters,
-                                float vx, float vz, int16_t *rpm_l, int16_t *rpm_r);
+                                float vx, float vz, int16_t *rpm_l, int16_t *rpm_r)
 {
   float v_left, v_right;
   float max_vx = parameters.speed_max;
   float max_vz = parameters.angle_speed_max;
   float wheel_space = parameters.wheel_space;
-  float input_line_scale = parameters.input_line_scale;
-  float input_angle_scale = parameters.input_angle_scale;
+  float input_line_scale = parameters.speed_line_scale;
+  float input_angle_scale = parameters.speed_angle_scale;
   float wheel_perimeter = parameters.wheel_perimeter;
 
   if((rpm_l == NULL) || (rpm_l == NULL))
@@ -100,8 +101,8 @@ static bool diff_speed_inverse_kinematics(const struct kinematic_parameter_s par
 
   *rpm_l   = (int16_t)(v_left * 60 / wheel_perimeter);
   *rpm_r   = (int16_t)(-v_right * 60 / wheel_perimeter);
-  syslog(LOG_DEBUG, "kinematec debug: vx_max %.3f,vz_max %.3f,vx %.3f,vz %.3f;
-        v_l %.3f,v_r %.3f;rpm_l %d,rpm_r %d;wheel=%.3f\n",max_vx,
+  syslog(LOG_DEBUG, "kinematec debug: vx_max %.3f,vz_max %.3f,vx %.3f,vz %.3f"
+        "v_l %.3f,v_r %.3f;rpm_l %d,rpm_r %d;wheel=%.3f\n",max_vx,
         max_vz, vx, vz, v_left, v_right, *rpm_l, *rpm_r,wheel_perimeter);
 
   return true;
@@ -109,10 +110,10 @@ static bool diff_speed_inverse_kinematics(const struct kinematic_parameter_s par
 
 static bool diff_rpm2odom(const struct kinematic_parameter_s parameters,
                                 float rpm_left, float rpm_right, float *speed_vx,
-                                float *speed_vz);
+                                float *speed_vz)
 {
-  float odom_line_scale = parameters.odom_line_scale;
-  float odom_angle_scale = parameters.odom_angle_scale;
+  float odom_line_scale = parameters.speed_odom_line_scale;
+  float odom_angle_scale = parameters.speed_odom_angle_scale;
   float wheel_space = parameters.wheel_space;
   float wheel_perimeter = parameters.wheel_perimeter;
   float v_left, v_right;
@@ -137,7 +138,7 @@ static bool diff_rpm2odom(const struct kinematic_parameter_s parameters,
 
 static bool diff_position_inverse_kinematics(const struct kinematic_parameter_s parameters,
                                 float pos, int pos_type, int *count_l,
-                                int *count_r);
+                                int *count_r)
 {
   return false;
 }

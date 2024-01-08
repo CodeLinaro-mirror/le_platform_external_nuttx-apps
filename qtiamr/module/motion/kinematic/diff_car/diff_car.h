@@ -13,7 +13,7 @@
 
 #include <nuttx/config.h>
 
-#include "kinematic.h"
+#include "kinematics.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -29,6 +29,6 @@
  * Public Function Prototypes
  ****************************************************************************/
 
-extern struct kinematic_ops diff_car_ops
+extern struct kinematic_ops diff_car_ops;
 
 #endif /* __DIFF_CAR_H */

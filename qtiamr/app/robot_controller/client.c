@@ -15,7 +15,7 @@
 #include <errno.h>
 #include <debug.h>
 
-#include "motion_management.h"
+
 #include "robot_controller.h"
 #include "client_control_msg.h"
 
@@ -50,6 +50,7 @@ static void client_msg_parse(struct qrc_pipe_s *pipe, struct client_msg_s *clien
 {
   enum client_msg_type_e msg_type;
   struct client_msg_s  msg;
+  int result;
 
   if (pipe == NULL || client_msg ==NULL)
     {
@@ -108,7 +109,7 @@ static void client_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, b
  * Name: client_controller Thread function
  ****************************************************************************/
 
-int client_controller(int argc, char *argv[]){
+int client_controller(int argc, char *argv[])
 {
   char pipe_name[] = CLIENT_PIPE;
 

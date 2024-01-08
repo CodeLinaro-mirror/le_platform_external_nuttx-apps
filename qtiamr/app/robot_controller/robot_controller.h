@@ -14,6 +14,11 @@
 
 #include <nuttx/config.h>
 
+#include "client_control_msg.h"
+#include "motion_msg.h"
+#include "motion_management.h"
+#include "qrc_msg_management.h"
+
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -28,5 +33,8 @@
  ****************************************************************************/
 /* robot controller */
 int robot_controller(int argc, char *argv[]);
+
+/* client controller */
+int client_controller(int argc, char *argv[]);
 
 #endif /* __ROBOT_CONTROLLER_H */

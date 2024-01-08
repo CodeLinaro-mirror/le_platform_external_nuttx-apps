@@ -6,6 +6,13 @@
 #ifndef __QRC_MSG_MANAGEMENT_H
 #define __QRC_MSG_MANAGEMENT_H
 
+#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <debug.h>
+
 typedef void (*qrc_msg_cb)(struct qrc_pipe_s *pipe,void * data, size_t len, bool response);  /* message callback function format */
 
 struct qrc_pipe_s

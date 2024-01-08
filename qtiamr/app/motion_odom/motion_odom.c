@@ -18,6 +18,7 @@
 #include "motion_management.h"
 #include "motion_odom.h"
 #include "motion_msg.h"
+#include "qrc_msg_management.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -31,7 +32,7 @@
  * Private Function Prototypes
  ****************************************************************************/
 
-static void motion_odom(struct motion_odom_s motion_odom);
+static void motion_public_odom(struct motion_odom_s motion_odom);
 
 /****************************************************************************
  * Private Data
@@ -46,7 +47,7 @@ struct qrc_pipe_s *g_odom_pipe = NULL;
  ****************************************************************************/
 
 /* send odom to RB5 */
-static void motion_odom(struct motion_odom_s motion_odom)
+static void motion_public_odom(struct motion_odom_s motion_odom)
 {
   enum qrc_write_status_e result;
 
@@ -73,7 +74,7 @@ static void motion_odom(struct motion_odom_s motion_odom)
  * Name: motion_odom Thread function
  ****************************************************************************/
 
-int motion_odom(int argc, char *argv[]){
+int motion_odom(int argc, char *argv[])
 {
   char pipe_name[] = ODOM_PIPE;
 

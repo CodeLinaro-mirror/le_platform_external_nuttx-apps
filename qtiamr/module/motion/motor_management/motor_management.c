@@ -18,9 +18,12 @@
 #include "motion_management.h"
 #include "motor_management.h"
 
-#include "8015d.h"
+
 #include "motion_management.h"
 #include "motion_sm.h"
+#include "kinematics.h"
+#include "motion_msg.h"
+#include "8015d.h"
 
 /* motor management call kinematic & motor hal APIs to realize motor control */
 
@@ -42,7 +45,7 @@ struct motor_management_s
   enum control_mode_e mode;
   void *motor_hal;
   struct motor_hal_ops *motor_ops;
-  motor_odom_cb   motor_odom_cb;
+  motion_odom_cb motion_odom_cb;
   motor_notify_cb pose_done_cb;
   motor_notify_cb switch_done_cb;
 }__attribute__((aligned(4)));
@@ -50,15 +53,15 @@ struct motor_management_s
 /* hal object */
 enum motor_hal_index_e {
   HAL_8015D,
-  HAL_MAX
-}
+  HAL_MAX,
+};
 
 struct motor_hal_s
 {
-  enum motor_hal_index_e index,
+  enum motor_hal_index_e index;
   void *motor;
   struct motor_hal_ops *hal_ops;
-}
+};
 
 /****************************************************************************
  * Private Function Prototypes
@@ -66,20 +69,20 @@ struct motor_hal_s
 
 static bool init_motor(void);
 static int motor_get_speed_odom(float *vx, float *vz);
-static bool motor_check_position_reach(void);
+//static bool motor_check_position_reach(void);
 
 /****************************************************************************
  * Private Data
  ****************************************************************************/
-const struct motor_hal_s g_hal_list[] = {
-  {HAL_8015D, &g_8015d, &8015d_ops}
-}
+static const struct motor_hal_s g_hal_list[] = {
+  {HAL_8015D, &g_zlac_8015d, &zlac_8015d_ops},
+};
 
 static struct motor_management_s g_motor_manager =
 {
   .motor_hal = NULL,
   .motor_ops = NULL,
-  .motor_odom_cb = NULL,
+  .motion_odom_cb = NULL,
   .pose_done_cb = NULL,
   .switch_done_cb = NULL
 };
@@ -126,11 +129,6 @@ static int motor_get_speed_odom(float *vx, float *vz)
   return result;
 }
 
-static bool motor_check_position_reach(void)
-{
-  return false;
-}
-
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
@@ -141,7 +139,7 @@ static bool motor_check_position_reach(void)
 
 int motor_set_pid(enum control_mode_e control_mode, struct motion_pid_s pid)
 {
-  void *motor = g_motor_manager.motor_ops->motor;
+  void *motor = g_motor_manager.motor_hal;
 
   return g_motor_manager.motor_ops->set_pid(motor, control_mode, pid);
 }
@@ -168,7 +166,7 @@ int motor_set_speed(float vx, float vz)
 
 int motor_quick_stop(bool enable)
 {
-  void *motor = g_motor_manager.motor_ops->motor;
+  void *motor = g_motor_manager.motor_hal;
 
   if (enable)
   {
@@ -191,8 +189,8 @@ int motor_switch_mode(enum control_mode_e mode)
     }
   else
     {
-      syslog(LOG_ERR,"motor switch error present_mode=%d\n,
-                      target_mode=%d",g_motor_manager.mode,mode);
+      syslog(LOG_ERR,"motor switch error present_mode=%d\n,"
+                      "target_mode=%d",g_motor_manager.mode,mode);
       return ERROR;
     }
 }
@@ -202,9 +200,9 @@ int motor_set_position(bool pose_type, float pose)
   return ERROR;
 }
 
-void motor_register_odometry_cb(motor_odom_cb odom_cb)
+void motor_register_odometry_cb(motion_odom_cb odom_cb)
 {
-  g_motor_manager.motor_odom_cb = odom_cb;
+  g_motor_manager.motion_odom_cb = odom_cb;
 }
 
 /* register action done cb */
@@ -221,10 +219,8 @@ void motor_register_switching_done_cb(motor_notify_cb switch_done_cb)
 /* get motor odom & status data */
 void motor_management_thread(void)
 {
-  enum motion_sm_e control_state;
+  enum motion_sm_state_e control_state;
   struct motion_odom_s odom;
-  int result =ERROR;
-  float rpm
 
   if (!init_motor())
     {
@@ -238,17 +234,17 @@ void motor_management_thread(void)
       usleep(1000000/MOTOR_THREAD_FRQUENCY);
 
       control_state = get_motion_sm_state();
-      if (control_state == SPEED)
+      if (control_state == ST_SPEED)
         {
           /* get speed odometry */
 
           odom.type = ODOM_SPEED;
           clock_gettime(CLOCK_REALTIME, &odom.timestamp);
-          motor_get_speed_odom(&odom.vx, &odom.vz);
+          motor_get_speed_odom(&odom.x, &odom.z);
           /* call callback */
-          if (g_motor_manager.motor_odom_cb != NULL)
+          if (g_motor_manager.motion_odom_cb != NULL)
             {
-              g_motor_manager.motor_odom_cb(odom);
+              g_motor_manager.motion_odom_cb(odom);
             }
         }
     }

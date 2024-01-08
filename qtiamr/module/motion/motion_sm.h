@@ -14,6 +14,10 @@
 
 #include <nuttx/config.h>
 
+#include "motion_msg.h"
+#include "motion_management.h"
+#include "motor_management.h"
+
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -58,9 +62,9 @@ enum motion_sm_event_e
 
 /* Motion sm */
 
-enum motion_sm_e get_motion_sm_state(void);
+enum motion_sm_state_e get_motion_sm_state(void);
 
-int motion_sm_event(enum motion_sm_event_e event,struct motion_control_data_s data);
+int motion_sm_event(enum motion_sm_event_e event ,union motion_control_data_u data);
 
 void register_motion_switch_done_cb(motion_cb cb_fun, void *arg);
 void register_motion_odom_done_cb(motion_cb cb_fun, void *arg);

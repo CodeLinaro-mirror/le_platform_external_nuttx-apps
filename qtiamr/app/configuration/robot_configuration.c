@@ -17,6 +17,7 @@
 
 #include "main.h"
 #include "config_msg.h"
+#include "qrc_msg_management.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -62,6 +63,7 @@ struct config_parameters_s
 {
   pthread_mutex_t config_mutex;
   pthread_cond_t config_cond;
+  struct qrc_pipe_s *pipe;
   bool initialized;
 
 } __attribute__((aligned(4)));
@@ -71,7 +73,7 @@ struct mcb_task_s {
   uint32_t	priority;
 	uint32_t	stack_size;
 	int	(*task_func)(int argc, char *argv[]);
-  char	*argv;
+  const char	*argv;
   int task_id;
 };
 
@@ -85,12 +87,13 @@ struct mcb_config_parameters_s {
  * Private Function Prototypes
  ****************************************************************************/
 
-static void config_parameter_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response);
+static void config_parameter_qrc_msg_cb(struct qrc_pipe_s *pipe, void *data, size_t len, bool response);
 static void config_parameter_msg_parse(struct qrc_pipe_s *pipe, struct config_msg_s *config_msg);
 
-static void config_wait_notify(void);
+static int config_wait_notify(void);
 static void config_clear_initialization_status(void);
 static void config_set_initialization_status(bool status);
+static enum mcb_task_id_e start_mcb_task(void);
 
 /****************************************************************************
  * Private Data
@@ -118,8 +121,8 @@ struct config_car_s config_car =
 {
   .car_model = DEFAULT_CAR_MODEL,
   .kinematic_model = DEFAULT_KINEMATIC_MODEL,
-  .wheel_space = DEFAULT_WHEEL_SPACE;
-  .wheel_radius = DEFAULT_WHEEL_RADIUS;
+  .wheel_space = DEFAULT_WHEEL_SPACE,
+  .wheel_radius = DEFAULT_WHEEL_RADIUS,
 };
 
 struct config_motion_s motion_parameters =
@@ -150,15 +153,15 @@ struct config_sensor_s senor_parameters =
 
 struct config_remote_controller_s rc_parameters =
 {
-  .max_speed = DEFAULT_MAX_SPEED;
+  .max_speed = DEFAULT_MAX_SPEED,
 };
 
 struct config_obstacle_avoidance_s config_ob =
 {
-  .safe_distance = DEFAULT_SAFE_DISTANCE;
+  .safe_distance = DEFAULT_SAFE_DISTANCE,
 };
 
-static struct mcb_config_parameters_s parameters_list[] = {
+static struct mcb_config_parameters_s  g_parameters_list[] = {
   {CAR,                 &config_car,        sizeof(struct config_car_s)},
   {MOTION,              &motion_parameters, sizeof(struct config_motion_s)},
   {SCALE,               &config_scales,     sizeof(struct config_scale_s)},
@@ -206,22 +209,22 @@ static int config_wait_notify(void)
         }
       else
         {
-          syslog(LOG_ERR,"config_wait_notify:
-                  ERROR pthread_cond_timedwait failed, status=%d\n", status);
+          syslog(LOG_ERR,"config_wait_notify:"
+                          "ERROR pthread_cond_timedwait failed, status=%d\n", status);
           ASSERT(false);
         }
     }
   else
     {
-      syslog(LOG_ERR,"config_wait_notify: ERROR
-              pthread_cond_timedwait returned without timeout, status=%d\n",
+      syslog(LOG_ERR,"config_wait_notify: ERROR"
+              "pthread_cond_timedwait returned without timeout, status=%d\n",
               status);
       ASSERT(false);
     }
 
   /* Release the mutex */
 
-  status = pthread_mutex_unlock(&mutex);
+  status = pthread_mutex_unlock(&g_config_parameter.config_mutex);
   if (status != 0)
     {
       syslog(LOG_ERR,"config_wait_notify: ERROR pthread_mutex_unlock failed, status=%d\n",
@@ -241,7 +244,7 @@ static void config_set_initialization_status(bool status)
   g_initialized = status;
 }
 
-static void config_parameter_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response)
+static void config_parameter_qrc_msg_cb(struct qrc_pipe_s *pipe, void *data, size_t len, bool response)
 {
   struct config_msg_s *config_msg;
 
@@ -277,11 +280,11 @@ static void config_parameter_msg_parse(struct qrc_pipe_s *pipe, struct config_ms
     }
 
   type = config_msg->type;
-  if ( type >= 0 && type >= CONFIG_MSG_TYPE_MAX)
+  if ( type >= 0 && type <= CONFIG_MSG_TYPE_MAX)
     {
       /* save parameters */
-      parameters = parameters_list[type];
-      length = parameters_list[type].length;
+      parameters =  g_parameters_list[type].parameter;
+      length =  g_parameters_list[type].length;
       memcpy(parameters, &config_msg->data, length);
     }
   else if (APPLY == type)
@@ -292,7 +295,7 @@ static void config_parameter_msg_parse(struct qrc_pipe_s *pipe, struct config_ms
           /* do boot function */
           task_error_id = start_mcb_task();
           /* check, if completed and reply it */
-          if (task_error_id == MAX_TASK_ID)
+          if (task_error_id == ID_MAX_TASK)
             {
               /* all tasks startup completed */
               apply_status = 0;
@@ -303,9 +306,9 @@ static void config_parameter_msg_parse(struct qrc_pipe_s *pipe, struct config_ms
             }
           /* send status msg to RB5 */
           config_msg_reply.type = APPLY;
-          config_msg_reply.data.status = apply_status;
-          config_msg_reply.data.error_type = task_error_id;
-          result = qrc_write(g_odom_pipe, (void *)&motion_odom, sizeof(struct motion_odom_s), false);
+          config_msg_reply.data.apply.status = apply_status;
+          config_msg_reply.data.apply.error_type = task_error_id;
+          result = qrc_write(pipe, (void *)&config_msg_reply, sizeof(struct config_msg_s), false);
           if (result != SUCCESS)
             {
               syslog(LOG_ERR, "config_parameter_msg_parse msg send failed %d\n", result);
@@ -324,7 +327,7 @@ static enum mcb_task_id_e start_mcb_task(void)
   int ret;
   int errcode;
 
-  for (index = 0; index < MAX_TASK_ID; index ++)
+  for (index = 0; index < ID_MAX_TASK; index ++)
     {
       /* start tasks */
 
@@ -357,7 +360,7 @@ static enum mcb_task_id_e start_mcb_task(void)
         {
         break;
         }
-      syslog(LOG_INFO, "start_mcb_task: Started the task %s\n", tasks[index].name);
+      syslog(LOG_INFO, "start_mcb_task: Started the task %s\n", mcb_tasks[index].name);
     }
 
   return index;
@@ -373,11 +376,11 @@ int get_configuration_parameters(enum config_msg_type_e type, void *parameters)
     {
       return ERROR;
     }
-  if ( type >= 0 && type >= CONFIG_MSG_TYPE_MAX)
+  if ( type >= 0 && type <= CONFIG_MSG_TYPE_MAX)
     {
-      if (parameters_list[type].type == type)
+      if ( g_parameters_list[type].type == type)
         {
-          memcpy(parameters, parameters_list[type].parameter, parameters_list[type].length);
+          memcpy(parameters,  g_parameters_list[type].parameter,  g_parameters_list[type].length);
           return OK;
         }
     }
@@ -391,8 +394,8 @@ void config_notify_completed(bool initialized)
   status = pthread_mutex_lock(&g_config_parameter.config_mutex);
   if (status != 0)
     {
-      syslog(LOG_ERR,"config_notify_completed:
-            ERROR pthread_mutex_lock failed, status=%d\n", status);
+      syslog(LOG_ERR, "config_notify_completed:"
+            "ERROR pthread_mutex_lock failed, status=%d\n", status);
       ASSERT(false);
     }
 
@@ -401,32 +404,27 @@ void config_notify_completed(bool initialized)
   status = pthread_cond_signal(&g_config_parameter.config_cond);
   if (status != 0)
     {
-      syslog(LOG_ERR,"config_notify_completed:
-              ERROR pthread_cond_signal failed, status=%d\n", status);
+      syslog(LOG_ERR, "config_notify_completed:"
+              "ERROR pthread_cond_signal failed, status=%d\n", status);
       ASSERT(false);
     }
 
-  status = pthread_mutex_unlock(&mutex);
+  status = pthread_mutex_unlock(&g_config_parameter.config_mutex);
   if (status != 0)
     {
-      syslog(LOG_ERR,"config_notify_completed:
-                ERROR pthread_mutex_unlock failed, status=%d\n", status);
+      syslog(LOG_ERR, "config_notify_completed:"
+              "ERROR pthread_mutex_unlock failed, status=%d\n", status);
       ASSERT(false);
     }
 }
 
-int config_parameter_init(int argc, char *argv[]){
+int config_parameter_init(int argc, char *argv[])
 {
   char pipe_name[] = CONFIG_PIPE;
-
-  struct qrc_pipe_s *pipe;
+  int status;
 
   /* init cond & mutex */
 
-  pthread_mutex_t config_mutex;
-  pthread_cond_t config_cond;
-
-  printf("thread_waiter: Initializing mutex\n");
   status = pthread_mutex_init(&g_config_parameter.config_mutex, NULL);
   if (status != 0)
     {
@@ -444,14 +442,14 @@ int config_parameter_init(int argc, char *argv[]){
     }
 
   /* get pipe */
-  pipe =  qrc_get_pipe(pipe_name);
-  if (pipe == NULL)
+  g_config_parameter.pipe =  qrc_get_pipe(pipe_name);
+  if (g_config_parameter.pipe == NULL)
     {
       syslog(LOG_ERR,"config_parameter: get qrc pipe error\n");
       return -1;
     }
 
-  if (!qrc_register_message_cb(pipe, config_parameter_qrc_msg_cb))
+  if (!qrc_register_message_cb(g_config_parameter.pipe, config_parameter_qrc_msg_cb))
     {
       syslog(LOG_ERR,"qrc register config parameter cb error\n");
       return -1;

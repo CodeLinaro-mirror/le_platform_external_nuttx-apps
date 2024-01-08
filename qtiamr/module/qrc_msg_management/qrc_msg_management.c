@@ -7,14 +7,6 @@
  * Included Files
  ****************************************************************************/
 
-#include <sys/types.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <debug.h>
-
 #include "qrc_msg_management.h"
 
 /****************************************************************************
@@ -50,7 +42,7 @@
  * Name: qrc_get_pipe
  ****************************************************************************/
 
-struct qrc_pipe_s *qrc_get_pipe(char *pipe_name)
+struct qrc_pipe_s *qrc_get_pipe(const char *pipe_name)
 {
   return NULL;
 }
