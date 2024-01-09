@@ -81,9 +81,11 @@ bool speed_inverse_kinematics(float vx, float vz, int16_t *rpm_l, int16_t *rpm_r
   return g_kinematic_s.ops->speed_inverse(g_kinematic_s.parameters,vx,vz,rpm_l,rpm_r);
 }
 
-bool speed_rpm_transfer_to_odom(float rpm_left, float rpm_right, float *speed_vx, float *speed_vz)
+bool speed_rpm_transfer_to_odom(float rpm_left, float rpm_right,
+                                float *speed_vx, float *speed_vz)
 {
-  return g_kinematic_s.ops->speed_inverse(g_kinematic_s.parameters,rpm_left,rpm_right,speed_vx,speed_vz);
+  return g_kinematic_s.ops->speed_rpm_transfer_to_odom(g_kinematic_s.parameters
+                                          ,rpm_left,rpm_right,speed_vx,speed_vz);
 }
 
 bool position_inverse_kinematics(float pos_left, float pos_right, int *count_l, int *count_r)

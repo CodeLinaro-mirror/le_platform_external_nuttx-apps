@@ -13,13 +13,13 @@
 #include <errno.h>
 #include <debug.h>
 
-typedef void (*qrc_msg_cb)(struct qrc_pipe_s *pipe,void * data, size_t len, bool response);  /* message callback function format */
-
 struct qrc_pipe_s
 {
   char name[12];
   uint8_t session_id;
 }__attribute__((aligned(4)));
+
+typedef void (*qrc_msg_cb)(struct qrc_pipe_s *pipe,void * data, size_t len, bool response);  /* message callback function format */
 
 enum qrc_write_status_e
 {

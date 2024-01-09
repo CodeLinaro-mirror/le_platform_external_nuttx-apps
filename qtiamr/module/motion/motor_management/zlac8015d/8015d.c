@@ -28,7 +28,6 @@
 
 /* motor config parameter */
 
-#define ACC_TIME 5	/* Accelerate time(ms) */
 #define POS_ANGLE_SPEED_MAX	11
 #define POS_DIST_SPEED_MAX	60
 #define MOTOR_BUS_MODE BUS_CANOPEN
@@ -106,23 +105,28 @@ struct mc_cmd_s {
  * Private Function Prototypes
  ****************************************************************************/
 
-static zlac_8015d_write_single_opcode(struct motor_zlac_8015d_s *motor, enum zlac_8015d_control_code_e opcode, int value);
-
+static int zlac_8015d_write_single_opcode(struct motor_zlac_8015d_s *motor,
+                                        enum zlac_8015d_control_code_e opcode,
+                                        int value);
 
 static bool zlac_8015d_init(void *motor);
 static void zlac_8015d_deinit(void *motor);
 
 static int zlac_8015d_switch_mode(void *motor, enum control_mode_e mode);
-static int zlac_8015d_set_pid(void *motor, enum control_mode_e, struct motion_pid_s pid);
-static int zlac_8015d_sync_speed(void *motor, int16_t left_rpm, int16_t right_rpm);
-static int zlac_8015d_set_position(void *motor, int left_count, int right_count);
+static int zlac_8015d_set_pid(void *motor, enum control_mode_e,
+                                      struct motion_pid_s pid);
+static int zlac_8015d_sync_speed(void *motor, int16_t left_rpm,
+                                            int16_t right_rpm);
+static int zlac_8015d_set_position(void *motor, int left_count,
+                                              int right_count);
 static int zlac_8015d_quick_stop(void *motor);
 
 static int zlac_8015d_read_rpm(void *motor, float *left_rpm, float *right_rpm);
 static int zlac_8015d_velocity_zero_check(void *motor, bool *zero);
 
-static int zlac_8015d_pos_count(void *motor, int *left_count, int *right_count);
-static int zlac_8015d_status_code(void *motor, enum motor_err_e * motor_status);
+static int zlac_8015d_pos_count(void *motor, int *left_count,
+                                            int *right_count);
+static int zlac_8015d_status_code(void *motor, enum motor_err_e *motor_status);
 static bool zlac_8015d_target_reached_check(void *motor);
 
 /****************************************************************************
@@ -199,7 +203,9 @@ struct motor_hal_ops zlac_8015d_ops = {
  * Private Functions
  ****************************************************************************/
 
-static int  zlac_8015d_write_single_opcode(struct motor_zlac_8015d_s *motor, enum zlac_8015d_control_code_e opcode, int value)
+static int  zlac_8015d_write_single_opcode(struct motor_zlac_8015d_s *motor,
+                                      enum zlac_8015d_control_code_e opcode,
+                                      int value)
 {
   struct driver_sdo_data_s data;
   struct driver_sdo_data_s rec_buff;
@@ -213,30 +219,35 @@ static int  zlac_8015d_write_single_opcode(struct motor_zlac_8015d_s *motor, enu
 	}
 
   data = g_command_list[opcode].command;
-  
+
   if (value != 0)
-	{
-	  data.data1_l = value && 0xff;
-	  data.data1_h = (value >> 8)&& 0xff;
-	}
+    {
+      data.data1_l = value && 0xff;
+	    data.data1_h = (value >> 8)&& 0xff;
+    }
 
   pthread_mutex_lock(&motor->motor_mutex);
-  canopen_send(fd, &data, data_len);
+  canopen_send(fd, (char *)&data, data_len);
   usleep(2000);
-  canopen_receive(fd, &rec_buff, data_len);
+  canopen_receive(fd, (char *)&rec_buff, data_len);
 
   pthread_mutex_unlock(&motor->motor_mutex);
 
+  /* check the opcode if matched */
   if (rec_buff.index_l == data.index_l && rec_buff.index_h == data.index_h)
-	return OK;
+    {
+      return OK;
+    }
   else
     {
-	  syslog(LOG_ERR,"zlac_8015d write opcode check error \n");
-	  return ERROR;
-	}
+	    syslog(LOG_ERR,"zlac_8015d write opcode check error \n");
+	    return ERROR;
+	  }
 }
 
-static int  zlac_8015d_read_single_opcode(struct motor_zlac_8015d_s *motor, enum zlac_8015d_control_code_e opcode, int16_t *low, int16_t *high)
+static int  zlac_8015d_read_single_opcode(struct motor_zlac_8015d_s *motor,
+                                      enum zlac_8015d_control_code_e opcode,
+                                      int16_t *low, int16_t *high)
 {
   struct driver_sdo_data_s data;
   struct driver_sdo_data_s rec_buff;
@@ -252,9 +263,9 @@ static int  zlac_8015d_read_single_opcode(struct motor_zlac_8015d_s *motor, enum
   data = g_command_list[opcode].command;
 
   pthread_mutex_lock(&motor->motor_mutex);
-  canopen_send(fd, &data, data_len);
+  canopen_send(fd, (char *)&data, data_len);
   usleep(2000);
-  canopen_receive(fd, &rec_buff, data_len);
+  canopen_receive(fd, (char *)&rec_buff, data_len);
   pthread_mutex_unlock(&motor->motor_mutex);
 
   if (rec_buff.index_l == data.index_l && rec_buff.index_h == data.index_h)
@@ -275,10 +286,10 @@ static int zlac_8015d_enable(struct motor_zlac_8015d_s *motor)
   int result;
 
   if (!motor->initialized)
-	{
-	  syslog(LOG_ERR,"zlac_8015d uninitialized\n");
-	  return ERROR;
-	}
+	  {
+	    syslog(LOG_ERR,"zlac_8015d uninitialized\n");
+	    return ERROR;
+	  }
 
   syslog(LOG_INFO,"ENABLE zlac_8015d motor driver\n");
 
@@ -332,6 +343,14 @@ static int zlac_8015d_speed_mode_init(struct motor_zlac_8015d_s *motor)
 
 static int zlac_8015d_switch_mode(void *motor, enum control_mode_e mode)
 {
+  bool speed_zero;
+  /* check speed */
+  zlac_8015d_velocity_zero_check(motor, &speed_zero);
+  if (speed_zero)
+    {
+      /* do_switch_mode */
+    }
+
   return ERROR;
 }
 
@@ -345,11 +364,9 @@ static int zlac_8015d_pos_count(void *motor, int *left_count, int *right_count)
   return ERROR;
 }
 
-
 static int zlac_8015d_velocity_zero_check(void *motor, bool *zero)
 {
   struct motor_zlac_8015d_s *zlac_8015d = (struct motor_zlac_8015d_s *)motor;
-  int result = -1;
 
   if (!zlac_8015d->initialized)
     {
@@ -358,8 +375,8 @@ static int zlac_8015d_velocity_zero_check(void *motor, bool *zero)
 	}
   /* zero check  */
   *zero = false;
-
-  return result;
+  syslog(LOG_ERR,"zlac_8015d zero check failed \n");
+  return ERROR;
 }
 
 static int zlac_8015d_quick_stop(void *motor)
@@ -386,7 +403,8 @@ static int zlac_8015d_read_rpm(void *motor, float *left_rpm, float *right_rpm)
   int16_t left;
   int result;
 
-  result = zlac_8015d_read_single_opcode(zlac_8015d, CODE_SPEED_READ, &left, &right);
+  result = zlac_8015d_read_single_opcode(zlac_8015d, CODE_SPEED_READ, &left,
+                                          &right);
   if (result == OK)
 	  {
 	    *left_rpm = left * 0.1;
@@ -407,48 +425,48 @@ static int zlac_8015d_status_code(void *motor, enum motor_err_e * motor_status)
   result = zlac_8015d_read_single_opcode(zlac_8015d, CODE_DEBUG_CC, &left, &right);
   status_code = right|left;
   if (result == OK)
-	{
-	  switch (status_code)
-	  {
-		case 0x0000:
-		  {
-			*motor_status = NORMAL;
-			break;
-		  }
-		case 0x0002:
-		  {
-			*motor_status = LACK_POWER;
-			break;
-		  }
-		case 0x0001:
-		case 0x0004:
-		  {
-			*motor_status = OVER_POWER;
-			break;
-		  }
-		case 0x0008:
-		  {
-			*motor_status = OVER_LOAD;
-			break;
-		  }
-		case 0x0100:
-		  {
-			*motor_status = EEPROM_ERR;
-			break;
-		  }
-		case 0x0020:
-		case 0x0200:
-		  {
-			*motor_status = ENCODER_ERR;
-			break;
-		  }
-		default:
-		  {
-			*motor_status = OTHER_ERR;
-			break;
-		  }
-	  }
-	}
+    {
+      switch (status_code)
+        {
+          case 0x0000:
+            {
+              *motor_status = NORMAL;
+              break;
+            }
+          case 0x0002:
+            {
+              *motor_status = LACK_POWER;
+              break;
+            }
+          case 0x0001:
+          case 0x0004:
+            {
+              *motor_status = OVER_POWER;
+              break;
+            }
+          case 0x0008:
+            {
+              *motor_status = OVER_LOAD;
+              break;
+            }
+          case 0x0100:
+            {
+              *motor_status = EEPROM_ERR;
+              break;
+            }
+          case 0x0020:
+          case 0x0200:
+            {
+              *motor_status = ENCODER_ERR;
+              break;
+            }
+          default:
+            {
+              *motor_status = OTHER_ERR;
+              break;
+            }
+        }
+    }
   return result;
 }
 
@@ -460,7 +478,6 @@ static bool zlac_8015d_target_reached_check(void *motor)
 static int zlac_8015d_sync_speed(void *motor, int16_t left_rpm, int16_t right_rpm)
 {
   struct motor_zlac_8015d_s *zlac_8015d = (struct motor_zlac_8015d_s *)motor;
-  int result;
   struct driver_sdo_data_s data;
   size_t data_len = (sizeof(struct driver_sdo_data_s));
   struct driver_sdo_data_s rec_buff;
@@ -470,7 +487,7 @@ static int zlac_8015d_sync_speed(void *motor, int16_t left_rpm, int16_t right_rp
     {
       syslog(LOG_ERR,"zlac_8015d uninitialized\n");
       return ERROR;
-	}
+	  }
 
   data = g_command_list[CODE_SYNC_SPEED].command;
 
@@ -480,66 +497,75 @@ static int zlac_8015d_sync_speed(void *motor, int16_t left_rpm, int16_t right_rp
   data.data2_l = right_rpm&0xff;
   data.data2_h = right_rpm>>8;
 
-
   pthread_mutex_lock(&zlac_8015d->motor_mutex);
-  canopen_send(fd, &data, data_len);
+  canopen_send(fd, (char *)&data, data_len);
   usleep(2000);
-  canopen_receive(fd, &rec_buff, data_len);
+  canopen_receive(fd, (char *)&rec_buff, data_len);
   pthread_mutex_unlock(&zlac_8015d->motor_mutex);
 
   if (rec_buff.index_l == data.index_l && rec_buff.index_h == data.index_h)
-	return OK;
+    {
+      return OK;
+    }
   else
     {
-	  syslog(LOG_ERR,"zlac_8015d write speed check error \n");
-	  return ERROR;
-	}
+	    syslog(LOG_ERR,"zlac_8015d write speed check error \n");
+	    return ERROR;
+	  }
 }
 
-static int zlac_8015d_set_pid(void *motor, enum control_mode_e mode, struct motion_pid_s pid)
+static int zlac_8015d_set_pid(void *motor, enum control_mode_e mode,
+                                            struct motion_pid_s pid)
 {
   struct motor_zlac_8015d_s *zlac_8015d = (struct motor_zlac_8015d_s *)motor;
-  int kp,ki,kd;
-  int fd = zlac_8015d->driver_fd;
+  int kp,ki;  /* kd is useless */
   int result = ERROR;
 
   if (!zlac_8015d->initialized)
     {
       syslog(LOG_ERR,"zlac_8015d uninitialized\n");
       return ERROR;
-	}
+    }
 
-  if(abs(pid.kp) > 30000) 
-	kp =30000;
+  if(abs(pid.kp) > 30000)
+    {
+      kp = 30000;
+    }
   else
-	kp =abs(pid.kp);
+    {
+      kp = abs(pid.kp);
+    }
 
-  if(abs(pid.ki) > 30000) 
-	ki =30000;
+  if(abs(pid.ki) > 30000)
+    {
+      ki = 30000;
+    }
   else
-	ki =abs(pid.ki);
+    {
+      ki = abs(pid.ki);
+    }
 
   syslog(LOG_INFO,"mode %d:SET PID\n",mode);
   switch (mode)
     {
 	  case SPEED :
 	    {
-		  result = zlac_8015d_write_single_opcode(fd, CODE_SPEED_LEFT_KP, kp);
-		  result |= zlac_8015d_write_single_opcode(fd, CODE_SPEED_RIGHT_KP, kp);
-		  result |= zlac_8015d_write_single_opcode(fd, CODE_SPEED_LEFT_KI, ki);
-		  result |= zlac_8015d_write_single_opcode(fd, CODE_SPEED_RIGHT_KI, ki);
-		  break;
-		}
+		    result = zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_LEFT_KP, kp);
+		    result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_RIGHT_KP, kp);
+		    result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_LEFT_KI, ki);
+		    result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_RIGHT_KI, ki);
+		    break;
+		  }
 	  case POSITION:
-	  	{
-		  break;
-		}
 	  case TORQUE:
 	  	{
-		  break;
-		}
+        syslog(LOG_ERR,"mode %d:SET PID ERROR \n",mode);
+		    break;
+		  }
 	  default:
-	   syslog(LOG_INFO,"invalid control mode %d\n",mode);
+      {
+        syslog(LOG_INFO,"invalid control mode %d\n",mode);
+      }
 	}
 
   return result;

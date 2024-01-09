@@ -17,7 +17,7 @@
 
 
 #include "robot_controller.h"
-#include "client_control_msg.h"
+
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -87,7 +87,6 @@ static void client_msg_parse(struct qrc_pipe_s *pipe, struct client_msg_s *clien
 
 static void client_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response)
 {
-  enum qrc_write_status_e result;
   struct client_msg_s *client_msg;
 
   if (pipe == NULL || data ==NULL)

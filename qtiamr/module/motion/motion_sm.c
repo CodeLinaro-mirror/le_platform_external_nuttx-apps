@@ -134,7 +134,7 @@ static bool acquire_motion_sm_lock(void)
 {
   int status;
 
-  status = status = pthread_mutex_lock(&g_motion_sm.mutex);
+  status = pthread_mutex_lock(&g_motion_sm.mutex);
 
   if (status == 0)
     return true;
@@ -240,7 +240,7 @@ static int do_action_emergency(union motion_control_data_u data)
 static int do_action_drv_error(union motion_control_data_u data)
 {
   /* try stop motor driver */
-  motor_quick_stop(true);
+  return motor_quick_stop(true);
 }
 
 static int do_action_speed(union motion_control_data_u data)
@@ -258,6 +258,7 @@ static int do_action_switch_done(union motion_control_data_u data)
     {
       g_motion_sm.switch_done_cb(g_motion_sm.switch_cb_data);
     }
+  return OK;
 }
 
 /****************************************************************************
@@ -287,7 +288,7 @@ enum motion_sm_state_e get_motion_sm_state(void)
 int motion_sm_event(enum motion_sm_event_e event ,union motion_control_data_u data)
 {
   enum motion_sm_state_e present_state;
-  int result;
+  int result = ERROR;
 
   present_state = get_motion_sm_state();
 
@@ -342,7 +343,7 @@ void register_motion_switch_done_cb(motion_cb cb_fun, void *arg)
 
 void register_motion_odom_done_cb(motion_cb cb_fun, void *arg)
 {
-  return ERROR;
+  return ;
 }
 
 int motion_sm_init(void)

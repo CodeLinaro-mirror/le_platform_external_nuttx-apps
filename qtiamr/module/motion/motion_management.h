@@ -25,7 +25,6 @@
 #include <errno.h>
 #include <debug.h>
 
-
 #include "client_control_msg.h"
 #include "motion_msg.h"
 
@@ -78,7 +77,7 @@ typedef void (*control_sm_notify_cb)(enum control_sm_state_e state);  /* control
 
 typedef void (*motion_odom_cb)(struct motion_odom_s motion_odom);  /* motion odom cb */
 
-typedef void (*motion_action_done_cb)(struct qrc_pipe_s *pipe,void * data, size_t len, bool response);
+typedef void (*motion_action_done_cb)(void *pipe,void * data, size_t len, bool response);
 
 /****************************************************************************
  * Public Function Prototypes

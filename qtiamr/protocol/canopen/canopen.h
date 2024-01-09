@@ -18,14 +18,6 @@
 #define COB_ID_CSDO  (0x581)  //SDO client
 #define CAN_MSDGLC   (8)      //CAN message length
 
-#define ACC_TIME     (5)      //Velocity acceleration time
-#define SYN_CTRL     0x01     //Syn control
-#define ASYN_CTRL    0x00     //Asyn control
-#define ACC_TIME_L   0x64     //Left acceleration time : 100ms
-#define ACC_TIME_R   0x64     //Right acceleration time : 100ms
-#define DEC_TIME_L   0x64     //Left deceleration time : 100ms
-#define DEC_TIME_R   0x64     //Right deceleration time : 100ms
-
 enum sdo_cw    //SDO command word
 {
     M2S_1B  = 0x2f,  //M->S request, set 1 bit

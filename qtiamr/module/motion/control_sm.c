@@ -306,5 +306,5 @@ int set_control_client(enum control_client_e client)
         }
     }
 
-  return client_contrl_sm_event(client);
+  return client_contrl_sm_event(event);
 }

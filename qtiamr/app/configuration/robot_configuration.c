@@ -73,7 +73,7 @@ struct mcb_task_s {
   uint32_t	priority;
 	uint32_t	stack_size;
 	int	(*task_func)(int argc, char *argv[]);
-  const char	*argv;
+  char * const *argv;
   int task_id;
 };
 

@@ -63,7 +63,7 @@ static void motion_public_odom(struct motion_odom_s motion_odom)
       syslog(LOG_ERR, "Motion odom send failed %d\n", result);
     }
 
-  return result;
+  return;
 }
 
 /****************************************************************************
@@ -87,7 +87,7 @@ int motion_odom(int argc, char *argv[])
     }
 
   /* register odom cb*/
-  register_motion_odom_cb(motion_odom);
+  register_motion_odom_cb(motion_public_odom);
 
   /* notify ok */
 

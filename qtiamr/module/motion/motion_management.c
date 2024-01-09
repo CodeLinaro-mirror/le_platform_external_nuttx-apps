@@ -16,6 +16,7 @@
 
 #include "motion_management.h"
 #include "motion_sm.h"
+#include "kinematics.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -141,9 +142,11 @@ void register_motion_odom_cb(motion_odom_cb cb_fun)
  ****************************************************************************/
 void motion_management_init(void)
 {
+  struct kinematic_parameter_s parameters;
 
 //get config parameters kinematic.
-void kinematic_init(const struct kinematic_parameter_s *parameters);
+//call cofig parameters_api
+  kinematic_init(&parameters);
 
 //motor management init。
 //motion sm init
