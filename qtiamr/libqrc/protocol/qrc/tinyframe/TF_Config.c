@@ -15,7 +15,7 @@
 #include <errno.h>
 #include <debug.h>
 
-#include "tf_config.h"
+#include "TF_Config.h"
 
 
 /****************************************************************************
