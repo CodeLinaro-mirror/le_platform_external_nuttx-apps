@@ -1,12 +1,10 @@
-/****************************************************************************
+/***************************************************************************
 * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 ****************************************************************************/
-
 /****************************************************************************
  * Included Files
  ****************************************************************************/
-
 #include "qrc_msg_management.h"
 
 /****************************************************************************
@@ -25,7 +23,6 @@
  * Private Data
  ****************************************************************************/
 
-
 /****************************************************************************
  * Public Data
  ****************************************************************************/
@@ -42,33 +39,86 @@
  * Name: qrc_get_pipe
  ****************************************************************************/
 
-struct qrc_pipe_s *qrc_get_pipe(const char *pipe_name)
+void init_qrc_management()
 {
-  return NULL;
+  qrc_init();
 }
 
-bool qrc_register_message_cb(struct qrc_pipe_s *pipe, qrc_msg_cb fun_cb)
+qrc_pipe_s *qrc_get_pipe(const char *pipe_name)
 {
+  int pipe_name_len = (int)strlen(pipe_name);
+  if (pipe_name_len > 10)
+  {
+    printf("\npipe name is too long!\n");
+    return NULL;
+  }
+  qrc_pipe_s *p = qrc_pipe_insert(pipe_name);
+  if(NULL == p)
+  {
+    printf("pipe(%s) create failed!\n", pipe_name);
+    return NULL;
+  }
+  qrc_write_request(pipe_name, p->pipe_id, QRC_REQUEST);
+  return p;
+}
+
+bool qrc_register_message_cb(qrc_pipe_s *pipe, qrc_msg_cb fun_cb)
+{
+  if (pipe == NULL)
+  {
+    printf("pipe is NULL! callback register failed!\n");
+    return false;
+  }
+  pipe->cb = fun_cb;
   return true;
 }
 
-enum qrc_write_status_e qrc_write(struct qrc_pipe_s *pipe , void * data, size_t len, bool ack)
+/*
+* wait for implement
+*/
+enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe , const void *data, const size_t len, const bool ack)
 {
   return FAILED;
 }
 
-enum qrc_write_status_e qrc_sync_write(struct qrc_pipe_s *pipe , void *data, size_t len,void *respond_data, size_t res_len)
+/*
+* wait for implement
+*/
+enum qrc_write_status_e qrc_sync_write(const qrc_pipe_s *pipe , const void *data, const size_t len, const void *respond_data, const size_t res_len)
 {
   return FAILED;
 }
 
-enum qrc_write_status_e qrc_write_fast(struct qrc_pipe_s *pipe , void * data, size_t len, bool ack)
+enum qrc_write_status_e qrc_write_fast(const qrc_pipe_s *pipe , const void *data, const size_t len, const bool ack)
 {
+  while(255 == pipe->peer_pipe_id || 0 == pipe->peer_pipe_id) /*haven't got peer pipe id*/
+  {
+    usleep(1);
+  }
+  qrc_frame *qrcf = (qrc_frame*)malloc(sizeof(qrc_frame));
+  qrcf->receiver_id = pipe->peer_pipe_id;
+  if (true == ack)
+  {
+    qrcf->ack = 1;
+  }
+  else
+  {
+    qrcf->ack = 0;
+  }
+
+  bool send_result = qrc_frame_send(qrcf, data, len);
+  free(qrcf);
+  if(true == send_result)
+  {
+    return SUCCESS;
+  }
   return FAILED;
 }
 
-enum qrc_write_status_e qrc_response(struct qrc_pipe_s *pipe , void * data, size_t len)
+/*
+* wait for implement
+*/
+enum qrc_write_status_e qrc_response(const qrc_pipe_s *pipe , const void *data, const size_t len)
 {
   return FAILED;
 }
-

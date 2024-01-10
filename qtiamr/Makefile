@@ -61,9 +61,9 @@ CSRCS += $(CAR_DIR)/app/robot_controller/robot_controller.c
 # protocol/libqrc source
 CSRCS += $(CAR_DIR)/protocol/canopen/canopen.c
 
-#CSRCS += $(CAR_DIR)/libqrc/protocol/qrc/qrc.c
-#CSRCS += $(CAR_DIR)/libqrc/protocol/qrc/tinyframe/TF_Config.c
-#CSRCS += $(CAR_DIR)/libqrc/protocol/tinyframe/TinyFrame.c
+CSRCS += $(CAR_DIR)/libqrc/protocol/qrc/qrc.c
+CSRCS += $(CAR_DIR)/libqrc/protocol/qrc/tinyframe/TF_Config.c
+CSRCS += $(CAR_DIR)/libqrc/protocol/tinyframe/TinyFrame.c
 
 # module source
 CSRCS += $(CAR_DIR)/module/qrc_msg_management/qrc_msg_management.c
