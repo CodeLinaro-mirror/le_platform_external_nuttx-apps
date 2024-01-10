@@ -17,6 +17,8 @@
 #include "motion_management.h"
 #include "motion_sm.h"
 #include "kinematics.h"
+#include "main.h"
+#include "config_msg.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -140,16 +142,68 @@ void register_motion_odom_cb(motion_odom_cb cb_fun)
 /****************************************************************************
  * Name: motion_management_init
  ****************************************************************************/
-void motion_management_init(void)
+int motion_management_init(int argc, char *argv[])
 {
   struct kinematic_parameter_s parameters;
+  struct config_car_s config_car;
+  struct config_motion_s config_motion;
+  struct config_scale_s config_scales;
+  uint32_t odom_frequency;
+  int result;
 
-//get config parameters kinematic.
-//call cofig parameters_api
-  kinematic_init(&parameters);
+  /* get config parameters kinematic. */
+  result = get_configuration_parameters(CAR, (void *)&config_car);
+  result |= get_configuration_parameters(MOTION, (void *)&config_motion);
+  result |= get_configuration_parameters(SCALE, (void *)&config_scales);
+  if (result != OK)
+    {
+      config_notify_completed(false);
+      return result;
+    }
+  parameters.speed_line_scale = config_scales.speed_scale[0];
+  parameters.speed_angle_scale = config_scales.speed_scale[1];
+  parameters.speed_odom_line_scale = config_scales.speed_odom_scale[0];
+  parameters.speed_odom_angle_scale = config_scales.speed_odom_scale[1];
+  parameters.wheel_perimeter = config_car.wheel_perimeter;
+  parameters.wheel_space = config_car.wheel_space;
+  parameters.speed_max = config_motion.max_speed;
+  parameters.angle_speed_max = config_motion.max_angle_speed;
+  parameters.kinematic_model = config_car.kinematic_model;
 
-//motor management init。
-//motion sm init
-//client control sm init.
+  /* kinematic init */
+  if (OK != kinematic_init(&parameters))
+    {
+      config_notify_completed(false);
+      return ERROR;
+    }
 
+  /* motor management init */
+  odom_frequency = config_motion.odom_frequency;
+  motor_set_odom_frquency(odom_frequency);
+
+  result = task_create("motor_manag",
+                        DEFAULT_PRIORITY,
+                        DEFAULT_STACK_SIZE,
+                        motor_management_thread,
+                        NULL);
+  if (result < 0)
+    {
+      syslog(LOG_INFO,"motion_management_init: Failed to start motor\n");
+      config_notify_completed(false);
+      return result;
+    }
+
+  /* motion sm init */
+  if (0 != motion_sm_init())
+    {
+      config_notify_completed(false);
+      return ERROR;
+    }
+  /* client control sm init */
+  client_sm_init();
+
+  /*notify done */
+  config_notify_completed(true);
+
+  return OK;
 }

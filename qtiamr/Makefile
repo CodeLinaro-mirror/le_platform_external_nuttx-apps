@@ -36,6 +36,8 @@ C_INCLUDES +=  \
     -I$(CAR_DIR) \
     -I$(CAR_DIR)/app \
     -I$(CAR_DIR)/app/* \
+    -I$(CAR_DIR)/app/motion_odom \
+    -I$(CAR_DIR)/app/robot_controller \
     -I$(CAR_DIR)/libqrc/include/app_msg \
     -I$(CAR_DIR)/libqrc/include/module \
     -I$(CAR_DIR)/libqrc/protocol/qrc \

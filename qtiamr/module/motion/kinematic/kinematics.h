@@ -13,6 +13,8 @@
 
 #include <nuttx/config.h>
 
+#include "config_msg.h"
+
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -38,6 +40,7 @@ struct kinematic_parameter_s
   float wheel_space;
   float speed_max;
   float angle_speed_max;
+  enum kinematic_model_e kinematic_model;
 } __attribute__((aligned(4)));
 
 struct kinematic_ops {
@@ -59,11 +62,12 @@ struct kinematic_ops {
  * Public Function Prototypes
  ****************************************************************************/
 
-void kinematic_init(const struct kinematic_parameter_s *parameters);
 bool speed_inverse_kinematics(float vx, float vz, int16_t *rpm_l, int16_t *rpm_r);
 bool speed_rpm_transfer_to_odom(float rpm_left, float rpm_right, float *speed_vx, float *speed_vz);
 
 bool position_inverse_kinematics(float pos_left, float pos_right, int *count_l, int *count_r);
 bool pos_count_transfer_to_odom(int count_left, int count_right, float *pose_dist, float *pose_angle);
+
+int kinematic_init(const struct kinematic_parameter_s *parameters);
 
 #endif /* __KINEMATIC_H */

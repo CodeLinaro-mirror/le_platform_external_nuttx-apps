@@ -26,21 +26,16 @@
  * Private Types
  ****************************************************************************/
 
-enum kinematic_mode_e
-{
-  DIFF_CAR,
-  MODE_MAX
-};
-
 struct kinematic_s
 {
   struct kinematic_parameter_s parameters;
   struct kinematic_ops *ops;
+  bool initialized;
 }__attribute__((aligned(4)));
 
 struct kinematic_mode_s
 {
-  enum kinematic_mode_e mode;
+  enum kinematic_model_e mode;
   struct kinematic_ops *ops;
 }__attribute__((aligned(4)));
 
@@ -52,12 +47,16 @@ struct kinematic_mode_s
  * Private Data
  ****************************************************************************/
 
-static const struct kinematic_mode_s g_mode_list[] = {
+static const struct kinematic_mode_s g_mode_list[] =
+{
   {DIFF_CAR, &diff_car_ops},
+  {ACKERMAN_CAR, NULL},
 };
 
-static struct kinematic_s g_kinematic_s;
-
+static struct kinematic_s g_kinematic_s =
+{
+  .initialized = false,
+};
 /****************************************************************************
  * Public Data
  ****************************************************************************/
@@ -67,13 +66,24 @@ static struct kinematic_s g_kinematic_s;
  ****************************************************************************/
 
 /****************************************************************************
- * Name: kinematic_parameter_init
+ * Name: kinematic_init
  * Description: get kinematic configure parameters.
  ****************************************************************************/
-void kinematic_init(const struct kinematic_parameter_s *parameters)
+int kinematic_init(const struct kinematic_parameter_s *parameters)
 {
-  g_kinematic_s.ops = g_mode_list[KINEMATIC_MODE].ops;
+  enum kinematic_model_e model;
+
+  if (NULL == parameters)
+    {
+      return ERROR;
+    }
+
   memcpy(&g_kinematic_s.parameters, parameters,sizeof(struct kinematic_parameter_s));
+  model = g_kinematic_s.parameters.kinematic_model;
+  g_kinematic_s.ops = g_mode_list[model].ops;
+  g_kinematic_s.initialized = true;
+
+  return OK;
 }
 
 bool speed_inverse_kinematics(float vx, float vz, int16_t *rpm_l, int16_t *rpm_r)

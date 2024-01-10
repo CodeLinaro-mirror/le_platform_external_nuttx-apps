@@ -14,12 +14,20 @@
 #include <sched.h>
 #include <syslog.h>
 
+#include "main.h"
+
 int main(int argc, FAR char *argv[])
 {
 
-	/* main function */
+  /* main function */
 
-        syslog(LOG_INFO, "main: qtiamr  main started\n");
+  syslog(LOG_INFO, "main: qtiamr  main start\n");
 
-        return EXIT_SUCCESS;
+  /* init qrc */
+
+  /* config parameter */
+  config_parameter_init();
+
+  syslog(LOG_INFO, "main: qtiamr  main exit\n");
+  return EXIT_SUCCESS;
 }

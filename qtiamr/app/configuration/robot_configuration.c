@@ -19,12 +19,15 @@
 #include "config_msg.h"
 #include "qrc_msg_management.h"
 
+#include "motion_odom.h"
+#include "robot_controller.h"
+#include "motion_odom.h"
+#include "motion_management.h"
+
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
-#define DEFAULT_PRIORITY  (110)
-#define DEFAULT_STACK_SIZE  (2048)
 
 #define CONFIG_TIMEOUT  (2) /* second */
 
@@ -33,8 +36,9 @@
 #define DEFAULT_CAR_MODEL       CYCLE_CAR
 #define DEFAULT_KINEMATIC_MODEL DIFF_CAR
 #define DEFAULT_WHEEL_SPACE     (0.250f)
-#define DEFAULT_WHEEL_RADIUS    (0.05316f)
+#define DEFAULT_WHEEL_PERIMETER    (0.334)
 #define DEFAULT_MAX_SPEED       (1.0f)
+#define DEFAULT_MAX_ANGLE_SPEED (1.5f)
 #define DEFAULT_MAX_POSITION    (0.5)
 
 #define DEFAULT_MAX_POS_ANGLE   (11)    /* RPM */
@@ -65,7 +69,6 @@ struct config_parameters_s
   pthread_cond_t config_cond;
   struct qrc_pipe_s *pipe;
   bool initialized;
-
 } __attribute__((aligned(4)));
 
 struct mcb_task_s {
@@ -100,18 +103,19 @@ static enum mcb_task_id_e start_mcb_task(void);
  ****************************************************************************/
 /* Index match with enum mcb_task_id_e */
 static struct mcb_task_s mcb_tasks[] = {
-  {"MOTION_MANAGEMENT",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"CHARGER_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"RC_MANAGEMENT",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"AVOID_MANAGEMENT",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"TIME_SYNC",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"IMU",                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"MISC",                DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"MOTION_ODOM",         DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"ROBOT_CONTROLLER",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"CHARGER_CONTROLLER",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"REMOTE_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
-  {"EMERGENCY",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL, NULL ,0},
+  {"MOTION_MANAGEMENT",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_management_init, NULL ,0},
+  {"CHARGER_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"RC_MANAGEMENT",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"AVOID_MANAGEMENT",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"TIME_SYNC",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"IMU",                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"MISC",                DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"MOTION_ODOM",         DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_odom,            NULL ,0},
+  {"ROBOT_CONTROLLER",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, robot_controller,       NULL ,0},
+  {"CLIENT_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, client_controller,      NULL ,0},
+  {"CHARGER_CONTROLLER",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"REMOTE_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"EMERGENCY",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
 };
 
 static bool g_initialized;
@@ -122,13 +126,15 @@ struct config_car_s config_car =
   .car_model = DEFAULT_CAR_MODEL,
   .kinematic_model = DEFAULT_KINEMATIC_MODEL,
   .wheel_space = DEFAULT_WHEEL_SPACE,
-  .wheel_radius = DEFAULT_WHEEL_RADIUS,
+  .wheel_perimeter = DEFAULT_WHEEL_PERIMETER,
 };
 
 struct config_motion_s motion_parameters =
 {
   .max_speed = DEFAULT_MAX_SPEED,
-  .max_position = DEFAULT_MAX_POSITION,
+  .max_angle_speed = DEFAULT_MAX_ANGLE_SPEED,
+  .max_position_dist = DEFAULT_MAX_POSITION,
+  .max_position_angle = DEFAULT_MAX_POSITION,
   .max_position_line_speed = DEFAULT_MAX_POS_DIST,
   .max_position_angle_speed = DEFAULT_MAX_POS_ANGLE,
   .pid_speed = {DEFAULT_SPEED_KP,DEFAULT_SPEED_KI,0},
@@ -166,7 +172,7 @@ static struct mcb_config_parameters_s  g_parameters_list[] = {
   {MOTION,              &motion_parameters, sizeof(struct config_motion_s)},
   {SCALE,               &config_scales,     sizeof(struct config_scale_s)},
   {SENSOR,              &senor_parameters,  sizeof(struct config_sensor_s)},
-  {REMOTE_CONTROLLER,   &rc_parameters,     sizeof(struct config_remote_controller_s)},
+  {RC,                  &rc_parameters,     sizeof(struct config_remote_controller_s)},
   {OBSTACLE_AVOIDANCE,  &config_ob,         sizeof(struct config_obstacle_avoidance_s)},
 };
 
@@ -418,7 +424,7 @@ void config_notify_completed(bool initialized)
     }
 }
 
-int config_parameter_init(int argc, char *argv[])
+int config_parameter_init(void)
 {
   char pipe_name[] = CONFIG_PIPE;
   int status;

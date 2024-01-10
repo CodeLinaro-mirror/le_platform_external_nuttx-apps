@@ -19,6 +19,7 @@
 #include "motion_odom.h"
 #include "motion_msg.h"
 #include "qrc_msg_management.h"
+#include "main.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -83,6 +84,7 @@ int motion_odom(int argc, char *argv[])
   if (g_odom_pipe == NULL)
     {
       /* notify error */
+      config_notify_completed(false);
       return -1;
     }
 
@@ -90,6 +92,6 @@ int motion_odom(int argc, char *argv[])
   register_motion_odom_cb(motion_public_odom);
 
   /* notify ok */
-
+  config_notify_completed(true);
   return 0;
 }

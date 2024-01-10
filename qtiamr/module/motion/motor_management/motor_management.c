@@ -48,6 +48,7 @@ struct motor_management_s
   motion_odom_cb motion_odom_cb;
   motor_notify_cb pose_done_cb;
   motor_notify_cb switch_done_cb;
+  uint32_t frequency;
 }__attribute__((aligned(4)));
 
 /* hal object */
@@ -84,7 +85,8 @@ static struct motor_management_s g_motor_manager =
   .motor_ops = NULL,
   .motion_odom_cb = NULL,
   .pose_done_cb = NULL,
-  .switch_done_cb = NULL
+  .switch_done_cb = NULL,
+  .frequency = MOTOR_THREAD_FRQUENCY,
 };
 
 /****************************************************************************
@@ -216,11 +218,21 @@ void motor_register_switching_done_cb(motor_notify_cb switch_done_cb)
   g_motor_manager.switch_done_cb = switch_done_cb;
 }
 
-/* get motor odom & status data */
-void motor_management_thread(void)
+void motor_set_odom_frquency(uint32_t frequency)
+{
+  g_motor_manager.frequency = frequency;
+}
+
+/****************************************************************************
+ * Name: motor_management_thread
+ * function: get motor odom & status data
+ ****************************************************************************/
+
+int motor_management_thread(int argc, char *argv[])
 {
   enum motion_sm_state_e control_state;
   struct motion_odom_s odom;
+  uint32_t frequency = g_motor_manager.frequency;
 
   if (!init_motor())
     {
@@ -231,7 +243,7 @@ void motor_management_thread(void)
   while(true)
     {
       /* set frequency */
-      usleep(1000000/MOTOR_THREAD_FRQUENCY);
+      usleep(1000000/frequency);
 
       control_state = get_motion_sm_state();
       if (control_state == ST_SPEED)

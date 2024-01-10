@@ -16,7 +16,7 @@
 #include <debug.h>
 
 #include "robot_controller.h"
-
+#include "main.h"
 
 /* switch done cb register need to do  */
 
@@ -122,6 +122,7 @@ int robot_controller(int argc, char *argv[])
   if (pipe == NULL)
     {
       /* notify error */
+      config_notify_completed(false);
       return -1;
     }
 
@@ -129,10 +130,11 @@ int robot_controller(int argc, char *argv[])
     {
       syslog(LOG_ERR,"qrc register robot control cb error\n");
       /* notify error */
+      config_notify_completed(false);
       return -1;
     }
 
   /* notify ok */
-
+  config_notify_completed(true);
   return 0;
 }

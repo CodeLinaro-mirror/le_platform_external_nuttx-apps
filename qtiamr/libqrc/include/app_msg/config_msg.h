@@ -22,7 +22,7 @@ enum config_msg_type_e
   MOTION,
   SCALE,
   SENSOR,
-  REMOTE_CONTROLLER,
+  RC,
   OBSTACLE_AVOIDANCE,
   CONFIG_MSG_TYPE_MAX,
   APPLY,
@@ -69,27 +69,29 @@ struct config_car_s
 {
   enum car_model_e car_model;
   enum kinematic_model_e kinematic_model;
-  double wheel_space;
-  double wheel_radius;
+  float wheel_space;
+  float wheel_perimeter;
 }__attribute__((aligned(4)));
 
 struct config_motion_s
 {
-  double max_speed;
-  double max_position;
-  double max_position_line_speed;
-  double max_position_angle_speed;
-  double pid_speed[3];
-  double pid_position[3];
+  float max_speed;
+  float max_angle_speed;
+  float max_position_dist;
+  float max_position_angle;
+  float max_position_line_speed;
+  float max_position_angle_speed;
+  float pid_speed[3];
+  float pid_position[3];
   uint32_t odom_frequency;
 }__attribute__((aligned(4)));
 
 struct config_scale_s
 {
-  double speed_scale[2];
-  double position_scale[2];
-  double speed_odom_scale[2];
-  double position_odom_scale[2];
+  float speed_scale[2];	/* 0: line speed; 1: angle speed */
+  float position_scale[2];
+  float speed_odom_scale[2];
+  float position_odom_scale[2];
 }__attribute__((aligned(4)));
 
 struct config_sensor_s
@@ -101,12 +103,12 @@ struct config_sensor_s
 
 struct config_remote_controller_s
 {
-  double max_speed;
+  float max_speed;
 }__attribute__((aligned(4)));
 
 struct config_obstacle_avoidance_s
 {
-  double safe_distance;
+  float safe_distance;
 }__attribute__((aligned(4)));
 
 struct config_msg_s

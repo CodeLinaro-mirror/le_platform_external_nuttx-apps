@@ -69,6 +69,6 @@ void motor_register_odometry_cb(motion_odom_cb odom_cb);
 void motor_register_position_done_cb(motor_notify_cb pose_done_cb);
 void motor_register_switching_done_cb(motor_notify_cb switch_done_cb);
 
-void motor_management_thread(void);
+int motor_management_thread(int argc, char *argv[]);
 
 #endif /* __MOTOR_MANAGEMENT_H */

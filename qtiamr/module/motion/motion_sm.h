@@ -69,4 +69,6 @@ int motion_sm_event(enum motion_sm_event_e event ,union motion_control_data_u da
 void register_motion_switch_done_cb(motion_cb cb_fun, void *arg);
 void register_motion_odom_done_cb(motion_cb cb_fun, void *arg);
 
+int motion_sm_init(void);
+
 #endif /* __MOTION_SM_H */
