@@ -38,6 +38,7 @@ C_INCLUDES +=  \
     -I$(CAR_DIR)/app/* \
     -I$(CAR_DIR)/app/motion_odom \
     -I$(CAR_DIR)/app/robot_controller \
+    -I$(CAR_DIR)/app/time_sync \
     -I$(CAR_DIR)/libqrc/include/app_msg \
     -I$(CAR_DIR)/libqrc/include/module \
     -I$(CAR_DIR)/libqrc/protocol/qrc \
@@ -59,6 +60,7 @@ CSRCS += $(CAR_DIR)/app/configuration/robot_configuration.c
 CSRCS += $(CAR_DIR)/app/motion_odom/motion_odom.c
 CSRCS += $(CAR_DIR)/app/robot_controller/client.c
 CSRCS += $(CAR_DIR)/app/robot_controller/robot_controller.c
+CSRCS += $(CAR_DIR)/app/time_sync/time_sync.c
 
 # protocol/libqrc source
 CSRCS += $(CAR_DIR)/protocol/canopen/canopen.c
