@@ -66,9 +66,9 @@ CSRCS += $(CAR_DIR)/protocol/canopen/canopen.c
 CSRCS += $(CAR_DIR)/libqrc/protocol/qrc/qrc.c
 #CSRCS += $(CAR_DIR)/libqrc/protocol/qrc/tinyframe/TF_Config.c
 CSRCS += $(CAR_DIR)/libqrc/protocol/tinyframe/TinyFrame.c
+CSRCS += $(CAR_DIR)/libqrc/protocol/qrc_msg_management.c
 
 # module source
-CSRCS += $(CAR_DIR)/module/qrc_msg_management/qrc_msg_management.c
 CSRCS += $(CAR_DIR)/module/motion/motion_management.c
 CSRCS += $(CAR_DIR)/module/motion/control_sm.c
 CSRCS += $(CAR_DIR)/module/motion/motion_sm.c
