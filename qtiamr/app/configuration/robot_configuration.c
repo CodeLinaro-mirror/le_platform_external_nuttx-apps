@@ -21,8 +21,8 @@
 
 #include "motion_odom.h"
 #include "robot_controller.h"
-#include "motion_odom.h"
 #include "motion_management.h"
+#include "time_sync.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -104,13 +104,12 @@ static enum mcb_task_id_e start_mcb_task(void);
  * Private Data
  ****************************************************************************/
 /* Index match with enum mcb_task_id_e */
-static struct mcb_task_s mcb_tasks[] =
-{
-  {"MOTION_MANAG",        DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_management_init, NULL ,0},
-  {"CHARGER_MANAG",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
-  {"RC_MANAG",            DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
-  {"AVOID_MANAGE",        DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
-  {"TIME_SYNC",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+static struct mcb_task_s mcb_tasks[] = {
+  {"MOTION_MANAGEMENT",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_management_init, NULL ,0},
+  {"CHARGER_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"RC_MANAGEMENT",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"AVOID_MANAGEMENT",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"TIME_SYNC",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, time_sync_thread,       NULL ,0},
   {"IMU",                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
   {"MISC",                DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
   {"MOTION_ODOM",         DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_odom,            NULL ,0},
