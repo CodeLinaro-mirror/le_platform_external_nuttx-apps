@@ -93,5 +93,6 @@ int motion_odom(int argc, char *argv[])
 
   /* notify ok */
   config_notify_completed(true);
+
   return 0;
 }

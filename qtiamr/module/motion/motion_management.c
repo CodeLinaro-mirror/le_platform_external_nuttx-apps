@@ -199,6 +199,7 @@ int motion_management_init(int argc, char *argv[])
       config_notify_completed(false);
       return ERROR;
     }
+
   /* client control sm init */
   client_sm_init();
 

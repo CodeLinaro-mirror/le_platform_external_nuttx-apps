@@ -71,7 +71,8 @@ struct config_parameters_s
   bool initialized;
 } __attribute__((aligned(4)));
 
-struct mcb_task_s {
+struct mcb_task_s
+{
   const char  *name;
   uint32_t	priority;
 	uint32_t	stack_size;
@@ -80,7 +81,8 @@ struct mcb_task_s {
   int task_id;
 };
 
-struct mcb_config_parameters_s {
+struct mcb_config_parameters_s
+{
 	enum config_msg_type_e type;
   void * parameter;
   size_t length;
@@ -102,11 +104,12 @@ static enum mcb_task_id_e start_mcb_task(void);
  * Private Data
  ****************************************************************************/
 /* Index match with enum mcb_task_id_e */
-static struct mcb_task_s mcb_tasks[] = {
-  {"MOTION_MANAGEMENT",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_management_init, NULL ,0},
-  {"CHARGER_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
-  {"RC_MANAGEMENT",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
-  {"AVOID_MANAGEMENT",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+static struct mcb_task_s mcb_tasks[] =
+{
+  {"MOTION_MANAG",        DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_management_init, NULL ,0},
+  {"CHARGER_MANAG",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"RC_MANAG",            DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"AVOID_MANAGE",        DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
   {"TIME_SYNC",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
   {"IMU",                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
   {"MISC",                DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
@@ -167,7 +170,8 @@ struct config_obstacle_avoidance_s config_ob =
   .safe_distance = DEFAULT_SAFE_DISTANCE,
 };
 
-static struct mcb_config_parameters_s  g_parameters_list[] = {
+static struct mcb_config_parameters_s  g_parameters_list[] =
+{
   {CAR,                 &config_car,        sizeof(struct config_car_s)},
   {MOTION,              &motion_parameters, sizeof(struct config_motion_s)},
   {SCALE,               &config_scales,     sizeof(struct config_scale_s)},
@@ -254,7 +258,7 @@ static void config_parameter_qrc_msg_cb(struct qrc_pipe_s *pipe, void *data, siz
 {
   struct config_msg_s *config_msg;
 
-  if (pipe == NULL || data ==NULL)
+  if (pipe == NULL || data == NULL)
     {
       return;
     }
