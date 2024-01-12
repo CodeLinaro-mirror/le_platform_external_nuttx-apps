@@ -26,28 +26,22 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
+#ifdef QRC_MCB
+#define QRC_FD ("/dev/ttyS2")
+#define IOTAG FIONREAD
+#endif
+
 /****************************************************************************
  * Private Types
  ****************************************************************************/
-
-struct qrc_msg_cb_args_s
-{
-  void (*cb)(void* arg);  /* qrc_msg_cb */
-  struct qrc_pipe_s *pipe;
-  void *data;
-  size_t len;
-  bool response;
-};
-
-typedef void (*qrc_work)(struct qrc_msg_cb_args_s args);
 
 /***********************************************************************/
 
 /* semaphore   */
 struct  work_sem_s
 {
-  pthread_mutex_t work_mutex;
-  pthread_cond_t work_cond;
+  pthread_mutex_t mutex;
+  pthread_cond_t cond;
   int value;
 };
 
@@ -137,7 +131,7 @@ static int thread_init(struct qrc_thread_pool_s * qrc_tp, struct qrc_thread_s **
 	(*threads)->qrc_tp = qrc_tp;
 	(*threads)->id       = id;
 
-	pthread_create(&(*threads)->pthread, NULL, (void * (*)(void *)) thread_do, (*threads));
+	pthread_create(&(*threads)->pthread, NULL, (void * (*)(void *)) thread_run, (*threads));
 	pthread_detach((*threads)->pthread);
 	return 0;
 }
@@ -150,7 +144,6 @@ static void thread_hold(int sig_id) {
 		sleep(1);
 	}
 }
-
 
 static void* thread_run(struct qrc_thread_s *qrc_thread)
 {
@@ -187,7 +180,7 @@ static void* thread_run(struct qrc_thread_s *qrc_thread)
 			if (work_p) {
 				work_fun = work_p->work_fun;
 				args  = &work_p->args;
-				work_fun(args);
+				work_fun(*args);
 				free(work_p);
 			}
 
@@ -211,8 +204,6 @@ static void thread_destroy(struct qrc_thread_s *qrc_thread)
 {
 	free(qrc_thread);
 }
-
-
 
 static int workqueue_init(struct qrc_workqueue_s *workqueue)
 {
@@ -244,26 +235,27 @@ static void workqueue_clear(struct qrc_workqueue_s *workqueue)
 	workqueue->len = 0;
 }
 
-static void workqueue_push(struct qrc_workqueue_s *workqueue, struct work* newwork){
+static void  workqueue_push(struct qrc_workqueue_s *workqueue, struct qrc_work_s *work)
+{
 
 	pthread_mutex_lock(&workqueue->queue_mutex);
-	newwork->prev = NULL;
+	work->previous = NULL;
 
 	switch(workqueue->len)
 	  {
 
 		case 0:
 		  {
-			workqueue->work_front = newwork;
-			workqueue->work_rear  = newwork;
+			workqueue->work_front = work;
+			workqueue->work_rear  = work;
 			break;
 		  }
 					
 
 		default:
 		  {
-			workqueue->work_rear->previous = newwork;
-			workqueue->work_rear = newwork;
+			workqueue->work_rear->previous = work;
+			workqueue->work_rear = work;
 		  }
 
 	  }
@@ -277,7 +269,7 @@ static struct qrc_work_s *workqueue_pull(struct qrc_workqueue_s *workqueue)
 {
 
 	pthread_mutex_lock(&workqueue->queue_mutex);
-	struct qrc_work_s work_p = workqueue->work_front;
+	struct qrc_work_s *work_p = workqueue->work_front;
 
 	switch(workqueue->len)
 	  {
@@ -294,7 +286,7 @@ static struct qrc_work_s *workqueue_pull(struct qrc_workqueue_s *workqueue)
 		  }
 		default:
 		  {
-			workqueue->work_front = work_p->prev;
+			workqueue->work_front = work_p->previous;
 			workqueue->len--;
 			work_sem_post(workqueue->work_sem);
 		  }
@@ -304,13 +296,11 @@ static struct qrc_work_s *workqueue_pull(struct qrc_workqueue_s *workqueue)
 	return work_p;
 }
 
-
 static void workqueue_destroy(struct qrc_workqueue_s *workqueue)
 {
   workqueue_clear(workqueue);
   free(workqueue->work_sem);
 }
-
 
 static void work_sem_init(struct work_sem_s *sem, int value)
 {
@@ -321,7 +311,7 @@ static void work_sem_init(struct work_sem_s *sem, int value)
 	}
 	pthread_mutex_init(&(sem->mutex), NULL);
 	pthread_cond_init(&(sem->cond), NULL);
-	sem->v = value;
+	sem->value = value;
 }
 
 static void work_sem_reset(struct work_sem_s *sem)
@@ -334,7 +324,7 @@ static void work_sem_reset(struct work_sem_s *sem)
 static void work_sem_post(struct work_sem_s *sem)
 {
 	pthread_mutex_lock(&sem->mutex);
-	sem->v = 1;
+	sem->value = 1;
 	pthread_cond_signal(&sem->cond);
 	pthread_mutex_unlock(&sem->mutex);
 }
@@ -342,7 +332,7 @@ static void work_sem_post(struct work_sem_s *sem)
 static void work_sem_post_all(struct work_sem_s *sem)
 {
 	pthread_mutex_lock(&sem->mutex);
-	sem->v = 1;
+	sem->value = 1;
 	pthread_cond_broadcast(&sem->cond);
 	pthread_mutex_unlock(&sem->mutex);
 }
@@ -350,10 +340,10 @@ static void work_sem_post_all(struct work_sem_s *sem)
 static void work_sem_wait(struct work_sem_s *sem)
 {
 	pthread_mutex_lock(&sem->mutex);
-	while (sem->v != 1) {
+	while (sem->value != 1) {
 		pthread_cond_wait(&sem->cond, &sem->mutex);
 	}
-	sem->v = 0;
+	sem->value = 0;
 	pthread_mutex_unlock(&sem->mutex);
 }
 
@@ -431,7 +421,6 @@ int qrc_threadpool_add_work(struct qrc_thread_pool_s * thpool, qrc_work work_fun
 
   /* add function and argument */
   newwork->work_fun=work_fun;
-  newwork->args=arg_p;
   memcpy(&newwork->args, &args, sizeof(struct qrc_msg_cb_args_s));
   /* add work to queue */
   workqueue_push(&thpool->workqueue, newwork);

@@ -18,6 +18,12 @@
 #define IOTAG FIONREAD
 #endif
 
+/* qrc thread pool  */
+static void qrc__msg_cb_work(struct qrc_msg_cb_args_s args);
+qrc_thread_pool g_qrc_threadpool;
+#define QRC_THREAD_NUM (2)
+
+
 static pthread_mutex_t pipe_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 static qrc_pipe_s *pipe_list[64] = {NULL};
 static int fd;
@@ -117,8 +123,16 @@ TF_Result read_response_listener(TinyFrame *tf, TF_Msg *msg)
         uint8_t cb_len = msg->len - sizeof(qrc_frame);
         unsigned char *cb_data = (unsigned char*)malloc(cb_len);
         memcpy(cb_data, msg->data + sizeof(qrc_frame), cb_len);
-        p->cb(p, (void*)cb_data, (size_t)cb_len, false);
-        free(cb_data);
+
+        /* create qrc work */
+        struct qrc_msg_cb_args_s args;
+        args.fun_cb = p->cb;
+        args.pipe = p;
+        args.data = cb_data;
+        args.len = msg->len - sizeof(qrc_frame);
+        args.response = false;
+        /* add work in workqueue */
+        qrc_threadpool_add_work(g_qrc_threadpool, qrc__msg_cb_work, args);
       }
     }
   }
@@ -164,6 +178,9 @@ void qrc_init(void)
         exit(-1);
     }
     qrc_pipe_list_init();
+  
+  /* qrc thread pool init */
+  g_qrc_threadpool = qrc_thread_pool_init(QRC_THREAD_NUM);
 }
 
 /*
@@ -304,4 +321,11 @@ bool qrc_frame_send(const qrc_frame *qrcf, const void *data, const size_t len)
     TinyFrame *tf;
     tf = TF_Init(TF_MASTER);
     return TF_Send(tf, &msg);
+}
+
+/* qrc message callback work function */
+static void qrc__msg_cb_work(struct qrc_msg_cb_args_s args)
+{
+  args.fun_cb(args.pipe, args.data, args.len, args.response);
+  free(args.data);
 }

@@ -237,7 +237,7 @@ int motor_management_thread(int argc, char *argv[])
   if (!init_motor())
     {
       syslog(LOG_ERR,"motor management init error \n");
-      return;
+      return ERROR;
     }
 
   while(true)
@@ -260,4 +260,6 @@ int motor_management_thread(int argc, char *argv[])
             }
         }
     }
+
+  return ERROR;
 }

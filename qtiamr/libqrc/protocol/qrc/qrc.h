@@ -45,7 +45,7 @@ typedef struct qrc_pipe_s
     void (*cb)(struct qrc_pipe_s *pipe, void *data, size_t len, bool response);
 } qrc_pipe_s;
 
-typedef void (*qrc_msg_cb)(struct qrc_pipe_s *pipe, void *data, size_t len, bool response); 
+typedef void (*qrc_msg_cb)(struct qrc_pipe_s *pipe, void *data, size_t len, bool response);
 
 bool qrc_write_request(const char *pipe_name, const uint8_t pipe_id, const uint8_t cmd);
 void qrc_init(void);
@@ -56,4 +56,24 @@ qrc_pipe_s *qrc_pipe_find_by_name(const char *pipe_name);
 qrc_pipe_s *qrc_pipe_find_by_pipeid(const uint8_t pipe_id);
 qrc_pipe_s *qrc_pipe_modify_by_name(const char *pipe_name, const qrc_pipe_s *new_data);
 bool qrc_frame_send(const qrc_frame *qrcf, const void *data, const size_t len);
+
+
+/* qrc thread pool */
+struct qrc_msg_cb_args_s
+{
+  qrc_msg_cb fun_cb;  /* qrc_msg_cb */
+  struct qrc_pipe_s *pipe;
+  void *data;
+  size_t len;
+  bool response;
+};
+
+typedef struct qrc_thread_pool_s * qrc_thread_pool;
+typedef void (*qrc_work)(struct qrc_msg_cb_args_s args);
+
+struct qrc_thread_pool_s * qrc_thread_pool_init(int num);
+int qrc_threadpool_add_work(struct qrc_thread_pool_s * thpool, qrc_work work_fun, struct qrc_msg_cb_args_s args);
+void qrc_threadpool_wait(struct qrc_thread_pool_s * thpool);
+void qrc_threadpool_destroy(struct qrc_thread_pool_s * thpool);
+
 #endif
