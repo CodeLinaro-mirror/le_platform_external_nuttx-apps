@@ -10,8 +10,8 @@
 
 #include "config_msg.h"
 
-#define DEFAULT_PRIORITY  (110)
-#define DEFAULT_STACK_SIZE  (2048)
+#define DEFAULT_PRIORITY  PTHREAD_DEFAULT_PRIORITY
+#define DEFAULT_STACK_SIZE (1024*4)
 
 /* configuration API */
 

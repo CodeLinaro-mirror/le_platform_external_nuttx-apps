@@ -20,22 +20,19 @@
 
 #include "qrc.h"
 
-/* function to realize qrc callback thread pool */
+
+#ifdef QRC_MCB
+#define QRC_THREAD_PRIORITY SCHED_PRIORITY_DEFAULT
+#define QRC_THREAD_STACKSIZE (1024*8)
+#endif
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
-#ifdef QRC_MCB
-#define QRC_FD ("/dev/ttyS2")
-#define IOTAG FIONREAD
-#endif
-
 /****************************************************************************
  * Private Types
  ****************************************************************************/
-
-/***********************************************************************/
 
 /* semaphore   */
 struct  work_sem_s
@@ -131,7 +128,49 @@ static int thread_init(struct qrc_thread_pool_s * qrc_tp, struct qrc_thread_s **
 	(*threads)->qrc_tp = qrc_tp;
 	(*threads)->id       = id;
 
+#ifdef QRC_MCB
+	pthread_attr_t attr;
+	struct sched_param sparam;
+	int status;
+
+	status = pthread_attr_init(&attr);
+	if (status != 0)
+    {
+      printf("thread_init: ERROR pthread_attr_init failed, status=%d\n",
+             status);
+      ASSERT(false);
+    }
+
+	status = pthread_attr_setstacksize(&attr, QRC_THREAD_STACKSIZE);
+	if (status != 0)
+    {
+      printf("thread_init: "
+             "ERROR pthread_attr_setstacksize failed, status=%d\n",
+             status);
+      ASSERT(false);
+    }
+
+	sparam.sched_priority = QRC_THREAD_PRIORITY;
+	status = pthread_attr_setschedparam(&attr, &sparam);
+	if (status != 0)
+    {
+      printf("thread_init: "
+             "ERROR pthread_attr_setschedparam failed, status=%d\n",
+             status);
+      ASSERT(false);
+    }
+
+	status = pthread_create(&(*threads)->pthread, &attr, (void * (*)(void *)) thread_run, (*threads));
+	if (status != 0)
+    {
+      printf("thread_init: "
+             "ERROR pthread_create failed, status=%d\n", status);
+      ASSERT(false);
+    }
+#else
 	pthread_create(&(*threads)->pthread, NULL, (void * (*)(void *)) thread_run, (*threads));
+#endif
+
 	pthread_detach((*threads)->pthread);
 	return 0;
 }
