@@ -196,7 +196,6 @@ static void* thread_run(struct qrc_thread_s *qrc_thread)
 	pthread_mutex_lock(&qrc_tp->thread_count_lock);
 	qrc_tp->num_threads_alive += 1;
 	pthread_mutex_unlock(&qrc_tp->thread_count_lock);
-
 	while(g_threads_keepalive)
 	{
 		work_sem_wait(qrc_tp->workqueue.work_sem);
@@ -437,7 +436,10 @@ struct qrc_thread_pool_s * qrc_thread_pool_init(int num)
     }
 
   /* Wait for threads to initialize */
-  while (thpool->num_threads_alive != num) {}
+  while (thpool->num_threads_alive != num) {
+	sleep(1);
+	printf("wait thread_alive \n");
+  }
 
   return thpool;
 }
@@ -498,7 +500,7 @@ void qrc_threadpool_destroy(struct qrc_thread_pool_s * thpool)
 	/* Poll remaining threads */
 	while (thpool->num_threads_alive){
 		work_sem_post_all(thpool->workqueue.work_sem);
-		sleep(1);
+		sleep(2);
 	}
 
 	/* work queue cleanup */

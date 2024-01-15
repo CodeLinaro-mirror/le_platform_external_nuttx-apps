@@ -24,6 +24,8 @@
 
 typedef void (*motion_cb)(void *user);  /* motion cb for user */
 
+typedef int (*do_action_fun)(union motion_control_data_u data);  /* action function format */
+
 /****************************************************************************
  * Public Types
  ****************************************************************************/
@@ -70,5 +72,26 @@ void register_motion_switch_done_cb(motion_cb cb_fun, void *arg);
 void register_motion_odom_done_cb(motion_cb cb_fun, void *arg);
 
 int motion_sm_init(void);
+
+
+/* motion thread pool */
+struct motion_args_s
+{
+  do_action_fun fun_cb;  /* qrc_msg_cb */
+  union motion_control_data_u data;
+};
+
+typedef struct motion_thread_pool_s * motion_thread_pool;
+typedef void (*motion_work)(struct motion_args_s args);
+
+struct motion_thread_pool_s * motion_thread_pool_init(int num);
+int motion_threadpool_add_work(struct motion_thread_pool_s * thpool, motion_work work_fun, struct motion_args_s args);
+void motion_threadpool_wait(struct motion_thread_pool_s * thpool);
+void motion_threadpool_destroy(struct motion_thread_pool_s * thpool);
+
+void motion_threads_join(struct motion_thread_pool_s * thpool);
+
+void motion_sm_join(void);
+
 
 #endif /* __MOTION_SM_H */

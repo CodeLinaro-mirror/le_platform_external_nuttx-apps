@@ -68,7 +68,7 @@ struct config_parameters_s
   pthread_mutex_t config_mutex;
   pthread_cond_t config_cond;
   struct qrc_pipe_s *pipe;
-  bool initialized;
+  bool notify_initialized;
 } __attribute__((aligned(4)));
 
 struct mcb_task_s
@@ -98,6 +98,7 @@ static void config_parameter_msg_parse(struct qrc_pipe_s *pipe, struct config_ms
 static int config_wait_notify(void);
 static void config_clear_initialization_status(void);
 static void config_set_initialization_status(bool status);
+static bool config_get_initialization_status(void);
 static enum mcb_task_id_e start_mcb_task(void);
 
 /****************************************************************************
@@ -120,7 +121,6 @@ static struct mcb_task_s mcb_tasks[] = {
   {"EMERGENCY",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
 };
 
-static bool g_initialized;
 static struct config_parameters_s g_config_parameter;
 
 struct config_car_s config_car =
@@ -191,6 +191,7 @@ static int config_wait_notify(void)
 {
   struct timespec ts;
   int status;
+  int result;
 
   status = pthread_mutex_lock(&g_config_parameter.config_mutex);
   if (status != 0)
@@ -214,7 +215,7 @@ static int config_wait_notify(void)
     {
       if (status == ETIMEDOUT)
         {
-          syslog(LOG_ERR,"config_wait_notify: pthread_cond_timedwait timed out\n");
+          syslog(LOG_INFO,"config_wait_notify: pthread_cond_timedwait timed out\n");
         }
       else
         {
@@ -223,14 +224,8 @@ static int config_wait_notify(void)
           ASSERT(false);
         }
     }
-  else
-    {
-      syslog(LOG_ERR,"config_wait_notify: ERROR"
-              "pthread_cond_timedwait returned without timeout, status=%d\n",
-              status);
-      ASSERT(false);
-    }
 
+  result = status;
   /* Release the mutex */
 
   status = pthread_mutex_unlock(&g_config_parameter.config_mutex);
@@ -240,17 +235,23 @@ static int config_wait_notify(void)
               status);
       ASSERT(false);
     }
-  return status;
+
+  return result;
 }
 
 static void config_clear_initialization_status(void)
 {
-  g_initialized = false;
+  g_config_parameter.notify_initialized = false;
 }
 
 static void config_set_initialization_status(bool status)
 {
-  g_initialized = status;
+  g_config_parameter.notify_initialized = status;
+}
+
+static bool config_get_initialization_status(void)
+{
+  return g_config_parameter.notify_initialized;
 }
 
 static void config_parameter_qrc_msg_cb(struct qrc_pipe_s *pipe, void *data, size_t len, bool response)
@@ -342,6 +343,10 @@ static enum mcb_task_id_e start_mcb_task(void)
 
       if (NULL != mcb_tasks[index].task_func)
         {
+
+          /* clear initialization tatus */
+          config_clear_initialization_status();
+
           ret = task_create(mcb_tasks[index].name,
                         mcb_tasks[index].priority,
                         mcb_tasks[index].stack_size,
@@ -354,22 +359,21 @@ static enum mcb_task_id_e start_mcb_task(void)
                             mcb_tasks[index].name,errcode);
               return index;
             }
-            syslog(LOG_INFO, "start_mcb_task: Starting the pid %d\n", ret);
+            syslog(LOG_INFO, "start_mcb_task: Starting the pid %d index=%d\n", ret,index);
             mcb_tasks[index].task_id = ret;
+
+          /* wait notify */
+          config_wait_notify();
+
+          /* check status */
+          if (false == config_get_initialization_status())
+            {
+              syslog(LOG_INFO, "start_mcb_task: task init %s failed \n", mcb_tasks[index].name);
+              break;
+            }
+
+          syslog(LOG_INFO, "start_mcb_task: Started the task %s done\n", mcb_tasks[index].name);
         }
-
-      /* clear initialization tatus */
-      config_clear_initialization_status();
-
-      /* wait notify */
-      config_wait_notify();
-
-      /* check status */
-      if (false == g_initialized)
-        {
-        break;
-        }
-      syslog(LOG_INFO, "start_mcb_task: Started the task %s\n", mcb_tasks[index].name);
     }
 
   return index;
@@ -463,8 +467,6 @@ int config_parameter_init(void)
       syslog(LOG_ERR,"qrc register config parameter cb error\n");
       return -1;
     }
-
-  g_config_parameter.initialized = false;
 
   return 0;
 }

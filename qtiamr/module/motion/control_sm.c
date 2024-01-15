@@ -47,6 +47,7 @@ struct control_sm_s
   enum control_sm_state_e control_state;
   pthread_rwlock_t control_rwlock;
   control_sm_notify_cb cb_list[MAX_CLIENT];
+  int num_cb;
 } __attribute__((aligned(4)));
 
 /****************************************************************************
@@ -114,7 +115,7 @@ static int control_sm_state_trans(struct control_sm_transform_s *statetrans)
     }
 
   curr_state = &g_control_sm.control_state;
-  if (*curr_state == statetrans->current_state)
+  if (*curr_state != statetrans->next_state)
     {
       *curr_state = statetrans->next_state;
       do_action(*curr_state);
@@ -190,12 +191,12 @@ static int client_contrl_sm_event(enum control_sm_event_e event)
             }
           case ST_CHARGER_CONTROLLING:
             {
-              result = control_sm_state_trans(&statetrans_robot_control[event]);
+              result = control_sm_state_trans(&statetrans_charger_control[event]);
               break;
             }
           case ST_REMOTE_CONTROLLING:
             {
-              result = control_sm_state_trans(&statetrans_robot_control[event]);
+              result = control_sm_state_trans(&statetrans_remote_control[event]);
               break;
             }
           default :
@@ -233,6 +234,8 @@ void client_sm_init(void)
     {
       g_control_sm.cb_list[i] = NULL;
     }
+  g_control_sm.num_cb = 0;
+  syslog(LOG_INFO," client state machine init ok\n");
 }
 
 /****************************************************************************
@@ -307,4 +310,15 @@ int set_control_client(enum control_client_e client)
     }
 
   return client_contrl_sm_event(event);
+}
+
+bool client_control_sm_register_notify_cb(control_sm_notify_cb fun_cb)
+{
+  if (g_control_sm.num_cb < MAX_CLIENT)
+    {
+      g_control_sm.cb_list[g_control_sm.num_cb++] = fun_cb;
+      return true;
+    }
+
+  return false;
 }

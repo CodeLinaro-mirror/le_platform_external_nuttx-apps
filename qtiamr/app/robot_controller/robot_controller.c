@@ -76,6 +76,7 @@ static void robot_control_msg_parse(struct qrc_pipe_s *pipe, struct motion_contr
       case SET_EMERGENCY:
         {
           motion_set_emergency(control_msg->data.emergency);
+          break;
         }
       case SET_POSITION:
       default:
@@ -117,11 +118,9 @@ int robot_controller(int argc, char *argv[])
 
   struct qrc_pipe_s *pipe;
 
-  /* get pipe */
   pipe =  qrc_get_pipe(pipe_name);
   if (pipe == NULL)
     {
-      /* notify error */
       config_notify_completed(false);
       return -1;
     }
@@ -129,12 +128,12 @@ int robot_controller(int argc, char *argv[])
   if (!qrc_register_message_cb(pipe, robot_control_qrc_msg_cb))
     {
       syslog(LOG_ERR,"qrc register robot control cb error\n");
-      /* notify error */
       config_notify_completed(false);
       return -1;
     }
 
   /* notify ok */
   config_notify_completed(true);
+
   return 0;
 }

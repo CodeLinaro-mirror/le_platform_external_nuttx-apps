@@ -17,6 +17,7 @@
 
 #include "robot_controller.h"
 #include "main.h"
+#include "motion_management.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -61,6 +62,7 @@ static void client_msg_parse(struct qrc_pipe_s *pipe, struct client_msg_s *clien
     {
       case SET_CLIENT:
         {
+          syslog(LOG_INFO,"client msg SET_CLIENT =  %d\n",client_msg->client);
           set_control_client(client_msg->client);
           break;
         }
@@ -114,10 +116,10 @@ int client_controller(int argc, char *argv[])
   struct qrc_pipe_s *pipe;
 
   /* get pipe */
+
   pipe =  qrc_get_pipe(pipe_name);
   if (pipe == NULL)
     {
-      /* notify error */
       config_notify_completed(false);
       return -1;
     }
@@ -125,13 +127,13 @@ int client_controller(int argc, char *argv[])
   if (!qrc_register_message_cb(pipe, client_qrc_msg_cb))
     {
       syslog(LOG_ERR,"qrc register client cb error\n");
-      /* notify error */
       config_notify_completed(false);
       return -1;
     }
 
   /* notify ok */
   config_notify_completed(true);
-
+  syslog(LOG_INFO,"client_controller client exit \n");
   return 0;
 }
+

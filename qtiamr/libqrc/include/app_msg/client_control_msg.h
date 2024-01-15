@@ -25,8 +25,8 @@ enum client_msg_type_e
 enum control_client_e
 {
   ROBOT_CONTROLLER = 0x00,
-  REMOTE_CONTROLLER,
   CHARGER_CONTROLLER,
+  REMOTE_CONTROLLER,
   MAX_CLIENT
 };
 

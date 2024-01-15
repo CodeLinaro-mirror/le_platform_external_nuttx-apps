@@ -74,6 +74,7 @@ CSRCS += $(QTIARM_DIR)/libqrc/protocol/qrc_msg_management.c
 CSRCS += $(QTIARM_DIR)/module/motion/motion_management.c
 CSRCS += $(QTIARM_DIR)/module/motion/control_sm.c
 CSRCS += $(QTIARM_DIR)/module/motion/motion_sm.c
+#CSRCS += $(QTIARM_DIR)/module/motion/motion_threadpool.c
 CSRCS += $(QTIARM_DIR)/module/motion/kinematic/kinematics.c
 CSRCS += $(QTIARM_DIR)/module/motion/kinematic/diff_car/diff_car.c
 CSRCS += $(QTIARM_DIR)/module/motion/motor_management/motor_management.c

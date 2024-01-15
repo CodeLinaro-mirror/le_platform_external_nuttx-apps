@@ -58,6 +58,7 @@ static void motion_public_odom(struct motion_odom_s motion_odom)
     }
 
   /* write odom command with ack */
+
   result = qrc_write(g_odom_pipe, (void *)&motion_odom, sizeof(struct motion_odom_s), true);
   if (result != SUCCESS)
     {
@@ -80,10 +81,10 @@ int motion_odom(int argc, char *argv[])
   char pipe_name[] = ODOM_PIPE;
 
   /* get qrc pipe */
+
   g_odom_pipe =  qrc_get_pipe(pipe_name);
   if (g_odom_pipe == NULL)
     {
-      /* notify error */
       config_notify_completed(false);
       return -1;
     }

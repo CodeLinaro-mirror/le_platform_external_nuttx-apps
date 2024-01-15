@@ -60,7 +60,9 @@ struct motion_pid_s
 
 enum motion_result_e
 {
-  DRV_BUSY = 1,
+  DRV_ERR = -1,
+  M_OK = 0,
+  DRV_BUSY,
   CLIENT_ERR,
   SM_ERR,
 };

@@ -70,9 +70,9 @@ enum motion_result_e motion_speed_control(enum control_client_e client,
           result = motion_sm_event(motion_event,data);
         }
       else
-       {
+        {
           result = SM_ERR;
-       }
+        }
     }
   else
     result = CLIENT_ERR;
@@ -122,6 +122,7 @@ enum motion_result_e motion_switch_mode(enum control_mode_e mode)
     }
   data.mode = mode;
   result = motion_sm_event(motion_event,data);
+  syslog(LOG_INFO, "Motion sm state = %d \n", get_motion_sm_state());
 
   return result;
 }
@@ -157,6 +158,7 @@ int motion_management_init(int argc, char *argv[])
   result |= get_configuration_parameters(SCALE, (void *)&config_scales);
   if (result != OK)
     {
+      syslog(LOG_INFO,"motion_management_init:  get config parameters Failed \n");
       config_notify_completed(false);
       return result;
     }
@@ -174,8 +176,19 @@ int motion_management_init(int argc, char *argv[])
   if (OK != kinematic_init(&parameters))
     {
       config_notify_completed(false);
+      syslog(LOG_INFO,"motion_management_init: init kinematic Failed \n");
       return ERROR;
     }
+
+  /* motion sm init */
+  if (true != motion_sm_init())
+    {
+      config_notify_completed(false);
+      return ERROR;
+    }
+
+  /* client control sm init */
+  client_sm_init();
 
   /* motor management init */
   odom_frequency = config_motion.odom_frequency;
@@ -193,18 +206,13 @@ int motion_management_init(int argc, char *argv[])
       return result;
     }
 
-  /* motion sm init */
-  if (0 != motion_sm_init())
-    {
-      config_notify_completed(false);
-      return ERROR;
-    }
-
-  /* client control sm init */
-  client_sm_init();
-
-  /*notify done */
+  /* notify done */
+  syslog(LOG_INFO,"motion_management_init:  notify done \n");
   config_notify_completed(true);
+
+  /* motion action thread join */
+  motion_sm_join();
 
   return OK;
 }
+

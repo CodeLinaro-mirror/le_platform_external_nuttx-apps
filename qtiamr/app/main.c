@@ -16,6 +16,8 @@
 
 #include "main.h"
 
+#include "qrc.h"
+
 int main(int argc, FAR char *argv[])
 {
 
