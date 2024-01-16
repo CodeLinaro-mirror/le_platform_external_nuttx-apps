@@ -7,111 +7,186 @@
  ****************************************************************************/
 #include "qrc_msg_management.h"
 
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
+static uint8_t pipe_write_lock_owner = 255;
 
 /****************************************************************************
- * Private Types
+ * @intro: require both MCB and RB5's lock
+ * @param p: the initiator of the request
  ****************************************************************************/
+bool qrc_require_pipe(qrc_pipe_s *p)
+{
+  pipe_write_lock_owner = p->pipe_id;
+  if(false == qrc_write_request(p->pipe_name, p->pipe_id, QRC_WRITE_LOCK))
+  {
+    printf("ERROR: %s require pipe failed!\n", p->pipe_name);
+    return false;
+  }
+  qrc_frame_send_lock();
+  if(true == qrc_cmd_timeout())
+  {
+    printf("ERROR: %s requires pipe timeout!\n", p->pipe_name);
+    qrc_frame_send_unlock();
+    return false;
+  }
+  return true;
+}
 
 /****************************************************************************
- * Private Function Prototypes
+ * @intro: release both MCB and RB5's lock
+ * @param p: the initiator of the request
  ****************************************************************************/
+bool qrc_release_pipe(qrc_pipe_s *p)
+{
+  if(pipe_write_lock_owner != p->pipe_id)
+  {
+    printf("ERROR: %s releases pipe failed! owner of lock is not you!\n", p->pipe_name);
+    return false;
+  }
+  if(false == qrc_write_request(p->pipe_name, p->pipe_id, QRC_WRITE_UNLOCK))
+  {
+    printf("ERROR: %s releases pipe failed!\n", p->pipe_name);
+    return false;
+  }
+  qrc_frame_send_unlock();
+  if(true == qrc_cmd_timeout())
+  {
+    printf("ERROR: %s releases pipe timeout!\n", p->pipe_name);
+    return false;
+  }
+  return true;
+}
 
 /****************************************************************************
- * Private Data
+ * @intro: initialize qrc procotol
  ****************************************************************************/
-
-/****************************************************************************
- * Public Data
- ****************************************************************************/
-
-/****************************************************************************
- * Private Functions
- ****************************************************************************/
-
-/****************************************************************************
- * Public Functions
- ****************************************************************************/
-
-/****************************************************************************
- * Name: qrc_get_pipe
- ****************************************************************************/
-
-void init_qrc_management()
+void init_qrc_management(void)
 {
   qrc_init();
 }
 
+/****************************************************************************
+ * @intro: get a new or exited pipe
+ * @param pipe_name: name of pipe
+ * @return: pointer of pipe or NULL
+ ****************************************************************************/
 qrc_pipe_s *qrc_get_pipe(const char *pipe_name)
 {
   int pipe_name_len = (int)strlen(pipe_name);
   if (pipe_name_len > 10)
   {
-    printf("\npipe name is too long!\n");
+    printf("\nERROR: Pipe name(%s) is too long!\n", pipe_name);
     return NULL;
   }
   qrc_pipe_s *p = qrc_pipe_insert(pipe_name);
   if(NULL == p)
   {
-    printf("pipe(%s) create failed!\n", pipe_name);
+    printf("ERROR: Pipe(%s) create failed!\n", pipe_name);
     return NULL;
   }
-  qrc_write_request(pipe_name, p->pipe_id, QRC_REQUEST);
+
+  if(false == qrc_write_request(pipe_name, p->pipe_id, QRC_REQUEST))
+  {
+    printf("ERROR: Pipe(%s) create failed!\n", pipe_name);
+    return NULL;
+  }
+  if(true == qrc_cmd_timeout())
+  {
+    printf("ERROR: TIMEOUT! %s establishes connection failed!\n", pipe_name);
+    return NULL;
+  }
   return p;
 }
 
+/****************************************************************************
+ * @intro: register callback function of pipe
+ * @param pipe_name: name of pipe
+ * @param fun_cb: callback function
+ * @return: result of registration
+ ****************************************************************************/
 bool qrc_register_message_cb(qrc_pipe_s *pipe, qrc_msg_cb fun_cb)
 {
   if (pipe == NULL)
   {
-    printf("pipe is NULL! callback register failed!\n");
+    printf("ERROR: Register callback function failed! Pipe is NULL!\n");
     return false;
   }
   pipe->cb = fun_cb;
   return true;
 }
 
-/*
-* wait for implement
-*/
-enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe , const void *data, const size_t len, const bool ack)
+/****************************************************************************
+ * @intro: qrc write with lock
+ * @param pipe: writer
+ * @param data: data of writer
+ * @param len: length of data
+ * @param ack: whether writer need response, true means yes, false means no
+ * @return: SUCCESS or TIMEOUT or FAILED
+ ****************************************************************************/
+enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe, const void *data, const size_t len, const bool ack)
 {
-  return FAILED;
-}
-
-/*
-* wait for implement
-*/
-enum qrc_write_status_e qrc_sync_write(const qrc_pipe_s *pipe , const void *data, const size_t len, const void *respond_data, const size_t res_len)
-{
-  return FAILED;
-}
-
-enum qrc_write_status_e qrc_write_fast(const qrc_pipe_s *pipe , const void *data, const size_t len, const bool ack)
-{
-  while(255 == pipe->peer_pipe_id || 0 == pipe->peer_pipe_id) /*haven't got peer pipe id*/
+  enum qrc_write_status_e res = FAILED;
+  if(NULL == pipe || pipe->pipe_id >= get_pipe_number())
   {
-    usleep(1);
+    printf("ERROR: No such pipe! Write failed!\n");
+    return res;
   }
-  qrc_frame *qrcf = (qrc_frame*)malloc(sizeof(qrc_frame));
-  qrcf->receiver_id = pipe->peer_pipe_id;
-  if (true == ack)
+  if(255 == pipe->peer_pipe_id)
   {
-    qrcf->ack = 1;
+    printf("ERROR: Pipe write failed! (%s) doesn't have peer pipe!\n", pipe->pipe_name);
   }
   else
   {
-    qrcf->ack = 0;
+    qrc_frame qrcf;
+    qrcf.receiver_id = pipe->peer_pipe_id;
+    qrcf.ack = (true == ack)?ACK:NO_ACK;
+
+    bool send_result = qrc_frame_send(&qrcf, data, len, true);
+    if(true == ack)
+    {
+      start_timeout(pipe->pipe_id);
+      if(true == pipe->timeout_happen)
+      {
+        printf("ERROR: Pipe(%s) write timeout!\n", pipe->pipe_name);
+        return TIMEOUT;
+      }
+    }
+    res = (true == send_result)?SUCCESS:FAILED;
+  }
+  return res;
+}
+
+/****************************************************************************
+ * @intro: qrc write without lock
+ * @param pipe: writer
+ * @param data: data of writer
+ * @param len: length of data
+ * @return: SUCCESS or TIMEOUT or FAILED
+ ****************************************************************************/
+enum qrc_write_status_e qrc_write_fast(const qrc_pipe_s *pipe, const void *data, const size_t len)
+{
+  enum qrc_write_status_e res = FAILED;
+  if(255 == pipe->peer_pipe_id)
+  {
+    printf("ERROR: Pipe write failed! (%s) doesn't have peer pipe!\n", pipe->pipe_name);
+    return FAILED;
+  }
+  else
+  {
+    qrc_frame qrcf;
+    qrcf.receiver_id = pipe->peer_pipe_id;
+    qrcf.ack = NO_ACK;
+    bool send_result = qrc_frame_send(&qrcf, data, len, false);
+    res = (true == send_result)?SUCCESS:FAILED;
   }
 
-  bool send_result = qrc_frame_send(qrcf, data, len);
-  free(qrcf);
-  if(true == send_result)
-  {
-    return SUCCESS;
-  }
+  return res;
+}
+
+/*
+* wait for implement
+*/
+enum qrc_write_status_e qrc_sync_write(const qrc_pipe_s *pipe, const void *data, const size_t len, const void *respond_data, const size_t res_len)
+{
   return FAILED;
 }
 

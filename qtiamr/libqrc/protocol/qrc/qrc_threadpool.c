@@ -4,9 +4,6 @@
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  *
  ****************************************************************************/
-
-#include <nuttx/config.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -20,10 +17,9 @@
 
 #include "qrc.h"
 
-
 #ifdef QRC_MCB
 #define QRC_THREAD_PRIORITY SCHED_PRIORITY_DEFAULT
-#define QRC_THREAD_STACKSIZE (1024*8)
+#define QRC_THREAD_STACKSIZE (1024*4)
 #endif
 
 /****************************************************************************
@@ -128,50 +124,50 @@ static int thread_init(struct qrc_thread_pool_s * qrc_tp, struct qrc_thread_s **
 	(*threads)->qrc_tp = qrc_tp;
 	(*threads)->id       = id;
 
-#ifdef QRC_MCB
-	pthread_attr_t attr;
-	struct sched_param sparam;
-	int status;
+	#ifdef QRC_MCB
+		pthread_attr_t attr;
+		struct sched_param sparam;
+		int status;
 
-	status = pthread_attr_init(&attr);
-	if (status != 0)
-    {
-      printf("thread_init: ERROR pthread_attr_init failed, status=%d\n",
-             status);
-      ASSERT(false);
-    }
+		status = pthread_attr_init(&attr);
+		if (status != 0)
+		{
+		printf("thread_init: ERROR pthread_attr_init failed, status=%d\n",
+				status);
+		ASSERT(false);
+		}
 
-	status = pthread_attr_setstacksize(&attr, QRC_THREAD_STACKSIZE);
-	if (status != 0)
-    {
-      printf("thread_init: "
-             "ERROR pthread_attr_setstacksize failed, status=%d\n",
-             status);
-      ASSERT(false);
-    }
+		status = pthread_attr_setstacksize(&attr, QRC_THREAD_STACKSIZE);
+		if (status != 0)
+		{
+		printf("thread_init: "
+				"ERROR pthread_attr_setstacksize failed, status=%d\n",
+				status);
+		ASSERT(false);
+		}
 
-	sparam.sched_priority = QRC_THREAD_PRIORITY;
-	status = pthread_attr_setschedparam(&attr, &sparam);
-	if (status != 0)
-    {
-      printf("thread_init: "
-             "ERROR pthread_attr_setschedparam failed, status=%d\n",
-             status);
-      ASSERT(false);
-    }
+		sparam.sched_priority = QRC_THREAD_PRIORITY;
+		status = pthread_attr_setschedparam(&attr, &sparam);
+		if (status != 0)
+		{
+		printf("thread_init: "
+				"ERROR pthread_attr_setschedparam failed, status=%d\n",
+				status);
+		ASSERT(false);
+		}
 
-	status = pthread_create(&(*threads)->pthread, &attr, (void * (*)(void *)) thread_run, (*threads));
-	if (status != 0)
-    {
-      printf("thread_init: "
-             "ERROR pthread_create failed, status=%d\n", status);
-      ASSERT(false);
-    }
-#else
-	pthread_create(&(*threads)->pthread, NULL, (void * (*)(void *)) thread_run, (*threads));
-#endif
+		status = pthread_create(&(*threads)->pthread, &attr, (void * (*)(void *)) thread_run, (*threads));
+		if (status != 0)
+		{
+		printf("thread_init: "
+				"ERROR pthread_create failed, status=%d\n", status);
+		ASSERT(false);
+		}
+	#else
+		pthread_create(&(*threads)->pthread, NULL, (void * (*)(void *)) thread_run, (*threads));
+	#endif
 
-	pthread_detach((*threads)->pthread);
+	// pthread_detach((*threads)->pthread);
 	return 0;
 }
 
@@ -514,4 +510,26 @@ void qrc_threadpool_destroy(struct qrc_thread_pool_s * thpool)
 	}
 	free(thpool->threads);
 	free(thpool);
+}
+
+void qrc_threads_join(struct qrc_thread_pool_s * thpool)
+{
+	pthread_t *threads;
+	int i;
+	int thread_num = thpool->num_threads_alive;
+
+	threads = (pthread_t *)malloc(thread_num*sizeof(pthread_t));
+
+	for (i =0; i < thread_num; i++)
+	{
+		threads[i] = thpool->threads[0]->pthread;
+	}
+
+	for (i =0; i < thread_num; i++)
+	{
+		printf(" qrc_threads_join =%d \n",i);
+		pthread_join(threads[i], NULL);
+		sleep(1);
+	}
+	free(threads);
 }

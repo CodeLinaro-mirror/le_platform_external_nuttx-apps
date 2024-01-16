@@ -102,7 +102,7 @@ static void timesync_handle_cmd(void)
     {
       msg.type = TIME_LOOP;
       if (SUCCESS != qrc_write_fast(g_timesync_pipe, (void *)&msg,
-          sizeof(struct time_sync_msg_s), true))
+          sizeof(struct time_sync_msg_s)))
       {
         syslog(LOG_ERR, "timesync, timeloop send response failed\n");
       }
@@ -113,7 +113,7 @@ static void timesync_handle_cmd(void)
       msg.type = GET_TIME;
       msg.ts = ts;
       if (SUCCESS != qrc_write_fast(g_timesync_pipe, (void *)&msg,
-          sizeof(struct time_sync_msg_s), true))
+          sizeof(struct time_sync_msg_s)))
       {
         syslog(LOG_ERR, "timesync, getime send response failed\n");
       }
