@@ -61,6 +61,7 @@ CSRCS += $(QTIARM_DIR)/app/motion_odom/motion_odom.c
 CSRCS += $(QTIARM_DIR)/app/robot_controller/client.c
 CSRCS += $(QTIARM_DIR)/app/robot_controller/robot_controller.c
 CSRCS += $(QTIARM_DIR)/app/time_sync/time_sync.c
+CSRCS += $(QTIARM_DIR)/app/imu/imu.c
 
 # protocol/libqrc source
 CSRCS += $(QTIARM_DIR)/protocol/canopen/canopen.c
