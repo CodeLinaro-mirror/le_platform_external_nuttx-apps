@@ -10,13 +10,12 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <time.h>
 
 /* IMU pipe name */
 #define IMU_PIPE "imu"
 
-/* just imu data, no msg type */
-
-struct imu_msg_s
+struct imu_data_s
 {
   float xa;
   float ya;
@@ -24,6 +23,11 @@ struct imu_msg_s
   float xg;
   float yg;
   float zg;
-}__attribute__((align(4)));
+};
+
+struct imu_msg_s{
+  struct timespec ts;
+  struct imu_data_s data;
+} __attribute__((aligned(4)));
 
 #endif
