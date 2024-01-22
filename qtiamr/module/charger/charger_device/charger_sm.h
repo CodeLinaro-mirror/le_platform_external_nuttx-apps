@@ -12,59 +12,50 @@
  * Included Files
  ****************************************************************************/
 
-#include <nuttx/clock.h>
-#include "charger_device.h"
-#include "charger_qrc_common.h"
+#include <pthread.h>
 
 /********************************************************************************
  * Pre-processor Definitions
  ********************************************************************************/
 
-#define CHR_CTL_MODE_TIMEOUT            SEC2TICK(200)
-#define WHEEL_SPEED_NOTIFY_20MS         20000
-#define CHARGING_POLL_DELAY_1S          1000000
-#define BATTERY_FORCE_VOLT              2.5
-#define BATTERY_FULL_VOLT               25.2 //25.2v
-#define BATTERY_LOW_VOLT                20   //20v
-#define CHARGER_SM_PRIORITY             100
-#define CHARGER_SM_STACKSIZE            8192
-#define CHARGER_SM_STOP_VX_SPEED        0.1 //0.1m/s
-#define CHARGER_SM_STOP_VX_ZERO        0.1 //0.1m/s
-#define CHARGER_SM_STOP_VZ_ZERO        0    //0 rad/s
-#define CHARGER_SM_STOP_DURATION_20MS  20000
-
-
+/****************************************************************************
+ * Public Types
+ ****************************************************************************/
 
 enum chr_sm_st_e
 {
-	CHR_SM_IDLE = 1,
-	CHR_SM_SEARCHING,
-	CHR_SM_CONTROLLING,
-	CHR_SM_FORCE_CHARGING,
-	CHR_SM_CHARGING,
-	CHR_SM_CHARGER_DONE,
-	CHR_SM_ERROR,
-	CHR_SM_STATE_MAX
+  CHR_SM_IDLE = 1,
+  CHR_SM_SEARCHING,
+  CHR_SM_CONTROLLING,
+  CHR_SM_FORCE_CHARGING,
+  CHR_SM_CHARGING,
+  CHR_SM_CHARGER_DONE,
+  CHR_SM_EXCEPTION
 };
-/*
-typedef struct charger_sm_table_s
+
+enum chr_sm_event_e
 {
-	int cur_state;
-	void (*state_act_fun)();
-}chr_sm_tab_t;
-*/
+  SM_EVENT_START_CHARGING = 1,
+  SM_EVENT_FIND_PILE,
+  SM_EVENT_ATTACH_PILE,
+  SM_EVENT_TO_NORMAL_CHARGING,
+  SM_EVENT_STOP_CHARGING,
+  SM_EVENT_BACK_TO_IDLE,
+  SM_EVENT_EXCEPTION
+};
 
-typedef struct charger_sm_state {
-	bool init;
-  pthread_rwlock_t sm_rw_lock;
-	enum chr_sm_st_e cur_state;
+struct charger_sm_state_s {
+  bool sm_task_started;
+  pthread_rwlock_t  sm_rw_lock;
+  enum chr_sm_st_e  cur_state;
+  
+}__attribute__((aligned(4)));
 
-}chr_sm_state_t;
+/****************************************************************************
+ * Public Function Prototypes
+ ****************************************************************************/
 
-
-int set_charger_state(enum state);
-
-
+uint32_t get_curr_state(void);
+int32_t start_sm_task(void);
 
 #endif /* __APP_CHARGER_SM_H */
-
