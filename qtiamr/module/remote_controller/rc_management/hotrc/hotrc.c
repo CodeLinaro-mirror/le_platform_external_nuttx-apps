@@ -16,15 +16,18 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <syslog.h>
+#include <nuttx/timers/capture.h>
 
-//#include <nuttx/timers/capture.h>
-
-
+#include "hotrc.h"
 #include "main.h"
+#include "rc_management.h"
+
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
+//#define  RC_HAL_DEBUG		/*for debug*/
+
 #define  RC_ANGLE_DEV "/dev/capture1"
 #define  RC_SPEED_DEV "/dev/capture0"
 
@@ -42,7 +45,6 @@
         ((_val_) < (_min_) ?  (_min_) : \
         ((_val_) > (_max_) ? (_max_) : (_val_)))
 
-#endif
 
 
 /****************************************************************************
@@ -69,16 +71,22 @@ static struct rc_data_s g_rc_data;
  * Private Function Prototypes
  ****************************************************************************/
 
+static int init_rc_hal_data(void);
+static int get_speed(struct speed_req_s *speed);
+static int set_max_speed(float x_speed, float z_speed);
+static int release_rc_hal_data(void);
+
 /****************************************************************************
  * Private Data
  ****************************************************************************/
 
-struct remote_contrl_ops_s zl_ops
+struct rc_hal_ops_s zl_ops =
 {
-  .init_fucnt = init_rc_hal_data;
-  .get_speed = get_speed;
-  .set_speed = set_max_speed;
-}
+  .init = init_rc_hal_data,
+  .release = release_rc_hal_data,
+  .get_vx_vz_speed = get_speed,
+  .set_max_speed = set_max_speed,
+};
 
 /****************************************************************************
  * Public Data
@@ -98,17 +106,7 @@ static void rc_filter(uint8_t *speed_duty, uint8_t *angle_duty)
  * Public Functions
  ****************************************************************************/
 
-// struct remote_contrl_platform remote_controller_manage_platform on HAL define
-
-extern struct remote_contrl_platform rc_controller_manage
-
-int regitster_hotrc_hal(struct remote_contrl_platform_s *hal_control);
-{
-  hal_control.ops = zl_ops;
-  return 0;
-}
-
-int init_rc_hal_data();
+int init_rc_hal_data(void)
 {
   g_rc_data.angle_fd = open(RC_ANGLE_DEV, O_RDONLY);
 
@@ -137,12 +135,27 @@ int init_rc_hal_data();
   return 0;
 }
 
+int release_rc_hal_data(void)
+{
+  close(g_rc_data.angle_fd);
+  g_rc_data.angle_fd = -1;
+  close(g_rc_data.speed_fd);
+  g_rc_data.speed_fd = -1;
+  g_rc_data.max_speed_x = MAX_SPEED;
+  g_rc_data.max_speed_z = MAX_ANGULAR_VELOCITY;
+
+  return OK;
+}
 static int get_rc_duty(int fd, uint8_t* duty){
   int ret;
   uint8_t count = 0;
   fflush(stdout);
   /* Get the dutycycle data using the ioctl */
   //uint32_t start = clock_systime_ticks();
+  if (fd < 0)
+  {
+    return ERROR;
+  }
   do {
     ret = ioctl(fd, CAPIOC_DUTYCYCLE, (unsigned long)((uintptr_t)duty));
     if (ret < 0){
@@ -156,30 +169,44 @@ static int get_rc_duty(int fd, uint8_t* duty){
       break;
     }
   }while(*duty < RC_MIN_VALUE ||*duty > RC_MAX_VALUE );
-  //syslog(LOG_INFO, "rc read delay %dms\n", (clock_systime_ticks() - start)*10);
+#ifdef RC_HAL_DEBUG
+    syslog(LOG_INFO, "read from duty fd:%d duty:%d,count: %d \n", fd, *duty, count);
+#endif
 
   return OK;
 }
 
 int get_speed(struct speed_req_s *speed)
 {
+  uint8_t speed_duty = 0;
+  uint8_t angle_duty = 0;
+
   if (OK == get_rc_duty(g_rc_data.speed_fd, &speed_duty) &&
     OK == get_rc_duty(g_rc_data.angle_fd, &angle_duty))
   {
+#ifdef RC_HAL_DEBUG
+    syslog(LOG_INFO, "rc_hal duty vx:%d vz:%d \n", speed_duty, angle_duty);
+#endif
     rc_filter(&speed_duty, &angle_duty);
     g_rc_data.speed_duty = speed_duty;
     g_rc_data.angle_duty = angle_duty;
+#ifdef RC_HAL_DEBUG
+    syslog(LOG_INFO, "rc_hal rc_filter duty vx:%d vz:%d \n", speed_duty, angle_duty);
+#endif
     g_rc_data.timestamp = clock_systime_ticks();
-    speed->speed_x = 2 * (float)(g_rc_data.speed_duty -RC_MIDDLE_VALUE) /(float)(RC_MAX_VALUE - RC_MIN_VALUE) * g_rc_data.max_speed_x;
-    speed->speed_z = -2 * (float)(g_rc_data.angle_duty -RC_MIDDLE_VALUE) /(float)(RC_MAX_VALUE - RC_MIN_VALUE) * g_rc_data.max_speed_z;
+    speed->x_speed = 2 * (float)(g_rc_data.speed_duty -RC_MIDDLE_VALUE) /(float)(RC_MAX_VALUE - RC_MIN_VALUE) * g_rc_data.max_speed_x;
+    speed->z_speed = -2 * (float)(g_rc_data.angle_duty -RC_MIDDLE_VALUE) /(float)(RC_MAX_VALUE - RC_MIN_VALUE) * g_rc_data.max_speed_z;
+#ifdef RC_HAL_DEBUG
+    syslog(LOG_INFO, "rc_hal speed  vx:%f vz:%f \n", speed->x_speed, speed->z_speed);
+#endif
 	return 0;
   }
   return -ETIME;
 }
 
-int set_max_speed(struct speed_req_s *speed)
+int set_max_speed(float x_speed, float z_speed)
 {
+  g_rc_data.max_speed_x = x_speed;
+  g_rc_data.max_speed_z = z_speed;
   return 0;
 }
-
-
