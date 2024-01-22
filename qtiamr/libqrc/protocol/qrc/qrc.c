@@ -32,19 +32,22 @@ static g_vars g_data;
 #ifdef QRC_RB5
 #define QRC_IOC_MAGIC 'q'
 #define QRC_FIONREAD _IO(QRC_IOC_MAGIC, 5)
+#define QRC_RESET_MCB _IO(QRC_IOC_MAGIC, 2)
 #define QRC_FD ("/dev/qrc")
-#define IOTAG QRC_FIONREAD
 static void sig_handler(int sig)
 {
   close(g_data.fd);
   printf("actually close..........\n");
 }
+#define QRC_BOOT_APP  '2'
 #endif
 
 #ifdef QRC_MCB
 #define QRC_FD ("/dev/ttyS2")
-#define IOTAG FIONREAD
+#define QRC_FIONREAD FIONREAD
 #endif
+
+#define QRC_HW_SYNC_MSG "OK"
 
 /****************************************************************************
  * Private Functions
@@ -55,6 +58,7 @@ void *read_response(void *args);
 void qrc_control_pipe_callback(qrc_pipe_s *pipe, void * data, size_t len, bool response);
 void end_timeout(const uint8_t pipe_id);
 static void qrc_msg_cb_work(struct qrc_msg_cb_args_s args);
+static int qrc_hardware_sync(int qrc_fd);
 
 /****************************************************************************
  * @intro: send TF frame
@@ -319,7 +323,7 @@ qrc_pipe_s *qrc_pipe_modify_by_name(const char *pipe_name, const qrc_pipe_s *new
  * @return: result of TF_Send()
  ****************************************************************************/
 bool qrc_frame_send(const qrc_frame *qrcf, const void *data, const size_t len, const bool qrc_write_lock)
-{   
+{
   if(true == qrc_write_lock)
   {
     pthread_mutex_lock(&g_data.qrc_write_mutex);
@@ -339,6 +343,7 @@ bool qrc_frame_send(const qrc_frame *qrcf, const void *data, const size_t len, c
   {
     pthread_mutex_unlock(&g_data.qrc_write_mutex);
   }
+
   return send_res;
 }
 
@@ -414,7 +419,7 @@ void *read_response(void *args)
   while(1)
   {
     int readable_len = 0;
-    if(ioctl(g_data.fd, IOTAG, &readable_len) < 0)
+    if(ioctl(g_data.fd, QRC_FIONREAD, &readable_len) < 0)
     {
       printf("\nERROR: qrc get readable size fail!\n");
       exit(-1);
@@ -439,6 +444,7 @@ void *read_response(void *args)
  ****************************************************************************/
 static void qrc_msg_cb_work(struct qrc_msg_cb_args_s args)
 {
+  printf("debug qrc_msg_cb_work run cb \n");
   args.fun_cb(args.pipe, args.data, args.len, args.response);
 }
 
@@ -446,6 +452,122 @@ uint8_t get_pipe_number(void)
 {
   return g_data.pipe_cnt;
 }
+
+/* Hardware sync */
+static int qrc_hardware_sync(int qrc_fd)
+{
+  int readable_len = 0;
+  int try = 10;
+  char ack[] =  QRC_HW_SYNC_MSG;
+  uint32_t write_cnt = 0;
+
+#ifdef QRC_RB5
+  /* reset MCB */
+  ioctl(qrc_fd, QRC_RESET_MCB);
+  sleep(4);
+
+  /* Boot APP */
+  char mcb_boot_app = QRC_BOOT_APP;
+
+  write_cnt = write(qrc_fd, &mcb_boot_app, 1);
+  if (write_cnt != 1)
+  {
+    printf("ERROR: qrc bus write failed!\n");
+  }
+
+  printf("DEBUG: qrc start bus sync \n");
+  while(try > 0)
+    {
+      try --;
+      sleep(1);
+      if(ioctl(qrc_fd, QRC_FIONREAD, &readable_len) < 0)
+        {
+          printf("\nERROR: qrc get readable size fail!\n");
+          close(qrc_fd);
+          return -1;
+        }
+
+      if(readable_len >= 3)
+      {
+        char *buf = malloc(readable_len * sizeof(char));
+        int read_len = read(qrc_fd, buf, readable_len);
+        if(read_len >= 3) 
+          {
+            int count = 0;
+            while(count <= (read_len -2))
+            {
+              if (buf[count] == 'O' && buf[count+1] =='K')
+                {
+                  write_cnt = write(qrc_fd, ack, sizeof(ack));
+                  if (write_cnt != sizeof(ack))
+                    {
+                      printf("ERROR: qrc bus write SYNC MSG failed!\n");
+                      close(qrc_fd);
+                      return -1;
+                    }
+                  printf("DEBUG: qrc bus SYNC done\n");
+                  return 0;
+                }
+              count = count +1;
+            }
+          }
+        free(buf);
+      }
+      printf("DEBUG: qrc bus write SYNC try = %d \n",try);
+    }
+
+#else // QRC_MCB
+  while(try > 0)
+    {
+      try --;
+      sleep(1);
+      
+      write_cnt = write(qrc_fd, ack, sizeof(ack));
+      if (write_cnt != sizeof(ack))
+        {
+          printf("ERROR: qrc bus write SYNC MSG failed!\n");
+          close(qrc_fd);
+          return -1;
+        }
+
+      /* check if received ACK msg */
+      if(ioctl(qrc_fd, QRC_FIONREAD, &readable_len) < 0)
+        {
+          printf("\nERROR: qrc get readable size fail!\n");
+          close(qrc_fd);
+          return -1;
+        }
+
+      if(readable_len >= 3)
+        {
+          char *buf = malloc(readable_len * sizeof(char));
+          int read_len = read(qrc_fd, buf, readable_len);
+          if(read_len >= 3) 
+            {
+              int count = 0;
+              while(count <= (read_len -2))
+                {
+                  if (buf[count] == 'O' && buf[count+1] =='K')
+                    {
+                      printf("DEBUG: qrc bus sync done\n");
+                      return 0;
+                    }
+                  count = count +1;
+                }
+            }
+          free(buf);
+        }
+      printf("DEBUG: qrc bus write SYNC try = %d \n",try);
+    }
+
+#endif
+  printf("\nERROR: qrc BUS try to sync failed \n");
+  return -1;
+}
+
+/****************************************************************************
+ * Public function
+ ****************************************************************************/
 
 /****************************************************************************
  * @intro: initilial
@@ -456,16 +578,27 @@ void qrc_init(void)
   if(-1 == g_data.fd)
   {
     printf("ERROR: %s open failed!\n", QRC_FD);
+    close(g_data.fd);
     exit(-1);
   }
+
+  if(0 != qrc_hardware_sync(g_data.fd))
+    {
+      printf("ERROR: qrc HW sync failed!\n");
+      close(g_data.fd);
+      return;
+    }
+
   if(0 != pthread_mutex_init(&g_data.pipe_list_mutex, NULL))
   {
     printf("\nERROR: pipe mutex initalize failed!\n");
+    close(g_data.fd);
     exit(-1);
   }
   if(0 != pthread_mutex_init(&g_data.qrc_write_mutex, NULL))
   {
     printf("\nERROR: pipe mutex initalize failed!\n");
+    close(g_data.fd);
     exit(-1);
   }
   g_data.g_qrc_threadpool = qrc_thread_pool_init(QRC_THREAD_NUM);
@@ -479,3 +612,4 @@ void qrc_init(void)
   pthread_create(&t, NULL, read_response, NULL);
   qrc_pipe_list_init();
 }
+

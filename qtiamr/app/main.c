@@ -16,7 +16,7 @@
 
 #include "main.h"
 
-#include "qrc.h"
+#include "qrc_msg_management.h"
 
 int main(int argc, FAR char *argv[])
 {
@@ -26,6 +26,8 @@ int main(int argc, FAR char *argv[])
   syslog(LOG_INFO, "main: qtiamr  main start\n");
 
   /* init qrc */
+  init_qrc_management();
+
 
   /* config parameter */
   config_parameter_init();
