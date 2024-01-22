@@ -103,7 +103,9 @@ struct config_sensor_s
 
 struct config_remote_controller_s
 {
+  uint8_t rc_enable;
   float max_speed;
+  float max_angle_speed;
 }__attribute__((aligned(4)));
 
 struct config_obstacle_avoidance_s

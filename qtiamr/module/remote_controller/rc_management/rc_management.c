@@ -18,6 +18,7 @@
 
 #include "hotrc.h"
 #include "rc_management.h"
+#include "main.h"
 
 
 #define ABS_LIMIT(_val_, _abs_)  \
@@ -264,15 +265,18 @@ int rc_management_task(int argc, char *argv[])
   if (status != 0)
   {
     syslog(LOG_INFO,"%s: rc_mgr_hal_init error.\n",__func__);
+    config_notify_completed(false);
     return ERROR;
   }
   status = rc_manag_basic_init();
   if (status != 0)
   {
     syslog(LOG_INFO,"%s: rc_mgr_init error.\n",__func__);
+    config_notify_completed(false);
     return ERROR;
   }
-
+  syslog(LOG_INFO,"%s: rc_mgr_init done.\n",__func__);
+  config_notify_completed(true);
   while(1)
   {
     /*wait enable condtion*/
