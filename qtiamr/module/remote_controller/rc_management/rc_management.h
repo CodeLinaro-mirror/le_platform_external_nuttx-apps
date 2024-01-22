@@ -8,33 +8,46 @@
 #ifndef __APP_QTIAMR_RC_MANAGE_H
 #define __APP_QTIAMR_RC_MANAGE_H
 
-extern int regitster_hotrc_hal(struct remote_contrl_platform_s *hal_control);
-
-struct remote_contrl_ops_s
+enum rc_action_e
 {
-  int *init_fucnt(struct remote_contrl_platform_s *hal_control);
-  int *get_speed(struct speed_req_s *speed);
-  int set_max_speed();
-}
+  RC_UPDATE_SPEED = 0,
+  RC_MAX_INDEX,
+};
+
+
+struct rc_management_cb_s
+{
+  struct rc_management_cb_s *list_nlink;
+  struct rc_management_cb_s *list_prelink;
+  int (*rc_client_callback)(enum rc_action_e action, void *data);
+};
+
+struct rc_parameter_s
+{
+  float x_speed;
+  float z_speed;
+  bool enable_rc_management;
+};
 
 struct speed_req_s
 {
-  double x_speed;
-  double z_speed;
-}
- 
+  float x_speed;
+  float z_speed;
+};
 
-Struct remote_contrl_platform_s
+struct rc_hal_ops_s
 {
-  char hw_name[8];
-  char enable_state;
-  struct max_req_s speed_limit;
-  struct remote_contrl_ops_s ops;
-}
+  int (*init)(void);
+  int (*release)(void);
+  int (*get_vx_vz_speed)(struct speed_req_s *speed);
+  int (*set_max_speed)(float x_speed, float z_speed);
+};
 
 int rc_management_task(int argc, char *argv[]);
-int register_hal_ops();
-
-
+int register_rc_mgr_callback(struct rc_management_cb_s *cb);
+int set_rc_mgr_max_speed(struct speed_req_s speed);
+int set_rc_manage_init_setting(struct rc_parameter_s data);
+int rc_manag_enable(void);
+int rc_manag_disable(void);
 
 #endif
