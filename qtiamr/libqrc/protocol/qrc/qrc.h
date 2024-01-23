@@ -69,7 +69,7 @@ struct qrc_msg_cb_args_s
 {
     qrc_msg_cb fun_cb;
     struct qrc_pipe_s *pipe;
-    void *data;
+    uint8_t *data;
     size_t len;
     bool response;
 };
@@ -79,6 +79,9 @@ struct qrc_thread_pool_s *qrc_thread_pool_init(int num);
 int qrc_threadpool_add_work(struct qrc_thread_pool_s *thpool, qrc_work work_fun, struct qrc_msg_cb_args_s args);
 void qrc_threadpool_wait(struct qrc_thread_pool_s *thpool);
 void qrc_threadpool_destroy(struct qrc_thread_pool_s *thpool);
+void qrc_threads_join(struct qrc_thread_pool_s * thpool);
+void qrc_pipe_threads_join(void);
+
 bool qrc_write_request(const char *pipe_name, const uint8_t pipe_id, const enum qrc_msg_cmd cmd);
 void qrc_init(void);
 uint8_t get_pipe_number(void);
@@ -88,9 +91,10 @@ qrc_pipe_s *qrc_pipe_insert(const char *pipe_name);
 qrc_pipe_s *qrc_pipe_find_by_name(const char *pipe_name);
 qrc_pipe_s *qrc_pipe_find_by_pipeid(const uint8_t pipe_id);
 qrc_pipe_s *qrc_pipe_modify_by_name(const char *pipe_name, const qrc_pipe_s *new_data);
-bool qrc_frame_send(const qrc_frame *qrcf, const void *data, const size_t len, const bool qrc_write_lock);
+bool qrc_frame_send(const qrc_frame *qrcf, const uint8_t *data, const size_t len, const bool qrc_write_lock);
 void start_timeout(const uint8_t pipe_id);
 void qrc_frame_send_lock(void);
 void qrc_frame_send_unlock(void);
 bool qrc_cmd_timeout(void);
+
 #endif

@@ -87,6 +87,6 @@ CFLAGS += -DQRC_MCB
 
 CFLAGS += $(C_INCLUDES)
 
-CFLAGS += -Wl,-u_printf_float
+CFLAGS += -Wl,-u_printf_float,-o0
 
 include $(APPDIR)/Application.mk

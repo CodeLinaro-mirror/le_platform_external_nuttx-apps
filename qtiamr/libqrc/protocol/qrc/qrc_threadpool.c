@@ -10,7 +10,6 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <debug.h>
 #include <signal.h>
 #include <pthread.h>
 #include <time.h>
@@ -19,7 +18,7 @@
 
 #ifdef QRC_MCB
 #define QRC_THREAD_PRIORITY SCHED_PRIORITY_DEFAULT
-#define QRC_THREAD_STACKSIZE (1024*4)
+#define QRC_THREAD_STACKSIZE (1024*6)
 #endif
 
 /****************************************************************************
@@ -230,7 +229,9 @@ static void* thread_run(struct qrc_thread_s *qrc_thread)
 	pthread_mutex_lock(&qrc_tp->thread_count_lock);
 	qrc_tp->num_threads_alive --;
 	pthread_mutex_unlock(&qrc_tp->thread_count_lock);
-
+#ifdef QRC_MCB
+	ASSERT(false);
+#endif
 	return NULL;
 }
 
@@ -529,8 +530,8 @@ void qrc_threads_join(struct qrc_thread_pool_s * thpool)
 
 	for (i =0; i < thread_num; i++)
 	{
-		printf(" qrc_threads_join =%d \n",i);
 		pthread_join(threads[i], NULL);
+		printf(" qrc_threads_join =%d \n",i);
 		sleep(1);
 	}
 	free(threads);

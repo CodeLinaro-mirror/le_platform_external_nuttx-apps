@@ -17,6 +17,7 @@
 #include "main.h"
 
 #include "qrc_msg_management.h"
+#include "qrc.h"
 
 int main(int argc, FAR char *argv[])
 {
@@ -32,6 +33,7 @@ int main(int argc, FAR char *argv[])
   /* config parameter */
   config_parameter_init();
 
-  syslog(LOG_INFO, "main: qtiamr  main exit\n");
+  syslog(LOG_INFO, "main: qtiamr main startup completed\n");
+  qrc_pipe_threads_join();
   return EXIT_SUCCESS;
 }
