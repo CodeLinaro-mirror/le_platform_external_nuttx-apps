@@ -12,39 +12,22 @@
  ****************************************************************************/
 
 #include <stdio.h>
-#include <stdint.h>
-#include <nuttx/fs/fs.h>
-
-#include <nuttx/analog/adc.h>
-#include <nuttx/analog/ioctl.h>
 
 /********************************************************************************
  * Pre-processor Definitions
  ********************************************************************************/
 
-#define ADC_VOLTAGE_CHANNEL			(10)
-#define ADC_MAX_RANGE				(4096)
-#define ADC_MAX_RANGE_HALF			(2048)
-#define ADC_VOLT_PATH				"/dev/adc_power"
-/* Actual 1 adc controller have 16 channels */
-#define ADC_MAX_GROUPSIZE			(1)
-#define ADC_BASE_REF_VOLT			(3.3)
-#define ADC_VOLT_PER_COUNT			ADC_BASE_REF_VOLT/ADC_MAX_RANGE
-#define ADC_VOTL_DIV				(11.0)
+/****************************************************************************
+ * Public Types
+ ****************************************************************************/
 
-typedef struct charger_voltage_adc_dev_s
-{
-	bool        initialized;
-	FAR char    *adc_devpath;
-	uint8_t 	channel;
-	int			fd;
-	struct		adc_msg_s samples[ADC_MAX_GROUPSIZE];   /* adc data */
-}volt_adc_dev_t;
+extern struct volt_adc_dev_s g_volt_adc_dev;
 
-bool adc_get_voltage(float *voltage);
+/****************************************************************************
+ * Public Function Prototypes
+ ****************************************************************************/
 
-
-
+int32_t adc_get_voltage(float *voltage);
+int32_t charger_voltage_adc_init(void);
 
 #endif /* __APP_CHARGER_VOLT_ADC_H */
-
