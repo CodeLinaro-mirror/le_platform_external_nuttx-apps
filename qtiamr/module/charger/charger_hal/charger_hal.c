@@ -5,79 +5,138 @@
  *
  ****************************************************************************/
 
+#include <stdint.h>
+#include <syslog.h>
 
-#include "charger_device.h"
+#include "ec130.h"
+#include "voltage_adc.h"
+#include "charger_hal.h"
 
 
+/****************************************************************************
+ * Pre-processor Definitions
+ ****************************************************************************/
 
-bool get_voltage_hal(charger_dev_t *charger_dev, float *voltage){
-	if(charger_dev->initialized != TRUE)
-		return ERROR;
-	if((charger_dev->drv_ops!= NULL)&&(charger_dev->drv_ops->get_voltage != NULL))
-		return charger_dev->drv_ops->get_voltage(voltage);
-	return ERROR;
+/****************************************************************************
+ * Private Types
+ ****************************************************************************/
+
+struct chr_dev_table_s{
+  char *name;
+  int32_t (*init_func)(void);
+}__attribute__((aligned(4)));
+
+/****************************************************************************
+ * Private Function Prototypes
+ ****************************************************************************/
+
+/****************************************************************************
+ * Public Data
+ ****************************************************************************/
+
+struct charger_drv_ops_s *g_drv_ops = NULL;
+
+/****************************************************************************
+ * Private Data
+ ****************************************************************************/
+
+/****************************************************************************
+ * Private Functions
+ ****************************************************************************/
+
+/****************************************************************************
+ * Public Functions
+ ****************************************************************************/
+
+int32_t charger_dev_ops_cb_register(struct charger_drv_ops_s *ops){
+
+  if(ops == NULL)
+   {
+    syslog(LOG_ERR, "CHARGER: charger_dev_ops_cb_register: ERROR Failed to register charger device ops callback function\n");
+    return ERROR;
+   }
+  g_drv_ops = ops;
+  return OK;
 }
 
-bool get_charging_current_hal(charger_dev_t *charger_dev, float *current){
-	if(charger_dev->initialized != TRUE)
-		return ERROR;
-	if((charger_dev->drv_ops!= NULL)&&(charger_dev->drv_ops->get_current != NULL))
-		return charger_dev->drv_ops->get_current(current);
-	return ERROR;
-}
-
-bool get_wheel_speed_hal(charger_dev_t *charger_dev, float *vx, float *vz){
-	if(charger_dev->initialized != TRUE)
-		return ERROR;
-	if((charger_dev->drv_ops!= NULL)&&(charger_dev->drv_ops->get_wheel_speed != NULL))
-		return charger_dev->drv_ops->get_wheel_speed(vx, vz);
-	return ERROR;
-}
-
-bool get_pile_sig_stats(charger_dev_t *charger_dev, bool *stats){
-	if(charger_dev->initialized != TRUE)
-		return ERROR;
-	if((charger_dev->drv_ops!= NULL)&&(charger_dev->drv_ops->chr_pile_sig_stat != NULL))
-		return charger_dev->drv_ops->chr_pile_sig_stat(stats);
-	return ERROR;
-}
-
-bool charger_if_charging(charger_dev_t *charger_dev, bool *stats){
-	if(charger_dev->initialized != TRUE)
-		return ERROR;
-	if((charger_dev->drv_ops!= NULL)&&(charger_dev->drv_ops->chr_pile_sig_stat != NULL))
-		return charger_dev->drv_ops->ec130_if_charging_stat(stats);
-	return ERROR;
-}
-
-chr_dev_tab_t charger_drv_table[] =
+int32_t get_voltage_hal(float *voltage)
 {
-	{ "ec130", ec130_and_adc_driver_init},
-	//add more driver here
+  if ((g_drv_ops != NULL) && (g_drv_ops->get_voltage))
+    return g_drv_ops->get_voltage(voltage);
+  return ERROR;
+}
+
+int32_t get_charging_current_hal(float *current)
+{
+  if ((g_drv_ops != NULL) && (g_drv_ops->get_current))
+    return g_drv_ops->get_current(current);
+  return ERROR;
+}
+
+int32_t get_speed_hal(float *vx, float *vz)
+{
+  if ((g_drv_ops != NULL) && (g_drv_ops->get_speed))
+    return g_drv_ops->get_speed(vx,vz);
+  return ERROR;
+}
+
+int32_t get_pile_signal_stats_hal(bool *stats)
+{
+  if ((g_drv_ops != NULL) && (g_drv_ops->get_pile_signal_stats))
+    return g_drv_ops->get_pile_signal_stats(stats);
+  return ERROR;
+}
+
+int32_t get_charger_is_charging_hal(bool *stats)
+{
+  if ((g_drv_ops != NULL) && (g_drv_ops->get_is_charging_stats))
+    return g_drv_ops->get_is_charging_stats(stats);
+  return ERROR;
+}
+
+int32_t get_all_stats_hal(float *voltage, float *current, bool *infrared_stat, bool *is_charging)
+{
+  if ((g_drv_ops != NULL) && (g_drv_ops->get_is_charging_stats))
+    return g_drv_ops->get_all_stats(voltage, current, infrared_stat, is_charging);
+  return ERROR;
+}
+
+struct chr_dev_table_s charger_drv_table[] =
+{
+    {"ec130", ec130_and_adc_driver_init},
+    // add more driver here
 };
 
+int32_t charger_dirver_init_hal(const char *name)
+{
 
-bool charger_dirver_init_hal(const char *name){
-
-	int drv_num;
-	int i;
-	int ret;
-	bool (*drv_act_fun)() = NULL;
-	drv_num = sizeof(charger_drv_table) / sizeof(chr_dev_tab_t);
-	for(i=0;i<drv_num;i++){
-		if (!strcmp(name, &charger_drv_table->name))
-			drv_act_fun = charger_drv_table[i].drv_init_func;
-			break;
-	}
-	if(drv_act_fun == NULL)
-  { 
-    syslog(LOG_ERR,"CHARGER: charger_dirver_init_hal:(%s) driver not found\n",name);
-		return ERROR;
+  int drv_num;
+  int i;
+  int32_t (*init_func)(void);
+  drv_num = sizeof(charger_drv_table) / sizeof(struct chr_dev_table_s);
+  init_func = NULL;
+  for (i = 0; i < drv_num; i++)
+  {
+    if (!strcmp(name, charger_drv_table[i].name))
+      {
+        init_func = charger_drv_table[i].init_func;
+      }
   }
-	syslog(LOG_DEBUG,"CHARGER: charger_dirver_init_hal:(%s) driver found\n",name);
-  if(drv_act_fun() == OK)
-    syslog(LOG_DEBUG,"CHARGER: charger_dirver_init_hal:(%s) driver init successfully\n",name);
-	return ret;
+
+  if(init_func)
+    {
+      syslog(LOG_DEBUG, "CHARGER: charger_dirver_init_hal:(%s) driver found\n", name);
+      if (init_func() != OK)
+      {
+        syslog(LOG_ERR, "CHARGER: charger_dirver_init_hal:(%s) driver init failed\n", name);
+        return ERROR;
+      }
+      syslog(LOG_DEBUG, "CHARGER: charger_dirver_init_hal:(%s) driver init successfully\n", name);
+    }
+  else
+    {
+      syslog(LOG_ERR, "CHARGER: charger_dirver_init_hal:(%s) driver not found\n", name);
+      return ERROR;
+    }
+  return OK;
 }
-
-
