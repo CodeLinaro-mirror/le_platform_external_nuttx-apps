@@ -18,7 +18,7 @@ extern "C" {
 
 enum config_msg_type_e
 {
-  CAR = 0x0,
+  CAR = 0,
   MOTION,
   SCALE,
   SENSOR,
@@ -30,7 +30,7 @@ enum config_msg_type_e
 
 enum mcb_task_id_e
 {
-  ID_MOTION_MANAGEMENT,
+  ID_MOTION_MANAGEMENT = 0x00,
   ID_CHARGER_MANAGEMENT,
   ID_RC_MANAGEMENT,
   ID_AVOID_MANAGEMENT,
@@ -47,9 +47,9 @@ enum mcb_task_id_e
 
 struct config_apply_s
 {
-  uint8_t status;	  /* 0 is success, not 0 is failed */
+  int status;	  /* 0 is success, not 0 is failed */
   enum mcb_task_id_e error_type;	/* which task caused error */
-};
+}__attribute__((aligned(4)));
 
 enum car_model_e
 {
@@ -96,14 +96,14 @@ struct config_scale_s
 
 struct config_sensor_s
 {
-  uint8_t imu_enable;
-  uint8_t ultra_enable;
-  uint8_t ultra_quantity;
+  int imu_enable;
+  int ultra_enable;
+  int ultra_quantity;
 }__attribute__((aligned(4)));
 
 struct config_remote_controller_s
 {
-  uint8_t rc_enable;
+  int rc_enable;
   float max_speed;
   float max_angle_speed;
 }__attribute__((aligned(4)));

@@ -83,7 +83,7 @@ qrc_pipe_s *qrc_get_pipe(const char *pipe_name)
     printf("ERROR: Pipe(%s) create failed!\n", pipe_name);
     return NULL;
   }
-
+/*
   if(false == qrc_write_request(pipe_name, p->pipe_id, QRC_REQUEST))
   {
     printf("ERROR: Pipe(%s) create failed!\n", pipe_name);
@@ -94,6 +94,7 @@ qrc_pipe_s *qrc_get_pipe(const char *pipe_name)
     printf("ERROR: TIMEOUT! %s establishes connection failed!\n", pipe_name);
     return NULL;
   }
+  */
   return p;
 }
 
@@ -122,9 +123,10 @@ bool qrc_register_message_cb(qrc_pipe_s *pipe, qrc_msg_cb fun_cb)
  * @param ack: whether writer need response, true means yes, false means no
  * @return: SUCCESS or TIMEOUT or FAILED
  ****************************************************************************/
-enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe, const void *data, const size_t len, const bool ack)
+enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe, const uint8_t *data, const size_t len, const bool ack)
 {
   enum qrc_write_status_e res = FAILED;
+
   if(NULL == pipe || pipe->pipe_id >= get_pipe_number())
   {
     printf("ERROR: No such pipe! Write failed!\n");
@@ -139,8 +141,7 @@ enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe, const void *data, cons
     qrc_frame qrcf;
     qrcf.receiver_id = pipe->peer_pipe_id;
     qrcf.ack = (true == ack)?ACK:NO_ACK;
-
-    bool send_result = qrc_frame_send(&qrcf, data, len, true);
+    bool send_result = qrc_frame_send(&qrcf, (uint8_t*)data, len, true);
     if(true == ack)
     {
       start_timeout(pipe->pipe_id);
