@@ -38,6 +38,7 @@ C_INCLUDES +=  \
     -I$(QTIARM_DIR)/app/* \
     -I$(QTIARM_DIR)/app/motion_odom \
     -I$(QTIARM_DIR)/app/robot_controller \
+    -I$(QTIARM_DIR)/app/charger_controller \
     -I$(QTIARM_DIR)/app/time_sync \
     -I$(QTIARM_DIR)/libqrc/include/app_msg \
     -I$(QTIARM_DIR)/libqrc/include/module \
@@ -51,7 +52,12 @@ C_INCLUDES +=  \
     -I$(QTIARM_DIR)/module/motion/motor_management \
     -I$(QTIARM_DIR)/module/motion/motor_management/zlac8015d \
     -I$(QTIARM_DIR)/protocol/canopen/ \
-
+    -I$(QTIARM_DIR)/utils/ \
+    -I$(QTIARM_DIR)/module/charger \
+    -I$(QTIARM_DIR)/module/charger/charger_device \
+    -I$(QTIARM_DIR)/module/charger/charger_hal \
+    -I$(QTIARM_DIR)/module/charger/charger_hal/ec130 \
+    -I$(QTIARM_DIR)/module/charger/charger_hal/voltage_adc \
 
 MAINSRC = $(QTIARM_DIR)/app/main.c
 
@@ -62,6 +68,7 @@ CSRCS += $(QTIARM_DIR)/app/robot_controller/client.c
 CSRCS += $(QTIARM_DIR)/app/robot_controller/robot_controller.c
 CSRCS += $(QTIARM_DIR)/app/time_sync/time_sync.c
 CSRCS += $(QTIARM_DIR)/app/imu/imu.c
+CSRCS += $(QTIARM_DIR)/app/charger_controller/charger_controller.c
 
 # protocol/libqrc source
 CSRCS += $(QTIARM_DIR)/protocol/canopen/canopen.c
@@ -80,7 +87,12 @@ CSRCS += $(QTIARM_DIR)/module/motion/kinematic/kinematics.c
 CSRCS += $(QTIARM_DIR)/module/motion/kinematic/diff_car/diff_car.c
 CSRCS += $(QTIARM_DIR)/module/motion/motor_management/motor_management.c
 CSRCS += $(QTIARM_DIR)/module/motion/motor_management/zlac8015d/8015d.c
-
+CSRCS += $(QTIARM_DIR)/utils/amr_signal.c
+CSRCS += $(QTIARM_DIR)/module/charger/charger_device/charger_device.c
+CSRCS += $(QTIARM_DIR)/module/charger/charger_device/charger_sm.c
+CSRCS += $(QTIARM_DIR)/module/charger/charger_hal/charger_hal.c
+CSRCS += $(QTIARM_DIR)/module/charger/charger_hal/ec130/ec130.c
+CSRCS += $(QTIARM_DIR)/module/charger/charger_hal/voltage_adc/voltage_adc.c
 
 # add define
 CFLAGS += -DQRC_MCB
