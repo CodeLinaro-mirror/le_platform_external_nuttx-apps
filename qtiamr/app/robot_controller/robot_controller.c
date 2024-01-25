@@ -115,7 +115,7 @@ static void robot_control_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t
 int robot_controller(int argc, char *argv[])
 {
   char pipe_name[] = MOTION_PIPE;
-
+  enum motion_result_e motion_res;
   struct qrc_pipe_s *pipe;
 
   pipe =  qrc_get_pipe(pipe_name);
@@ -131,6 +131,15 @@ int robot_controller(int argc, char *argv[])
       config_notify_completed(false);
       return -1;
     }
+
+  /* set motion as speed mode */
+  motion_res = motion_switch_mode(SPEED);
+  if (M_OK != motion_res)
+    {
+      syslog(LOG_ERR,"robot_controller switch motion failed res=%d\n",
+                                                          motion_res);
+    }
+  syslog(LOG_INFO,"robot_controller switch motion as speed mode\n");
 
   /* notify ok */
   config_notify_completed(true);

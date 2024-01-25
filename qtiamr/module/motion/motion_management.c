@@ -181,14 +181,17 @@ int motion_management_init(int argc, char *argv[])
     }
 
   /* motion sm init */
-  if (true != motion_sm_init())
+  if (OK != motion_sm_init())
     {
+      syslog(LOG_ERR,"motion_management_init: motion sm init failed \n");
       config_notify_completed(false);
       return ERROR;
     }
+syslog(LOG_INFO,"motion_management_init: motion sm init done \n");
 
   /* client control sm init */
   client_sm_init();
+syslog(LOG_INFO,"motion_management_init: client sm init done \n");
 
   /* motor management init */
   odom_frequency = config_motion.odom_frequency;

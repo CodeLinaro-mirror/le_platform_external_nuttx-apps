@@ -80,6 +80,7 @@ static const struct motor_hal_s g_hal_list[] = {
 
 static struct motor_management_s g_motor_manager =
 {
+  .mode = INACTIVE,
   .motor_hal = NULL,
   .motor_ops = NULL,
   .motion_odom_cb = NULL,
@@ -102,6 +103,12 @@ static int motor_get_speed_odom(float *vx, float *vz)
   void *motor = g_motor_manager.motor_hal;
   struct motor_hal_ops *hal_ops = g_motor_manager.motor_ops;
   float left_rpm,right_rpm;
+
+  if( g_motor_manager.mode != SPEED )
+    {
+      syslog(LOG_ERR,"motor_get_speed failed \n");
+      return ERROR;
+    }
 
   result = hal_ops->get_rpm(motor, &left_rpm, &right_rpm);
   if (result == OK)
@@ -168,12 +175,20 @@ enum motor_err_e motor_get_status_code(void)
 
 int motor_switch_mode(enum control_mode_e mode)
 {
+  bool result = false;
 
-  motor_management_init();
-
-  if (g_motor_manager.mode == mode)
+  /* present, just support speed */
+  if (SPEED == mode)
     {
-      return OK;
+      if (g_motor_manager.mode == mode)
+        {
+          result =true;
+        }
+      else
+        {
+          result = motor_management_init();
+        }
+      return (result == true)?OK:ERROR;
     }
   else
     {
@@ -222,12 +237,14 @@ bool motor_management_init(void)
 
   /* init hal */
   result = g_motor_manager.motor_ops->motor_hal_init(motor);
-  if (result == OK)
+  if (result != true)
     {
-      g_motor_manager.mode = SPEED;
+      syslog(LOG_ERR,"ERROR:init_motor:  motor init failed\n");
+      return false;
     }
-
-  syslog(LOG_INFO,"init_motor:  motor init done result = %d\n",result);
+  /* default mode is speed mode */
+  g_motor_manager.mode = SPEED;
+  syslog(LOG_INFO,"init_motor:  motor init done\n");
   return result;
 }
 
@@ -256,11 +273,11 @@ int motor_management_thread(int argc, char *argv[])
 
           odom.type = ODOM_SPEED;
           clock_gettime(CLOCK_REALTIME, &odom.timestamp);
-          motor_get_speed_odom(&odom.x, &odom.z);
 
           /* call callback */
           if (g_motor_manager.motion_odom_cb != NULL)
             {
+              motor_get_speed_odom(&odom.x, &odom.z);
               g_motor_manager.motion_odom_cb(odom);
             }
         }

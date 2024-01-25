@@ -19,7 +19,8 @@
 
 enum control_mode_e
 {
-  SPEED = 0x00,
+  INACTIVE = 0X00,
+  SPEED,
   POSITION,
   TORQUE
 };

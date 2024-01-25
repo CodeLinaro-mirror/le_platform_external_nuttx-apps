@@ -680,8 +680,6 @@ static bool zlac_8015d_init(void *motor)
   pid.kp = SPEED_KP;
   pid.ki = SPEED_KI;
   status |= zlac_8015d_set_pid(zlac_8015d, SPEED, pid);
-        
-        syslog(LOG_ERR,"zlac_8015d_init pid status=%d\n", status);
 
   if (status == OK)
 	  {
