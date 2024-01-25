@@ -28,7 +28,9 @@ enum qrc_msg_cmd
     QRC_WRITE_LOCK_ACK,
     QRC_WRITE_UNLOCK,
     QRC_WRITE_UNLOCK_ACK,
-    QRC_ACK
+    QRC_ACK,
+    QRC_CONNECT_REQUEST,
+    QRC_CONNECT_RESPONSE,
 };
 
 enum ack_request
@@ -83,7 +85,7 @@ void qrc_threads_join(struct qrc_thread_pool_s * thpool);
 void qrc_pipe_threads_join(void);
 
 bool qrc_write_request(const char *pipe_name, const uint8_t pipe_id, const enum qrc_msg_cmd cmd);
-void qrc_init(void);
+bool qrc_init(void);
 uint8_t get_pipe_number(void);
 qrc_pipe_s qrc_pipe_node_init(void);
 void qrc_pipe_list_init(void);
