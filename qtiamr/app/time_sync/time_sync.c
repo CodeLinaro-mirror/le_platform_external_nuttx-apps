@@ -57,6 +57,7 @@ static void config_timesync_qrc_msg_cb(struct qrc_pipe_s *pipe, void *data,
                                        size_t len, bool response)
 {
   struct time_sync_msg_s *msg;
+  size_t exp_len = sizeof(struct time_sync_msg_s);
 
   if (pipe == NULL || data ==NULL)
     {
@@ -70,7 +71,8 @@ static void config_timesync_qrc_msg_cb(struct qrc_pipe_s *pipe, void *data,
     }
   else
     {
-      syslog(LOG_ERR,"timesync msg: message size mismatch\n");
+      syslog(LOG_ERR,"timesync msg: msg size mismatch, len %u, exp: %u\n",
+              len, exp_len);
     }
 }
 
@@ -106,22 +108,27 @@ static void timesync_handle_cmd(void)
       {
         syslog(LOG_ERR, "timesync, timeloop send response failed\n");
       }
+      syslog(LOG_ERR, "timesync, timeloop send response done\n");
     }
   else if (g_timesync_msg.type == GET_TIME)
     {
       clock_gettime(CLOCK_REALTIME, &ts);
       msg.type = GET_TIME;
-      msg.ts = ts;
+      msg.sec = ts.tv_sec;
+      msg.ns = ts.tv_nsec;
       if (SUCCESS != qrc_write_fast(g_timesync_pipe, (void *)&msg,
           sizeof(struct time_sync_msg_s)))
       {
         syslog(LOG_ERR, "timesync, getime send response failed\n");
       }
+      syslog(LOG_ERR, "timesync, get time send response done\n");
     }
   else if (g_timesync_msg.type == SET_TIME)
     {
-      ts = g_timesync_msg.ts;
+      ts.tv_sec = g_timesync_msg.sec;
+      ts.tv_nsec = g_timesync_msg.ns;
       clock_settime(CLOCK_REALTIME, &ts);
+      syslog(LOG_INFO, "timesync, set time done\n");
     }
   else
   {

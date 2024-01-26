@@ -18,7 +18,7 @@ extern "C" {
 
 enum time_sync_msg_type_e
 {
-  TIME_LOOP,
+  TIME_LOOP = 0x0,
   GET_TIME,
   SET_TIME,
 };
@@ -26,7 +26,8 @@ enum time_sync_msg_type_e
 struct time_sync_msg_s
 {
   enum time_sync_msg_type_e type;
-  struct timespec ts;
+  long long  sec;   /* Seconds */
+  long long  ns;  /* nanoseconds */
 } __attribute__((aligned(4)));
 
 #ifdef __cplusplus
