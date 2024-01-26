@@ -108,7 +108,7 @@ static void timesync_handle_cmd(void)
       {
         syslog(LOG_ERR, "timesync, timeloop send response failed\n");
       }
-      syslog(LOG_ERR, "timesync, timeloop send response done\n");
+      syslog(LOG_INFO, "timesync, timeloop send response done\n");
     }
   else if (g_timesync_msg.type == GET_TIME)
     {
@@ -121,7 +121,7 @@ static void timesync_handle_cmd(void)
       {
         syslog(LOG_ERR, "timesync, getime send response failed\n");
       }
-      syslog(LOG_ERR, "timesync, get time send response done\n");
+      syslog(LOG_INFO, "timesync, gettime response done\n");
     }
   else if (g_timesync_msg.type == SET_TIME)
     {
@@ -129,6 +129,13 @@ static void timesync_handle_cmd(void)
       ts.tv_nsec = g_timesync_msg.ns;
       clock_settime(CLOCK_REALTIME, &ts);
       syslog(LOG_INFO, "timesync, set time done\n");
+
+      msg.type = SET_TIME;
+      if (SUCCESS != qrc_write_fast(g_timesync_pipe, (void *)&msg,
+          sizeof(struct time_sync_msg_s)))
+      {
+        syslog(LOG_ERR, "timesync, settime response failed\n");
+      }
     }
   else
   {
