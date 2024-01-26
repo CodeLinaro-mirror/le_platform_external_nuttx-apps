@@ -50,6 +50,12 @@ enum rc_control_status_s
   RC_STOP,
 };
 
+enum rc_enable_state_s
+{
+  DISABLE = 0,
+  ENABLE,
+  MAX_INDEX,
+};
 /****************************************************************************
  * Private Function Prototypes
  ****************************************************************************/
@@ -173,30 +179,42 @@ static int read_the_RC_init_setting(void)
   status = get_configuration_parameters(RC, &params);
   if (status == OK)
   {
-    g_rc_ctrl.init_setting.x_speed = params.max_speed;
-    g_rc_ctrl.init_setting.z_speed = params.max_angle_speed;
-    g_rc_ctrl.init_setting.enable_rc_management = params.rc_enable;
-    syslog(LOG_INFO,"rc read param init: max_speed: %f, max_angle_speed: %f, rc_enable: %d.\n",
-		  g_rc_ctrl.init_setting.x_speed,
-		  g_rc_ctrl.init_setting.z_speed,
-		  g_rc_ctrl.init_setting.enable_rc_management);
+    syslog(LOG_INFO,"rc read init_param: max_speed: %f, max_angle_speed: %f, rc_enable: %d.\n",
+		    params.max_speed, params.max_angle_speed, params.rc_enable);
+    if ((params.max_speed < 0) ||
+	  (params.max_speed > MAX_SPEED))
+    {
+      g_rc_ctrl.init_setting.x_speed = MAX_SPEED;
+    }
+    else
+    {
+      g_rc_ctrl.init_setting.x_speed = params.max_speed;
+    }
+
+    if ((params.max_angle_speed < 0) ||
+	  (params.max_angle_speed > MAX_ANGULAR_VELOCITY))
+    {
+      g_rc_ctrl.init_setting.z_speed = MAX_ANGULAR_VELOCITY;
+    }
+    else
+    {
+      g_rc_ctrl.init_setting.z_speed = params.max_angle_speed;
+    }
+
+    /*if rc_enable illegal, keep default value*/
+    if (params.rc_enable == DISABLE)
+    {
+      g_rc_ctrl.init_setting.enable_rc_management = false;
+    }
+    else if (params.rc_enable == ENABLE)
+    {
+      g_rc_ctrl.init_setting.enable_rc_management = true;
+    }
   }
   else
   {
     syslog(LOG_INFO,"rc read param fail \n");
     return status;
-  }
-
-  if ((g_rc_ctrl.init_setting.x_speed < 0) ||
-	  (g_rc_ctrl.init_setting.x_speed > MAX_SPEED))
-  {
-    g_rc_ctrl.init_setting.x_speed = MAX_SPEED;
-  }
-
-  if ((g_rc_ctrl.init_setting.z_speed < 0) ||
-	  (g_rc_ctrl.init_setting.z_speed > MAX_ANGULAR_VELOCITY))
-  {
-    g_rc_ctrl.init_setting.z_speed = MAX_ANGULAR_VELOCITY;
   }
 
   syslog(LOG_INFO,"rc param init result: max_speed: %f, max_angle_speed: %f, rc_enable: %d.\n",
