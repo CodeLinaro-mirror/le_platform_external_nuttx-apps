@@ -30,7 +30,6 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-
 #define CONFIG_TIMEOUT  (2) /* second */
 
 #define PI (3.14159f)
@@ -55,11 +54,15 @@
 #define DEFAULT_POSITION_KI     (200)
 
 #define DEFAULT_SCALE           (1.0f)
-#define DEFAULT_IMU_ENABLE      (false)
-#define DEFAULT_ULTRA_ENABLE    (false)
+#define DEFAULT_IMU_ENABLE      (0)
+#define DEFAULT_ULTRA_ENABLE    (0)
 #define DEFAULT_ULTRA_QUANTITY  (5)
 
 #define DEFAULT_SAFE_DISTANCE   (0.050f)
+
+#define DEFAULT_RC_ENABLE       (1)
+#define DEFAULT_RC_MAX_SPEED    (0.8f)
+#define DEFAULT_RC_MAX_ANGLE_SPEED  (2.0f)
 
 /****************************************************************************
  * Private Types
@@ -90,8 +93,6 @@ struct mcb_config_parameters_s
   void * parameter;
   size_t length;
 };
-
-
 
 /****************************************************************************
  * Private Function Prototypes
@@ -167,7 +168,9 @@ struct config_sensor_s senor_parameters =
 
 struct config_remote_controller_s rc_parameters =
 {
-  .max_speed = DEFAULT_MAX_SPEED,
+  .rc_enable = DEFAULT_RC_ENABLE,
+  .max_speed = DEFAULT_RC_MAX_SPEED,
+  .max_angle_speed = DEFAULT_RC_MAX_ANGLE_SPEED,
 };
 
 struct config_obstacle_avoidance_s config_ob =
@@ -195,12 +198,76 @@ static struct mcb_config_parameters_s  g_parameters_list[] =
 
 static void print_parameters(void)
 {
-  syslog(LOG_INFO,"check parameters: car_model=%d\n",config_car.car_model);
-  syslog(LOG_INFO,"check parameters: wheel_space=%f\n",config_car.wheel_space);
-  syslog(LOG_INFO,"check parameters: max_speed=%f\n",motion_parameters.max_speed);
-  syslog(LOG_INFO,"check parameters: max_angle_speed=%f\n",motion_parameters.max_angle_speed);
-  syslog(LOG_INFO,"check parameters: speed_scale_1=%f\n",config_scales.speed_scale[0]);
-  syslog(LOG_INFO,"check parameters: speed_scale_2=%f\n",config_scales.speed_scale[1]);
+  syslog(LOG_INFO,"check parameters: config_car:car_model=%d\n"
+                                      "kinematic_model=%d\n"
+                                      "wheel_space=%f\n"
+                                      "wheel_perimeter=%f\n"
+                                      ,config_car.car_model,
+                                      config_car.kinematic_model,
+                                      config_car.wheel_space,
+                                      config_car.wheel_perimeter);
+
+  syslog(LOG_INFO,"check parameters: config_motion: max_speed=%f\n"
+                                      "max_angle_speed=%f\n"
+                                      "max_position_dist=%f\n"
+                                      "max_position_angle=%f\n"
+                                      "max_position_line_speed=%f\n"
+                                      "max_position_angle_speed=%f\n"
+                                      "pid_speed_0=%f\n"
+                                      "pid_speed_1=%f\n"
+                                      "pid_speed_2=%f\n"
+                                      "pid_position_0=%f\n"
+                                      "pid_position_1=%f\n"
+                                      "pid_position_2=%f\n"
+                                      "odom_frequency=%ld\n"
+                                      ,motion_parameters.max_speed,
+                                      motion_parameters.max_angle_speed,
+                                      motion_parameters.max_position_dist,
+                                      motion_parameters.max_position_angle,
+                                      motion_parameters.max_position_line_speed,
+                                      motion_parameters.max_position_angle_speed,
+                                      motion_parameters.pid_speed[0],
+                                      motion_parameters.pid_speed[1],
+                                      motion_parameters.pid_speed[2],
+                                      motion_parameters.pid_position[0],
+                                      motion_parameters.pid_position[1],
+                                      motion_parameters.pid_position[2],
+                                      motion_parameters.odom_frequency);
+  
+  syslog(LOG_INFO,"check parameters: config_scale_s: speed_scale_0=%f\n"
+                                      "speed_scale_1=%f\n"
+                                      "position_scale_0=%f\n"
+                                      "position_scale_1=%f\n"
+                                      "speed_odom_scale_0=%f\n"
+                                      "speed_odom_scale_1=%f\n"
+                                      "position_odom_scale_0=%f\n"
+                                      "position_odom_scale_1=%f\n"
+                                      ,config_scales.speed_scale[0],
+                                      config_scales.speed_scale[1],
+                                      config_scales.position_scale[0],
+                                      config_scales.position_scale[1],
+                                      config_scales.speed_odom_scale[0],
+                                      config_scales.speed_odom_scale[1],
+                                      config_scales.position_odom_scale[0],
+                                      config_scales.position_odom_scale[1]);
+
+  syslog(LOG_INFO,"check parameters: config_sensor:imu_enable=%d\n"
+                                      "ultra_enable=%d\n"
+                                      "ultra_quantity=%d\n"
+                                      ,senor_parameters.imu_enable,
+                                      senor_parameters.ultra_enable,
+                                      senor_parameters.ultra_quantity);
+
+  syslog(LOG_INFO,"check parameters: config_remote_controller:rc_enable=%d\n"
+                                      "max_speed=%f\n"
+                                      "max_angle_speed=%f\n"
+                                      ,rc_parameters.rc_enable,
+                                      rc_parameters.max_speed,
+                                      rc_parameters.max_angle_speed);
+
+  syslog(LOG_INFO,"check parameters: config_obstacle_avoidance_s:"
+                                      "safe_distance=%f\n"
+                                      ,config_ob.safe_distance);
 }
 
 static int config_wait_notify(void)

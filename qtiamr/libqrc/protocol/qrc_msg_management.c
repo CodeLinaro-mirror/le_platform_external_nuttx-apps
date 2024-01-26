@@ -15,6 +15,7 @@ static uint8_t pipe_write_lock_owner = 255;
  ****************************************************************************/
 bool qrc_require_pipe(qrc_pipe_s *p)
 {
+  return true;
   pipe_write_lock_owner = p->pipe_id;
   if(false == qrc_write_request(p->pipe_name, p->pipe_id, QRC_WRITE_LOCK))
   {
@@ -37,6 +38,7 @@ bool qrc_require_pipe(qrc_pipe_s *p)
  ****************************************************************************/
 bool qrc_release_pipe(qrc_pipe_s *p)
 {
+  return true;
   if(pipe_write_lock_owner != p->pipe_id)
   {
     printf("ERROR: %s releases pipe failed! owner of lock is not you!\n", p->pipe_name);
@@ -176,7 +178,7 @@ enum qrc_write_status_e qrc_write_fast(const qrc_pipe_s *pipe, const void *data,
     qrc_frame qrcf;
     qrcf.receiver_id = pipe->peer_pipe_id;
     qrcf.ack = NO_ACK;
-    bool send_result = qrc_frame_send(&qrcf, data, len, false);
+    bool send_result = qrc_frame_send(&qrcf, data, len, true);
     res = (true == send_result)?SUCCESS:FAILED;
   }
 
