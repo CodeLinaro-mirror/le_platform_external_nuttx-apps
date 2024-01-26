@@ -288,6 +288,7 @@ static int  zlac_8015d_read_single_opcode(struct motor_zlac_8015d_s *motor,
               status);
       ASSERT(false);
     }
+  usleep(2000);
   canopen_send(fd, (char *)&data, data_len);
   usleep(2000);
   canopen_receive(fd, (char *)&rec_buff, data_len);
@@ -309,7 +310,7 @@ static int  zlac_8015d_read_single_opcode(struct motor_zlac_8015d_s *motor,
     }
   else
     {
-      syslog(LOG_ERR,"zlac_8015d write opcode check error \n");
+      syslog(LOG_ERR,"zlac_8015d read opcode check error \n");
       return ERROR;
 	  }
 }
@@ -607,6 +608,7 @@ static int zlac_8015d_set_pid(void *motor, enum control_mode_e mode,
 		    result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_RIGHT_KP, kp);
 		    result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_LEFT_KI, ki);
 		    result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_RIGHT_KI, ki);
+        syslog(LOG_INFO,"8015d set speed pid result=%d\n",result);
 		    break;
 		  }
 	  case POSITION:
