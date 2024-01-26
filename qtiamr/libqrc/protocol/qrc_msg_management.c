@@ -61,9 +61,9 @@ bool qrc_release_pipe(qrc_pipe_s *p)
 /****************************************************************************
  * @intro: initialize qrc procotol
  ****************************************************************************/
-void init_qrc_management(void)
+bool init_qrc_management(void)
 {
-  qrc_init();
+  return qrc_init();
 }
 
 /****************************************************************************

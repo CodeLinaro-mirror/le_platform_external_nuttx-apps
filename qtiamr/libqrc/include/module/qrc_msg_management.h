@@ -19,7 +19,7 @@ enum qrc_write_status_e
   FAILED
 };
 
-void init_qrc_management(void);
+bool init_qrc_management(void);
 bool qrc_require_pipe(qrc_pipe_s *p);
 bool qrc_release_pipe(qrc_pipe_s *p);
 qrc_pipe_s *qrc_get_pipe(const char *pipe_name);

@@ -18,6 +18,7 @@ typedef struct g_vars
   TinyFrame *tf;
   qrc_thread_pool g_qrc_threadpool;
   uint8_t pipe_cnt;
+  bool peer_pipe_list_ready;
 } g_vars;
 
 static g_vars g_data;
@@ -31,6 +32,7 @@ static g_vars g_data;
 #define QRC_THREAD_NUM (1)
 #define MCB_RESET_MAGIC_CMD 0x7102
 #define DEFAULT_TF_MSG_TYPE 0x22
+#define QRC_CONTROL_PIPE_ID 0
 
 #ifdef QRC_RB5
 #define QRC_IOC_MAGIC 'q'
@@ -80,7 +82,7 @@ void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, uint32_t len)
 }
 
 /****************************************************************************
- * @intro: for connection establishment of new pipe, can be only used by pipe_list[1]
+ * @intro: for connection establishment of new pipe, can be only used by pipe_list[0]
  * @param pipe_name: pipe name of caller
  * @param pipe_id: pipe id of caller
  * @param cmd: enum qrc_msg_cmd
@@ -146,8 +148,8 @@ TF_Result read_response_listener(TinyFrame *tf, TF_Msg *msg)
 }
 
 /****************************************************************************
- * @intro: callback function of pipelist[1], whose pipe id is 0
- * @param pipe: pipelist[1]
+ * @intro: callback function of pipelist[0], whose pipe id is 0
+ * @param pipe: pipelist[0]
  * @param data: data received
  * @param len: length of data
  * @param response: no use
@@ -215,6 +217,15 @@ void qrc_control_pipe_callback(qrc_pipe_s *pipe, void * data, size_t len, bool r
     //printf("DEBUG: qrc_control_pipe_callback get  QRC_WRITE_LOCK_ACK or QRC_WRITE_UNLOCK_ACK  peer_pipe_id =%d\n",pipe_id);
     end_timeout(0);
   }
+  else if(cmd == QRC_CONNECT_REQUEST)
+  {
+    g_data.peer_pipe_list_ready = true;
+    qrc_write_request("", QRC_CONTROL_PIPE_ID, QRC_CONNECT_RESPONSE);
+  }
+  else if(cmd == QRC_CONNECT_RESPONSE)
+  {
+    g_data.peer_pipe_list_ready = true;
+  }
 }
 
 /****************************************************************************
@@ -229,12 +240,12 @@ qrc_pipe_s qrc_pipe_node_init(void)
   if(0 != pthread_cond_init(&node.pipe_cond, NULL))
   {
     printf("\nERROR: pipe cond initalize failed!\n");
-    exit(-1);
+    return node;
   }
   if(0 != pthread_mutex_init(&node.pipe_mutex, NULL))
   {
     printf("\nERROR: pipe mutex initalize failed!\n");
-    exit(-1);
+    return node;
   }
   node.pipe_id = 255;
   node.peer_pipe_id = 255;
@@ -260,6 +271,7 @@ void qrc_pipe_list_init(void)
   g_data.pipe_cnt = 1;
 
   pthread_mutex_unlock(&g_data.pipe_list_mutex);
+  qrc_write_request("", QRC_CONTROL_PIPE_ID, QRC_CONNECT_REQUEST);
 }
 
 /****************************************************************************
@@ -410,7 +422,8 @@ void end_timeout(const uint8_t pipe_id)
   if(0 != pthread_cond_signal(&p->pipe_cond))
   {
     printf("\nERROR: Can not wake up main thread!\n");
-    exit(-1);
+    pthread_mutex_unlock(&p->pipe_mutex);
+    return;
   }
   pthread_mutex_unlock(&p->pipe_mutex);
 }
@@ -451,7 +464,7 @@ void *read_response(void *args)
     if(ioctl(g_data.fd, QRC_FIONREAD, &readable_len) < 0)
     {
       printf("\nERROR: qrc get readable size fail!\n");
-      exit(-1);
+      return;
     }
     if(readable_len > 0)
     {
@@ -602,36 +615,38 @@ static int qrc_hardware_sync(int qrc_fd)
 
 /****************************************************************************
  * @intro: initilial
+ * @return: result of initilial
  ****************************************************************************/
-void qrc_init(void)
+bool qrc_init(void)
 {
   g_data.fd = open(QRC_FD, O_RDWR);
   if(-1 == g_data.fd)
   {
     printf("ERROR: %s open failed!\n", QRC_FD);
     close(g_data.fd);
-    return;
+    return false;
   }
 
   if(0 != qrc_hardware_sync(g_data.fd))
     {
       printf("ERROR: qrc HW sync failed!\n");
       close(g_data.fd);
-      return;
+      return false;
     }
 
   if(0 != pthread_mutex_init(&g_data.pipe_list_mutex, NULL))
   {
     printf("\nERROR: pipe mutex initalize failed!\n");
     close(g_data.fd);
-    return;
+    return false;
   }
   if(0 != pthread_mutex_init(&g_data.qrc_write_mutex, NULL))
   {
     printf("\nERROR: pipe mutex initalize failed!\n");
     close(g_data.fd);
-    return;
+    return false;
   }
+  g_data.peer_pipe_list_ready = false;
   g_data.g_qrc_threadpool = qrc_thread_pool_init(QRC_THREAD_NUM);
   g_data.tf = TF_Init(TF_MASTER);
   TF_AddGenericListener(g_data.tf, read_response_listener);
@@ -639,10 +654,20 @@ void qrc_init(void)
   #ifdef QRC_RB5
   signal(SIGINT, sig_handler);
   #endif
+  qrc_pipe_list_init();
   pthread_t t;
   pthread_create(&t, NULL, read_response, NULL);
-  qrc_pipe_list_init();
-  printf("DEBUG: qrc init done \n");
+
+  for(uint8_t i = 1; i < 10; i++)
+  {
+    if(true == g_data.peer_pipe_list_ready)
+    {
+      printf("DEBUG: qrc init done \n");
+      return true;
+    }
+    else sleep(1);
+  }
+  return false;
 }
 
 void qrc_pipe_threads_join(void)
