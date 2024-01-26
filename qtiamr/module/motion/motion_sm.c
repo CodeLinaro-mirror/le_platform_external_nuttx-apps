@@ -236,7 +236,7 @@ static int do_action_switch(union motion_control_data_u data)
 
   /* call motor api to set motor mode */
   result = motor_switch_mode(mode);
-
+syslog(LOG_INFO,"do_action_switch:  result = %d mode=%d \n",result,mode);
   if (OK == result)
     {
       if (SPEED == mode)
@@ -248,6 +248,10 @@ static int do_action_switch(union motion_control_data_u data)
       else if (POSITION == mode)
         {
           motion_sm_event(EV_POS_SWITCH_DONE, data);
+        }
+      else
+        {
+          syslog(LOG_ERR,"ERROR:do_action_switch mode=%d failed\n",mode);
         }
     }
   else
@@ -292,7 +296,7 @@ static int do_action_switch_done(union motion_control_data_u data)
     {
       g_motion_sm.switch_done_cb(g_motion_sm.switch_cb_data);
     }
-   syslog(LOG_INFO,"do_action_switch_done: EXECUTED \n");
+  syslog(LOG_INFO,"do_action_switch_done: EXECUTED \n");
   return OK;
 }
 
@@ -366,7 +370,7 @@ int motion_sm_event(enum motion_sm_event_e event ,union motion_control_data_u da
           break;
         }
     }
-syslog(LOG_ERR, "motion state state=%d  done \n", present_state);
+//syslog(LOG_ERR, "motion state state=%d  done \n", present_state);
   return result;
 }
 
@@ -396,7 +400,7 @@ int motion_sm_init(void)
   g_motion_sm.state = ST_INACTIVE;
   /* init motion threadpool*/
   g_motion_sm.threadpool = motion_thread_pool_init(1);
-  return status;
+  return OK;
 }
 void motion_sm_join(void)
 {
@@ -404,11 +408,7 @@ void motion_sm_join(void)
 
 }
 
-
-
-
-#include "motion_sm.h"
-
+/* Motion  threadpool */
 
 #ifdef motion_MCB
 #define motion_THREAD_PRIORITY SCHED_PRIORITY_DEFAULT
@@ -448,7 +448,6 @@ struct motion_workqueue_s
   struct work_sem_s *work_sem;
   int len;
 };
-
 
 /* motion thread */
 struct motion_thread_s

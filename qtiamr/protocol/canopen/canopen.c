@@ -44,10 +44,8 @@ int canopen_send(int fd, char* buffer, size_t msgsize)
 
 	memcpy(txmsg.cm_data, buffer, msgsize);
 
-	//syslog(LOG_DEBUG, "debug canopen_send write start\n");
 
 	nbytes = CAN_MSGLEN(msgsize);
-	syslog(LOG_ERR, "debug canopen_send start write nbytes =%d  msgsize = %d\n",nbytes,msgsize);
 
 	nbytes = write(fd, &txmsg, nbytes);
 	if (nbytes < msgsize)
@@ -67,7 +65,7 @@ int canopen_receive(int fd, char* buffer, size_t len)
 	size_t msgsize;
 	ssize_t rcv_bytes = 0;
 	int res = ERROR;
-	int i = 0;
+
 	if(fd <= 0)
 	{
 		syslog(LOG_ERR, "canopen file description error !\n");
@@ -88,13 +86,15 @@ int canopen_receive(int fd, char* buffer, size_t len)
 		return res;
 	}
 
-	//syslog(LOG_DEBUG, "canopen_receive rec-bytes=%d \n",rcv_bytes);
 	rcv_bytes = rxmsg.cm_hdr.ch_dlc;
+	/*
+	int i = 0;
 	for (i = 0;i<8;i++)
 	{
-		//syslog(LOG_DEBUG, "[%d]0x%x",i,rxmsg.cm_data[i]);
+		syslog(LOG_INFO, "[%d]0x%x",i,rxmsg.cm_data[i]);
 	}
 	syslog(LOG_ERR, " canopen receive bytes=%d\n",rcv_bytes);
+	*/
 	if(rcv_bytes >= len)
 	{
 		memcpy(buffer, rxmsg.cm_data, len);

@@ -23,6 +23,8 @@
 #include "robot_controller.h"
 #include "motion_management.h"
 #include "time_sync.h"
+#include "remote_controller.h"
+#include "rc_management.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -112,7 +114,7 @@ static void print_parameters(void);
 static struct mcb_task_s mcb_tasks[] = {
   {"MOTION_MANAGEMENT",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_management_init, NULL ,0},
   {"CHARGER_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
-  {"RC_MANAGEMENT",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"RC_MANAGEMENT",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, rc_management_task,     NULL ,0},
   {"AVOID_MANAGEMENT",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
   {"TIME_SYNC",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, time_sync_thread,       NULL ,0},
   {"IMU",                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
@@ -121,7 +123,7 @@ static struct mcb_task_s mcb_tasks[] = {
   {"ROBOT_CONTROLLER",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, robot_controller,       NULL ,0},
   {"CLIENT_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, client_controller,      NULL ,0},
   {"CHARGER_CONTROLLER",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
-  {"REMOTE_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"REMOTE_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, rc_controller_task,     NULL ,0},
   {"EMERGENCY",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
 };
 

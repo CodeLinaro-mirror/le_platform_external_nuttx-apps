@@ -41,7 +41,7 @@ struct remote_contrl_platform_s
 
 static struct remote_contrl_platform_s g_rc_mgr =
 {
-  .init_setting = {2,2,true},
+  .init_setting = {0.8,2,true},
   .init_done = false,
   .rc_need_update = false,
 };
@@ -114,7 +114,6 @@ static int notify_client_cb(enum rc_action_e action, void *data)
 
   for (next = g_root_cb.list_nlink; next != &g_root_cb ; next = next->list_nlink)
   {
-    /*todo*/
     if (next->rc_client_callback == NULL)
     {
       continue;
@@ -309,7 +308,7 @@ int rc_management_task(int argc, char *argv[])
       {
         break;
       }
-      /*todo get speed*/
+      /*get speed*/
       speed_req.x_speed = 0;
       speed_req.z_speed = 0;
       status = get_vx_vz_speed_from_hal(&speed_req);
@@ -328,7 +327,7 @@ int rc_management_task(int argc, char *argv[])
 #endif
       /*notify speed*/
       notify_client_cb(RC_UPDATE_SPEED, &speed_req);
-      usleep(30*1000);
+      usleep(100*1000);
     }
   }
   return OK;

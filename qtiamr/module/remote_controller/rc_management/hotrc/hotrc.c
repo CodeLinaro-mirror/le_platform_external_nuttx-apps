@@ -38,7 +38,7 @@
 
 
 #define RC_SAMPLE_TIME				(10)  /* ms */
-#define MAX_SPEED					(2.0f)   /* actual is 1.82 m/s */
+#define MAX_SPEED					(1.0f)   /* actual is 1.82 m/s */
 #define MAX_ANGULAR_VELOCITY		2
 
 #define AMP_LIMIT(_val_, _min_, _max_)  \
