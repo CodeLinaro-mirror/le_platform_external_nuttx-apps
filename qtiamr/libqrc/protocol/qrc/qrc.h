@@ -88,15 +88,15 @@ bool qrc_write_request(const char *pipe_name, const uint8_t pipe_id, const enum 
 bool qrc_init(void);
 uint8_t get_pipe_number(void);
 qrc_pipe_s qrc_pipe_node_init(void);
-void qrc_pipe_list_init(void);
+bool qrc_pipe_list_init(void);
 qrc_pipe_s *qrc_pipe_insert(const char *pipe_name);
 qrc_pipe_s *qrc_pipe_find_by_name(const char *pipe_name);
 qrc_pipe_s *qrc_pipe_find_by_pipeid(const uint8_t pipe_id);
 qrc_pipe_s *qrc_pipe_modify_by_name(const char *pipe_name, const qrc_pipe_s *new_data);
 bool qrc_frame_send(const qrc_frame *qrcf, const uint8_t *data, const size_t len, const bool qrc_write_lock);
-void start_timeout(const uint8_t pipe_id);
-void qrc_frame_send_lock(void);
-void qrc_frame_send_unlock(void);
+bool start_timeout(const uint8_t pipe_id);
+void qrc_bus_unlock(void);
+void qrc_bus_lock(void);
 bool qrc_cmd_timeout(void);
 
 #endif

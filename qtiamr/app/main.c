@@ -19,16 +19,24 @@
 #include "qrc_msg_management.h"
 #include "qrc.h"
 
+#define VERSION (2.000)
+
 int main(int argc, FAR char *argv[])
 {
 
   /* main function */
+  printf("\n\n\n#############################\n");
+  printf("#MCB firmware version:%.3f #\n",VERSION);
+  printf("#############################\n\n");
 
   syslog(LOG_INFO, "main: qtiamr  main start\n");
 
   /* init qrc */
-  init_qrc_management();
-
+  if (false == init_qrc_management())
+    {
+      syslog(LOG_ERR, "main: qrc init failed\n");
+      return -1;
+    }
 
   /* config parameter */
   config_parameter_init();

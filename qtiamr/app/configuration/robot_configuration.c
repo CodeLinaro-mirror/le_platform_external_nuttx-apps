@@ -30,7 +30,7 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-#define CONFIG_TIMEOUT  (2) /* second */
+#define CONFIG_TIMEOUT  (6) /* second */
 
 #define PI (3.14159f)
 
