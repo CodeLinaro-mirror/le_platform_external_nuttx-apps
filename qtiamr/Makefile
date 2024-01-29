@@ -40,6 +40,7 @@ C_INCLUDES +=  \
     -I$(QTIARM_DIR)/app/robot_controller \
     -I$(QTIARM_DIR)/app/charger_controller \
     -I$(QTIARM_DIR)/app/time_sync \
+    -I$(QTIARM_DIR)/app/imu \
     -I$(QTIARM_DIR)/libqrc/include/app_msg \
     -I$(QTIARM_DIR)/libqrc/include/module \
     -I$(QTIARM_DIR)/libqrc/protocol/qrc \

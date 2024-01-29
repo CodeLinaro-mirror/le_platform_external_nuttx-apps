@@ -21,6 +21,7 @@
 #include "imu.h"
 #include "qrc_msg_management.h"
 #include "main.h"
+#include "config_msg.h"
 
 
 /****************************************************************************
@@ -35,6 +36,7 @@
 #define MAX_IMU_GYRO     (1000)   /* ± 1000 deg/sec */
 #define MAX_IMU_ACCEL    (8*9.8) /* ± 8g */
 #define DEVIATION_COUNT  (100)  /* the first 100 data used for deviation */
+#define IMU_ENABLED      (1)
 
 /****************************************************************************
  * Private Types
@@ -132,7 +134,8 @@ static int send_imu_data(int16_t *raw_data, uint8_t len, struct timespec ts)
     imu_msg.data.xg = data->xg - d_data->xg;
     imu_msg.data.yg = data->yg - d_data->yg;
     imu_msg.data.zg = data->zg - d_data->zg;
-    imu_msg.ts = ts;
+    imu_msg.sec = ts.tv_sec;
+    imu_msg.ns = ts.tv_nsec;
     qrc_write(g_imu_pipe, (void *)&imu_msg, sizeof(struct imu_msg_s), false);
   }
   else
@@ -173,6 +176,24 @@ int imu_task(int argc, char *argv[])
   uint8_t buf_len = IMU_DATA_LEN_7 *2;
   int16_t tempbuff[IMU_DATA_LEN_7] = {0}; /* 0 temp;1-3 acc; 4-6 gyro; */
   struct timespec ts;
+  struct config_sensor_s config;
+  int result;
+
+  /* get IMU config */
+  result = get_configuration_parameters(SENSOR, (void *)&config);
+  if (result != OK)
+    {
+      syslog(LOG_INFO,"IMU: get config Failed \n");
+      config_notify_completed(false);
+      return result;
+    }
+
+  if (config.imu_enable != IMU_ENABLED)
+    {
+      config_notify_completed(true);
+      syslog(LOG_INFO,"IMU disabled\n");
+      return 0;
+    }
 
   /* get qrc pipe */
   g_imu_pipe =  qrc_get_pipe(pipe_name);
@@ -183,6 +204,7 @@ int imu_task(int argc, char *argv[])
       return -1;
     }
 
+  sleep(5);
   ret = amr_imu_init();
   if (ret != OK)
     {

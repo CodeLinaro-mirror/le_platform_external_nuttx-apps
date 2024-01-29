@@ -26,7 +26,8 @@ struct imu_data_s
 };
 
 struct imu_msg_s{
-  struct timespec ts;
+  long long sec;   /* seconds */
+  long long ns;  /* nanoseconds */
   struct imu_data_s data;
 } __attribute__((aligned(4)));
 

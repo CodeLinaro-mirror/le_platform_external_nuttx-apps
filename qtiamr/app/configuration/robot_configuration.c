@@ -23,6 +23,7 @@
 #include "robot_controller.h"
 #include "motion_management.h"
 #include "time_sync.h"
+#include "imu.h"
 #include "remote_controller.h"
 #include "rc_management.h"
 
@@ -118,7 +119,7 @@ static struct mcb_task_s mcb_tasks[] = {
   {"RC_MANAGEMENT",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, rc_management_task,     NULL ,0},
   {"AVOID_MANAGEMENT",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
   {"TIME_SYNC",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, time_sync_thread,       NULL ,0},
-  {"IMU",                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"IMU",                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, imu_task,               NULL ,0},
   {"MISC",                DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
   {"MOTION_ODOM",         DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_odom,            NULL ,0},
   {"ROBOT_CONTROLLER",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, robot_controller,       NULL ,0},
