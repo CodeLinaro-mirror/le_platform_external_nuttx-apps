@@ -20,7 +20,7 @@
 
 #include "hotrc.h"
 #include "main.h"
-#include "rc_management.h"
+#include "rc_dev_management.h"
 
 
 /****************************************************************************
