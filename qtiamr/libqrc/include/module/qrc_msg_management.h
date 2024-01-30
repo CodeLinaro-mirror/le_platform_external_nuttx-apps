@@ -16,6 +16,7 @@ enum qrc_write_status_e
 {
   SUCCESS = 0,
   TIMEOUT,
+  ACK_ERR,
   FAILED
 };
 

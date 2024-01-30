@@ -115,7 +115,6 @@ static int motor_get_speed_odom(float *vx, float *vz)
     {
       result = speed_rpm_transfer_to_odom(left_rpm, right_rpm, vx, vz);
     }
-  syslog(LOG_INFO,"motor_get_speed_odom:left_rpm=%f,right_rpm=%f \n",left_rpm,right_rpm);
   return result;
 }
 
@@ -258,6 +257,7 @@ int motor_management_thread(int argc, char *argv[])
   enum motion_sm_state_e control_state;
   struct motion_odom_s odom;
   uint32_t frequency = g_motor_manager.frequency;
+  int result;
 
   syslog(LOG_INFO,"motor_management_thread:  starting \n");
 
@@ -277,8 +277,15 @@ int motor_management_thread(int argc, char *argv[])
           /* call callback */
           if (g_motor_manager.motion_odom_cb != NULL)
             {
-              motor_get_speed_odom(&odom.x, &odom.z);
-              g_motor_manager.motion_odom_cb(odom);
+              result = motor_get_speed_odom(&odom.x, &odom.z);
+              if (OK == result)
+                {
+                  g_motor_manager.motion_odom_cb(odom);
+                }
+              else
+                {
+                syslog(LOG_ERR,"get odom failed result=%d\n",result);
+                }
             }
         }
 

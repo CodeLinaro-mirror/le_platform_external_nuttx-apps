@@ -22,11 +22,11 @@ bool qrc_require_pipe(qrc_pipe_s *p)
     printf("ERROR: %s require pipe failed!\n", p->pipe_name);
     return false;
   }
-  qrc_frame_send_lock();
+  qrc_bus_lock();
   if(true == qrc_cmd_timeout())
   {
     printf("ERROR: %s requires pipe timeout!\n", p->pipe_name);
-    qrc_frame_send_unlock();
+    qrc_bus_unlock();
     return false;
   }
   return true;
@@ -49,7 +49,7 @@ bool qrc_release_pipe(qrc_pipe_s *p)
     printf("ERROR: %s releases pipe failed!\n", p->pipe_name);
     return false;
   }
-  qrc_frame_send_unlock();
+  qrc_bus_unlock();
   if(true == qrc_cmd_timeout())
   {
     printf("ERROR: %s releases pipe timeout!\n", p->pipe_name);
@@ -85,7 +85,7 @@ qrc_pipe_s *qrc_get_pipe(const char *pipe_name)
     printf("ERROR: Pipe(%s) create failed!\n", pipe_name);
     return NULL;
   }
-/*
+  /*
   if(false == qrc_write_request(pipe_name, p->pipe_id, QRC_REQUEST))
   {
     printf("ERROR: Pipe(%s) create failed!\n", pipe_name);
@@ -97,6 +97,7 @@ qrc_pipe_s *qrc_get_pipe(const char *pipe_name)
     return NULL;
   }
   */
+  printf("DEBUG: Pipe(%s) create done \n", pipe_name);
   return p;
 }
 
