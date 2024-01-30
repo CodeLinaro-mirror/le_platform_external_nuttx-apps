@@ -179,6 +179,15 @@ int imu_task(int argc, char *argv[])
   struct config_sensor_s config;
   int result;
 
+  /* get qrc pipe */
+  g_imu_pipe =  qrc_get_pipe(pipe_name);
+  if (g_imu_pipe == NULL)
+    {
+      /* notify error */
+      config_notify_completed(false);
+      return -1;
+    }
+
   /* get IMU config */
   result = get_configuration_parameters(SENSOR, (void *)&config);
   if (result != OK)
@@ -193,15 +202,6 @@ int imu_task(int argc, char *argv[])
       config_notify_completed(true);
       syslog(LOG_INFO,"IMU disabled\n");
       return 0;
-    }
-
-  /* get qrc pipe */
-  g_imu_pipe =  qrc_get_pipe(pipe_name);
-  if (g_imu_pipe == NULL)
-    {
-      /* notify error */
-      config_notify_completed(false);
-      return -1;
     }
 
   sleep(5);

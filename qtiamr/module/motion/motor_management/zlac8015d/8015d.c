@@ -605,8 +605,11 @@ static int zlac_8015d_set_pid(void *motor, enum control_mode_e mode,
 	  case SPEED :
 	    {
 		    result = zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_LEFT_KP, kp);
+        usleep(2000);
 		    result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_RIGHT_KP, kp);
+        usleep(2000);
 		    result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_LEFT_KI, ki);
+        usleep(2000);
 		    result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_RIGHT_KI, ki);
         syslog(LOG_INFO,"8015d set speed pid result=%d\n",result);
 		    break;
@@ -669,19 +672,28 @@ static bool zlac_8015d_init(void *motor)
 
   /*Default mode is SPEED*/
 
-  status |= zlac_8015d_write_single_opcode(motor, CODE_CAN_SYNC, 0);
-  syslog(LOG_INFO,"zlac_8015d_enable  CODE_CAN_SYNC =%d\n",status);
+  status = zlac_8015d_write_single_opcode(motor, CODE_CAN_SYNC, 0);
+  syslog(LOG_INFO,"8015d init CODE_CAN_SYNC =%d\n",status);
   usleep(2000);
 
-  status |= zlac_8015d_speed_mode_init(zlac_8015d);
+  status = zlac_8015d_speed_mode_init(zlac_8015d);
+  syslog(LOG_INFO,"8015d init  mode init=%d\n",status);
+  usleep(2000);
   status |= zlac_8015d_speed_config_acc(zlac_8015d);
+  syslog(LOG_INFO,"8015d init  config ACC=%d\n",status);
+  usleep(2000);
   status |= zlac_8015d_enable_can(zlac_8015d);
+  syslog(LOG_INFO,"8015d init  enable CAN=%d\n",status);
+  usleep(2000);
   status |= zlac_8015d_set_motor_pole(zlac_8015d);
+  syslog(LOG_INFO,"8015d init  set pole=%d\n",status);
+  usleep(2000);
 
   /* Set pid */
   pid.kp = SPEED_KP;
   pid.ki = SPEED_KI;
   status |= zlac_8015d_set_pid(zlac_8015d, SPEED, pid);
+  syslog(LOG_INFO,"8015d init  set speed pid=%d\n",status);
 
   if (status == OK)
 	  {

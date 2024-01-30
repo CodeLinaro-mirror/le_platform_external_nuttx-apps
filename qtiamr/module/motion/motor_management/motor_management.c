@@ -258,6 +258,7 @@ int motor_management_thread(int argc, char *argv[])
   struct motion_odom_s odom;
   uint32_t frequency = g_motor_manager.frequency;
   int result;
+  struct timespec timestamp;
 
   syslog(LOG_INFO,"motor_management_thread:  starting \n");
 
@@ -272,8 +273,9 @@ int motor_management_thread(int argc, char *argv[])
           /* get speed odometry */
 
           odom.type = ODOM_SPEED;
-          clock_gettime(CLOCK_REALTIME, &odom.timestamp);
-
+          clock_gettime(CLOCK_REALTIME, &timestamp);
+          odom.sec = timestamp.tv_sec;
+          odom.ns = timestamp.tv_nsec;
           /* call callback */
           if (g_motor_manager.motion_odom_cb != NULL)
             {

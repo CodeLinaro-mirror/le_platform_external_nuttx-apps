@@ -65,6 +65,7 @@ static void robot_control_msg_parse(struct qrc_pipe_s *pipe, struct motion_contr
       case SET_SPEED:
         {
           motion_speed_control(client,control_msg->data.speed_cmd.vx, control_msg->data.speed_cmd.vz);
+          syslog(LOG_INFO,"Robot control msg set speed vx=%f,vz=%f\n",control_msg->data.speed_cmd.vx, control_msg->data.speed_cmd.vz);
           break;
         }
       case SWITCH_MODE:
