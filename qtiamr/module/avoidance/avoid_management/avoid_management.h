@@ -5,7 +5,6 @@
  *
  ****************************************************************************/
 
-
 #ifndef __AVOID_MANAGEMENT_H
 #define __AVOID_MANAGEMENT_H
 
@@ -16,29 +15,43 @@
 #include <stdio.h>
 #include <syslog.h>
 
-#define SENSOR_MAX 7
+/****************************************************************************
+ * Pre-processor Definitions
+ ****************************************************************************/
+#define ULTRASOUND_DEV  "/dev/ttyS3"
+#define SENSOR_MAX (7)
+#define AVOID_WAKEUP (21)
 
+
+/****************************************************************************
+ * Public types
+ ****************************************************************************/
 enum sensor_type {
 	FRONT,
 	SIDE,
-	BUTTOM,
-	MAX
+	BOTTOM,
+	SENSOR_TYPE_MAX,
 };
 
-struct ultra_sensor_ops
-{
-	int(*read)(void *buff, uint8_t len, int fd);
-	int(*write)(void *data, uint8_t len, int fd);
-};
-
-struct ultra_sensor
+struct avoid_sensor
 {
 	enum sensor_type type;
 	uint8_t addr;
-	uint8_t threshold; /*unit:cm*/
-	struct ultra_sensor_ops ops;
-};
+}__attribute__((aligned(4)));
 
+
+/****************************************************************************
+ * Public data
+ ****************************************************************************/
+extern uint8_t ultras_num;
+extern const struct avoid_sensor g_sensor_list[SENSOR_MAX];
+
+/****************************************************************************
+ * Public functon prototypes
+ ****************************************************************************/
+
+int avoid_init(void);
+int avoid_management_thread(int argc, char *argv[]);
 
 #endif
 

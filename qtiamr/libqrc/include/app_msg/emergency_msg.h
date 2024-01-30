@@ -4,25 +4,35 @@
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  *
  ****************************************************************************/
-#ifnded _LIBQRC_EMERGENCY_MSG_H
+#ifndef _LIBQRC_EMERGENCY_MSG_H
 #define _LIBQRC_EMERGENCY_MSG_H
+
+/****************************************************************************
+ * Included Files
+ ****************************************************************************/
 
 #include <stdint.h>
 
+
+/****************************************************************************
+ * Pre-processor Definitions
+ ****************************************************************************/
 #define EMERG_PIPE "emerg"
 
-enum emerg_msg_type:uint8_t
+/****************************************************************************
+ * Public types
+ ****************************************************************************/
+enum emerg_msg_type
 {
-	ENABLEMENT = 0,
-	THRESHOLD,
-	MAX
-}
+	ENABLEMENT,
+	T_SENSOR,
+};
 
 struct emerg_msg_s
 {
 	enum emerg_msg_type msg_type;
-	uint16_t value;
-} __attribute__((align(4)))
+	int value;
+} __attribute__((aligned(4)));
 
 
 #endif

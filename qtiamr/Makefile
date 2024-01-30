@@ -41,6 +41,7 @@ C_INCLUDES +=  \
     -I$(QTIARM_DIR)/app/charger_controller \
     -I$(QTIARM_DIR)/app/time_sync \
     -I$(QTIARM_DIR)/app/imu \
+    -I$(QTIARM_DIR)/app/emergency_avoidance \
     -I$(QTIARM_DIR)/libqrc/include/app_msg \
     -I$(QTIARM_DIR)/libqrc/include/module \
     -I$(QTIARM_DIR)/libqrc/protocol/qrc \
@@ -62,6 +63,10 @@ C_INCLUDES +=  \
     -I$(QTIARM_DIR)/module/remote_controller/ \
     -I$(QTIARM_DIR)/module/remote_controller/rc_management/ \
     -I$(QTIARM_DIR)/module/remote_controller/rc_management/hotrc/ \
+    -I$(QTIARM_DIR)/module/avoidance \
+    -I$(QTIARM_DIR)/module/avoidance/avoid_management \
+    -I$(QTIARM_DIR)/module/avoidance/avoid_management/ultra/ \
+
 
 
 MAINSRC = $(QTIARM_DIR)/app/main.c
@@ -74,6 +79,8 @@ CSRCS += $(QTIARM_DIR)/app/robot_controller/robot_controller.c
 CSRCS += $(QTIARM_DIR)/app/time_sync/time_sync.c
 CSRCS += $(QTIARM_DIR)/app/imu/imu.c
 CSRCS += $(QTIARM_DIR)/app/charger_controller/charger_controller.c
+CSRCS += $(QTIARM_DIR)/app/emergency_avoidance/emergency_avoidance.c
+
 
 # protocol/libqrc source
 CSRCS += $(QTIARM_DIR)/protocol/canopen/canopen.c
@@ -101,6 +108,10 @@ CSRCS += $(QTIARM_DIR)/module/charger/charger_hal/voltage_adc/voltage_adc.c
 CSRCS += $(QTIARM_DIR)/module/remote_controller/remote_controller.c
 CSRCS += $(QTIARM_DIR)/module/remote_controller/rc_management/rc_management.c
 CSRCS += $(QTIARM_DIR)/module/remote_controller/rc_management/hotrc/hotrc.c
+CSRCS += $(QTIARM_DIR)/module/avoidance/avoidance.c
+CSRCS += $(QTIARM_DIR)/module/avoidance/avoid_management/avoid_management.c
+CSRCS += $(QTIARM_DIR)/module/avoidance/avoid_management/ultra/dyp_02.c
+
 
 # add define
 CFLAGS += -DQRC_MCB

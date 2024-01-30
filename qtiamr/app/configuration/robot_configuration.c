@@ -26,6 +26,9 @@
 #include "imu.h"
 #include "remote_controller.h"
 #include "rc_management.h"
+#include "emergency_avoidance.h"
+#include "avoidance.h"
+
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -59,7 +62,10 @@
 #define DEFAULT_ULTRA_ENABLE    (0)
 #define DEFAULT_ULTRA_QUANTITY  (5)
 
-#define DEFAULT_SAFE_DISTANCE   (0.050f)
+
+#define DEFAULT_BOTTOM_DISTANCE  (0.050f)
+#define DEFAULT_FRONT_DISTANCE   (0.100f)
+#define DEFAULT_SIDE_DISTANCE    (0.100f)
 
 #define DEFAULT_RC_ENABLE       (1)
 #define DEFAULT_RC_MAX_SPEED    (0.8f)
@@ -176,7 +182,9 @@ struct config_remote_controller_s rc_parameters =
 
 struct config_obstacle_avoidance_s config_ob =
 {
-  .safe_distance = DEFAULT_SAFE_DISTANCE,
+	.bottom_dist = DEFAULT_BOTTOM_DISTANCE,
+	.side_dist   = DEFAULT_SIDE_DISTANCE,
+	.front_dist  = DEFAULT_FRONT_DISTANCE,
 };
 
 static struct mcb_config_parameters_s  g_parameters_list[] =
@@ -267,8 +275,10 @@ static void print_parameters(void)
                                       rc_parameters.max_angle_speed);
 
   syslog(LOG_INFO,"check parameters: config_obstacle_avoidance_s:"
-                                      "safe_distance=%f\n"
-                                      ,config_ob.safe_distance);
+                                      "threshold_distance=(%f,%f,%f)\n"
+                                      ,config_ob.bottom_dist,
+                                      config_ob.front_dist,
+                                      config_ob.side_dist);
 }
 
 static int config_wait_notify(void)

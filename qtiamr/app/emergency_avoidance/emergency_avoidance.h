@@ -12,11 +12,11 @@
  * Included Files
  ****************************************************************************/
 #include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
 
 /********************************************************************************
- * Pre-processor Definitions
+ * Public Function Prototypes
  ********************************************************************************/
+int emergency_main(int argc, char *argv[]);
 
 #endif
+

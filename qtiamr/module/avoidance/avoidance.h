@@ -4,23 +4,42 @@
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  *
  ****************************************************************************/
- #ifnded _MODULE_AVOIDANCE_H
+ #ifndef _MODULE_AVOIDANCE_H
  #define _MODULE_AVOIDANCE_H
 
+/****************************************************************************
+ * Included Files
+ ****************************************************************************/ 
+ #include <nuttx/list.h>
+
+/****************************************************************************
+ * Public types
+ ****************************************************************************/
+ struct avoid_client {
+	char* name;
+	struct list_node node;
+	uint16_t thres_front;
+	uint16_t thres_side;
+	uint16_t thres_bottom;
+	void (*cb)(uint8_t addr, uint16_t dist);
+ }__attribute__((aligned(4)));
+
+
+/****************************************************************************
+ * Public data
+ ****************************************************************************/
+extern struct list_node g_avoid_client;
+extern int avoidance_inited;
+
  
- #include <stdio.h>
- #include <stdint.h>
- #include <syslog.h>
+/****************************************************************************
+ * Public Function prototypes
+ ****************************************************************************/
+void register_ultra_client(struct avoid_client * client);
+void unregister_ultra_client(struct avoid_client * client);
 
- struct ultra_client {
-	uint8_t thres_front;
-	uint8_t thres_side;
-	uint8_t thres_bottom;
-	int (*cb)(uint8_t type);
- }
+int avoidance_main(int argc, char *argv[]);
 
- int get_ultra_sensor_params(void);
- int register_ultra_client(struct ultra_client * client);
 
  #endif
 

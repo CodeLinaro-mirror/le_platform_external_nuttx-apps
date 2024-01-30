@@ -110,7 +110,9 @@ struct config_remote_controller_s
 
 struct config_obstacle_avoidance_s
 {
-  float safe_distance;
+  float bottom_dist; /*unit: m*/
+  float side_dist;
+  float front_dist;
 }__attribute__((aligned(4)));
 
 struct config_msg_s
