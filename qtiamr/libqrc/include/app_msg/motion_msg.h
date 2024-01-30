@@ -58,7 +58,7 @@ struct speed_cmd_s
 
 struct position_cmd_s
 {
-  bool pose_type;
+  int pose_type;
   float pose;
 };
 
@@ -66,7 +66,7 @@ union motion_control_data_u
 {
   struct speed_cmd_s speed_cmd;
   struct position_cmd_s position_cmd;
-  bool emergency;
+  int emergency;
   enum control_mode_e mode;
 } __attribute__((aligned(4)));
 
@@ -80,7 +80,8 @@ struct motion_control_msg_s
 struct motion_odom_s
 {
   enum odom_msg_type_e type;
-  struct timespec timestamp;
+  long long sec;
+  long long ns;
 	float x;
 	float z;
 } __attribute__((aligned(4)));
