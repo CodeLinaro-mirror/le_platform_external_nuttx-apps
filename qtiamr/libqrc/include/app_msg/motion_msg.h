@@ -19,7 +19,7 @@
 
 enum control_mode_e
 {
-  INACTIVE = 0X00,
+  INACTIVE = 0,
   SPEED,
   POSITION,
   TORQUE
@@ -27,13 +27,13 @@ enum control_mode_e
 
 enum odom_msg_type_e
 {
-  ODOM_SPEED = 0x00,
+  ODOM_SPEED = 0,
   ODOM_POSITION,
 };
 
 enum control_msg_type_e
 {
-  SET_SPEED = 0x00,
+  SET_SPEED = 0,
   SWITCH_MODE,
   SET_EMERGENCY,
   SET_POSITION
@@ -41,7 +41,7 @@ enum control_msg_type_e
 
 enum motor_err_e
 {
-  NORMAL = 0x00,
+  NORMAL = 0,
   OVER_POWER,
   LACK_POWER,
   OVER_LOAD,

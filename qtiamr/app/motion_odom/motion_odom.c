@@ -58,8 +58,7 @@ static void motion_public_odom(struct motion_odom_s motion_odom)
     }
 
   /* write odom command with ack */
-
-  result = qrc_write(g_odom_pipe, (void *)&motion_odom, sizeof(struct motion_odom_s), true);
+  result = qrc_write(g_odom_pipe, (uint8_t *)&motion_odom, sizeof(struct motion_odom_s), false);
   if (result != SUCCESS)
     {
       syslog(LOG_ERR, "Motion odom send failed %d\n", result);

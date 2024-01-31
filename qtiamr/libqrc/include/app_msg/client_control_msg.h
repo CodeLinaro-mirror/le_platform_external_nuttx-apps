@@ -16,7 +16,7 @@
 
 enum client_msg_type_e
 {
-  SET_CLIENT = 0x00,
+  SET_CLIENT = 0,
   GET_CLIENT
 };
 
@@ -24,7 +24,7 @@ enum client_msg_type_e
 
 enum control_client_e
 {
-  ROBOT_CONTROLLER = 0x00,
+  ROBOT_CONTROLLER = 0,
   CHARGER_CONTROLLER,
   REMOTE_CONTROLLER,
   MAX_CLIENT
@@ -32,9 +32,8 @@ enum control_client_e
 
 struct client_msg_s
 {
-  enum client_msg_type_e msg_type;
-  enum control_client_e client;
-
+  int msg_type;
+  int client;
 }__attribute__((aligned(4)));
 
 

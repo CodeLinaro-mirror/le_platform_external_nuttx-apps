@@ -70,6 +70,7 @@ struct motor_hal_s
 
 static int motor_get_speed_odom(float *vx, float *vz);
 //static bool motor_check_position_reach(void);
+static int motor_speed_odom_cb(union motion_control_data_u data);
 
 /****************************************************************************
  * Private Data
@@ -113,9 +114,42 @@ static int motor_get_speed_odom(float *vx, float *vz)
   result = hal_ops->get_rpm(motor, &left_rpm, &right_rpm);
   if (result == OK)
     {
-      result = speed_rpm_transfer_to_odom(left_rpm, right_rpm, vx, vz);
+      if (false== speed_rpm_transfer_to_odom(left_rpm, right_rpm, vx, vz))
+        {
+          syslog(LOG_ERR,"speed_rpm_transfer_to_odom failed\n");
+          result = ERROR;
+        }
     }
   return result;
+}
+
+static int motor_speed_odom_cb(union motion_control_data_u data)
+{
+  struct motion_odom_s odom;
+  int result;
+  struct timespec timestamp;
+
+  /* get speed odometry */
+
+  odom.type = ODOM_SPEED;
+  clock_gettime(CLOCK_REALTIME, &timestamp);
+  odom.sec = timestamp.tv_sec;
+  odom.ns = timestamp.tv_nsec;
+  /* call callback */
+
+  if (g_motor_manager.motion_odom_cb != NULL)
+  {
+    result = motor_get_speed_odom(&odom.x, &odom.z);
+    if (OK == result)
+      {
+        g_motor_manager.motion_odom_cb(odom);
+      }
+    else
+      {
+        syslog(LOG_ERR,"get odom failed result=%d\n",result);
+      }
+  }
+  return OK;
 }
 
 /****************************************************************************
@@ -144,10 +178,11 @@ int motor_set_speed(float vx, float vz)
     {
         /* speed control */
         result = hal_ops->set_speed(motor, left_rpm, right_rpm);
+        syslog(LOG_INFO,"motor_set_speed l_rpm=%d,r_rpm=%d\n",left_rpm,right_rpm);
     }
   else
     {
-      syslog(LOG_ERR,"motor_set_speed speed_inverse_kinematics faled\n");
+      syslog(LOG_ERR,"motor_set_speed speed_inverse_kinematics failed\n");
       result = ERROR;
     }
 
@@ -254,11 +289,9 @@ bool motor_management_init(void)
 
 int motor_management_thread(int argc, char *argv[])
 {
-  enum motion_sm_state_e control_state;
-  struct motion_odom_s odom;
   uint32_t frequency = g_motor_manager.frequency;
-  int result;
-  struct timespec timestamp;
+  enum motion_sm_state_e control_state;
+  union motion_control_data_u motion_data;
 
   syslog(LOG_INFO,"motor_management_thread:  starting \n");
 
@@ -270,27 +303,8 @@ int motor_management_thread(int argc, char *argv[])
       control_state = get_motion_sm_state();
       if (control_state == ST_SPEED)
         {
-          /* get speed odometry */
-
-          odom.type = ODOM_SPEED;
-          clock_gettime(CLOCK_REALTIME, &timestamp);
-          odom.sec = timestamp.tv_sec;
-          odom.ns = timestamp.tv_nsec;
-          /* call callback */
-          if (g_motor_manager.motion_odom_cb != NULL)
-            {
-              result = motor_get_speed_odom(&odom.x, &odom.z);
-              if (OK == result)
-                {
-                  g_motor_manager.motion_odom_cb(odom);
-                }
-              else
-                {
-                syslog(LOG_ERR,"get odom failed result=%d\n",result);
-                }
-            }
+          motion_add_work(motor_speed_odom_cb, motion_data);
         }
-
     }
 
   return ERROR;

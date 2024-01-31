@@ -93,5 +93,5 @@ void motion_threads_join(struct motion_thread_pool_s * thpool);
 
 void motion_sm_join(void);
 
-
+void motion_add_work(do_action_fun work_fun, union motion_control_data_u data);
 #endif /* __MOTION_SM_H */

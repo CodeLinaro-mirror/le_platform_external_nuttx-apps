@@ -64,13 +64,21 @@ static void client_msg_parse(struct qrc_pipe_s *pipe, struct client_msg_s *clien
         {
           syslog(LOG_INFO,"client msg SET_CLIENT =  %d\n",client_msg->client);
           set_control_client(client_msg->client);
+          /* REPLY set client done */
+          msg.client = get_current_client();
+          msg.msg_type = SET_CLIENT;
+          result = qrc_write(pipe, (uint8_t*)&msg, sizeof(struct client_msg_s), false);
+          if (result != SUCCESS)
+            {
+              syslog(LOG_ERR,"client msg send error  %d\n",result);
+            }
           break;
         }
       case GET_CLIENT:
         {
           msg.client = get_current_client();
           msg.msg_type = GET_CLIENT;
-          result = qrc_write(pipe, (void*)&msg, sizeof(struct client_msg_s), false);
+          result = qrc_write(pipe, (uint8_t*)&msg, sizeof(struct client_msg_s), false);
           if (result != SUCCESS)
             {
               syslog(LOG_ERR,"client msg send error  %d\n",result);
@@ -90,6 +98,8 @@ static void client_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, b
 {
   struct client_msg_s *client_msg;
 
+  syslog(LOG_INFO,"client msg cb get type=%d\n",*(int*)data);
+
   if (pipe == NULL || data ==NULL)
     {
       return;
@@ -98,6 +108,10 @@ static void client_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, b
     {
       client_msg = (struct client_msg_s *)data;
       client_msg_parse(pipe, client_msg);
+    }
+  else
+    {
+      syslog(LOG_ERR,"client msg size mismatch size=%d, len=%d\n",sizeof(struct client_msg_s),len);
     }
 }
 

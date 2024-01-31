@@ -147,6 +147,7 @@ static void do_action(enum control_sm_state_e state)
           fun_cb(state);
         }
     }
+  syslog(LOG_INFO, "client_sm_state do action done, state=%d\n", state);
 }
 
 static int client_sm_state(enum control_sm_state_e *state)

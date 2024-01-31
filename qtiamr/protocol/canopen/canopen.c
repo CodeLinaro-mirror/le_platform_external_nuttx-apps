@@ -53,8 +53,7 @@ int canopen_send(int fd, char* buffer, size_t msgsize)
 		syslog(LOG_ERR, "ERROR: canopen write(%ld) returned %ld\n", (long)msgsize, (long)nbytes);
 		return res;
 	}
-	syslog(LOG_ERR, "debug canopen_send write =%d end\n",nbytes);
-
+	//syslog(LOG_ERR, "debug canopen_send write =%d end\n",nbytes);
     return OK;
 }
 

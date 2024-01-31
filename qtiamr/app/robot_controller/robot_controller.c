@@ -65,7 +65,7 @@ static void robot_control_msg_parse(struct qrc_pipe_s *pipe, struct motion_contr
       case SET_SPEED:
         {
           motion_speed_control(client,control_msg->data.speed_cmd.vx, control_msg->data.speed_cmd.vz);
-          syslog(LOG_INFO,"Robot control msg set speed vx=%f,vz=%f\n",control_msg->data.speed_cmd.vx, control_msg->data.speed_cmd.vz);
+          //syslog(LOG_INFO,"Robot control msg set speed vx=%f,vz=%f\n",control_msg->data.speed_cmd.vx, control_msg->data.speed_cmd.vz);
           break;
         }
       case SWITCH_MODE:
@@ -133,6 +133,9 @@ int robot_controller(int argc, char *argv[])
       return -1;
     }
 
+  /* notify ok */
+  config_notify_completed(true);
+  sleep(18);
   /* set motion as speed mode */
   motion_res = motion_switch_mode(SPEED);
   if (M_OK != motion_res)
@@ -141,9 +144,6 @@ int robot_controller(int argc, char *argv[])
                                                           motion_res);
     }
   syslog(LOG_INFO,"robot_controller switch motion as speed mode\n");
-
-  /* notify ok */
-  config_notify_completed(true);
 
   return 0;
 }

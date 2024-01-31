@@ -208,12 +208,7 @@ static int motion_sm_do_action(struct motion_sm_transform_s *statetrans, union m
   if(statetrans->action_fun != NULL)
     {
       /* call action function */
-      //result = statetrans->action_fun(data);
-      struct motion_args_s motion_args;
-      motion_args.fun_cb = statetrans->action_fun;
-      motion_args.data = data;
-      motion_threadpool_add_work(g_motion_sm.threadpool, motion_action_work, motion_args);
-      //need check return value
+      motion_add_work(statetrans->action_fun, data);
       syslog(LOG_DEBUG,"motion sm action_fun executed \n");
       return OK;
     }
@@ -928,4 +923,13 @@ void motion_threads_join(struct motion_thread_pool_s * thpool)
 		sleep(1);
 	}
 	free(threads);
+}
+
+void motion_add_work(do_action_fun work_fun, union motion_control_data_u data)
+{
+  struct motion_args_s motion_args;
+
+  motion_args.fun_cb = work_fun;
+  motion_args.data = data;
+  motion_threadpool_add_work(g_motion_sm.threadpool, motion_action_work, motion_args);
 }
