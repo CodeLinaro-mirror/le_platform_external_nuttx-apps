@@ -5,9 +5,10 @@
  *
  ****************************************************************************/
 
-#ifndef __REMOTE_CONTROLLER_H
-#define __REMOTE_CONTROLLER_H
+#ifndef __APP_QTIAMR_RC_CONTROLLER_H
+#define __APP_QTIAMR_RC_CONTROLLER_H
+#include "rc_management.h"
 
-/* Remote controller header */
+int rc_controller_task(int argc, char *argv[]);
 
 #endif

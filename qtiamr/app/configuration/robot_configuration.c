@@ -25,7 +25,7 @@
 #include "time_sync.h"
 #include "imu.h"
 #include "rc_management.h"
-#include "rc_dev_management.h"
+#include "remote_controller.h"
 #include "emergency_avoidance.h"
 #include "avoidance.h"
 

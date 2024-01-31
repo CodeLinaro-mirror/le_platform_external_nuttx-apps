@@ -5,35 +5,10 @@
  *
  ****************************************************************************/
 
-#ifndef __APP_QTIAMR_RC_MANAGE_H
-#define __APP_QTIAMR_RC_MANAGE_H
+#ifndef __APP_QTIAMR_RC_DEV_MANAGE_H
+#define __APP_QTIAMR_RC_DEV_MANAGE_H
 
-enum rc_action_e
-{
-  RC_UPDATE_SPEED = 0,
-  RC_MAX_INDEX,
-};
-
-
-struct rc_management_cb_s
-{
-  struct rc_management_cb_s *list_nlink;
-  struct rc_management_cb_s *list_prelink;
-  int (*rc_client_callback)(enum rc_action_e action, void *data);
-};
-
-struct rc_parameter_s
-{
-  float x_speed;
-  float z_speed;
-  bool enable_rc_management;
-};
-
-struct speed_req_s
-{
-  float x_speed;
-  float z_speed;
-};
+#include "rc_management.h"
 
 struct rc_hal_ops_s
 {
@@ -43,11 +18,9 @@ struct rc_hal_ops_s
   int (*set_max_speed)(float x_speed, float z_speed);
 };
 
-int rc_management_task(int argc, char *argv[]);
-int register_rc_mgr_callback(struct rc_management_cb_s *cb);
-int set_rc_mgr_max_speed(struct speed_req_s speed);
-int set_rc_manage_init_setting(struct rc_parameter_s data);
-int rc_manag_enable(void);
-int rc_manag_disable(void);
+int rc_dev_manag_hal_init(void);
+int get_vx_vz_speed_from_hal(struct speed_req_s *speed);
+int rc_dev_manage_release(void);
+int set_rc_hal_max_speed (float x_speed,float z_speed);
 
 #endif

@@ -5,10 +5,6 @@
  *
  ****************************************************************************/
 
-/****************************************************************************
- * Included Files
- ****************************************************************************/
-//#include <nuttx/config.h>
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -16,263 +12,271 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <syslog.h>
+#include <errno.h>
+#include <nuttx/mutex.h>
+#include <pthread.h>
 
-#include "motion_management.h"
-#include "motion_sm.h"
-#include "rc_management.h"
 #include "rc_dev_management.h"
-#include "config_msg.h"
+#include "rc_management.h"
 #include "main.h"
 
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
 
-//#define SKIP_PARAM_INIT /*for debug*/
-//#define TEST_RC_ONLY	/*for debug*/
+#define ABS_LIMIT(_val_, _abs_)  \
+        ((_val_) < (-_abs_) ?  (-_abs_) : \
+        ((_val_) > (_abs_) ? (_abs_) : (_val_)))
+//#define RC_MGR_DEBUG /*for debug*/
 
-#define MAX_SPEED		(0.8f)	/* actual is 1.82 m/s */
-#define MAX_ANGULAR_VELOCITY	2
-
-/****************************************************************************
- * Private Types
- ****************************************************************************/
-
-struct rc_controller_data_s
+struct remote_contrl_platform_s
 {
+  char hw_name[8];
+  char enable_state;
   struct rc_parameter_s init_setting;
+  mutex_t lock;
+  bool init_done;
+  bool rc_need_update;
+  pthread_mutex_t mutex;
+  pthread_cond_t  cond;
 };
 
-enum rc_control_status_s
-{
-  U_INIT = 0,
-  RC_UPDATE,
-  RC_STOP,
-};
-
-enum rc_enable_state_s
-{
-  DISABLE = 0,
-  ENABLE,
-  MAX_INDEX,
-};
-/****************************************************************************
- * Private Function Prototypes
- ****************************************************************************/
-
-static int rc_mgr_state_handler(enum rc_action_e action, void *data);
-
-/****************************************************************************
- * Private Data
- ****************************************************************************/
-
-static struct rc_controller_data_s g_rc_ctrl =
+static struct remote_contrl_platform_s g_rc_mgr =
 {
   .init_setting = {0.8,2,true},
+  .init_done = false,
+  .rc_need_update = false,
 };
 
-struct rc_management_cb_s rc_mgr_cb =
-{
-  .rc_client_callback = rc_mgr_state_handler,
-};
 
-/****************************************************************************
- * Public Data
- ****************************************************************************/
+static struct rc_management_cb_s g_root_cb;
+static mutex_t g_cb_list_lock;
 
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
 
-static int rc_mgr_state_handler(enum rc_action_e action, void *data)
+static int wait_condtion(void)
 {
-  int ret = 0;
-  struct speed_req_s *speed_req;
-  enum motion_result_e motion_result;
+  int status;
 
+  /*wait enable condtion*/
 
-  switch (action)
+  status = pthread_mutex_lock(&g_rc_mgr.mutex);
+  if (status != 0)
   {
-    case RC_UPDATE_SPEED:
-      speed_req = (struct speed_req_s*) data;
-#ifndef TEST_RC_ONLY
-      /*update speed*/
-      syslog(LOG_INFO,"rc send speed_req: vx: %f vz: %f \n",
-	    speed_req->x_speed,speed_req->z_speed);
-      motion_result = motion_speed_control(REMOTE_CONTROLLER, speed_req->x_speed
-		      , speed_req->z_speed);
-      if(motion_result != M_OK)
-        {
-          syslog(LOG_ERR,"send motion speed failed  %d\n",motion_result);
-        }
-#else
-      syslog(LOG_INFO,"send speed_req: vx: %f vz: %f \n",
-	    speed_req->x_speed,speed_req->z_speed);
-#endif
-      break;
-    default:
-      return -1;
+    return ERROR;
   }
-#ifdef TEST_RC_ONLY
-  syslog(LOG_INFO,"rc_mgr_handler done. atcion: %d .\n",
-	    action);
+#ifdef RC_MGR_DEBUG
+  syslog(LOG_INFO,"rc_debug %s : rc_mgr_thread start waitting.\n", __func__);
 #endif
-  return ret;
+  status = pthread_cond_wait(&g_rc_mgr.cond, &g_rc_mgr.mutex);
+  if (status != 0)
+  {
+    return ERROR;
+  }
+#ifdef RC_MGR_DEBUG
+  syslog(LOG_INFO,"rc_debug %s : rc_mgr_thread go ahead.\n", __func__);
+#endif
+  status = pthread_mutex_unlock(&g_rc_mgr.mutex);
+  if (status != 0)
+  {
+    return ERROR;
+  }
+
+  return OK;
 }
 
-#ifndef TEST_RC_ONLY
-//void (*sm_notify_cb)( enum mcb_sm_e state);
-
-static void MCB_status_callback(enum control_sm_state_e state)
-{
-  int ret = 0;
-  static enum rc_control_status_s curr_state = U_INIT;
-  enum rc_control_status_s target_state;
-
-  if (state != ST_REMOTE_CONTROLLING)
-  {
-    target_state = RC_STOP;
-  }
-  else
-  {
-    target_state = RC_UPDATE;
-  }
-
-  if (curr_state == target_state)
-  {
-    return;
-  }
-
-  if (target_state == RC_UPDATE)
-  {
-    /*enable rc data update*/
-    syslog(LOG_INFO,"rc enable speed update, MCB status =%d.\n",state);
-    ret = rc_manag_enable();
-    if (ret != OK)
-    {
-      syslog(LOG_INFO,"rc enable speed update fail.\n");
-      curr_state = U_INIT;
-    }
-  }
-  else
-  {
-    /*disable rc data update*/
-    syslog(LOG_INFO,"rc disable speed update, MCB status =%d.\n",state);
-    ret = rc_manag_disable();
-    if (ret != OK)
-    {
-      syslog(LOG_INFO,"rc disable speed update fail.\n");
-      curr_state = U_INIT;
-    }
-    curr_state = target_state;
-  }
-
-  return;
-}
-#endif
-
-static int read_the_RC_init_setting(void)
+static int notify_client_cb(enum rc_action_e action, void *data)
 {
   int status = OK;
-  struct config_remote_controller_s params;
+  struct rc_management_cb_s *next;
 
-  status = get_configuration_parameters(RC, &params);
-  if (status == OK)
+  for (next = g_root_cb.list_nlink; next != &g_root_cb ; next = next->list_nlink)
   {
-    syslog(LOG_INFO,"rc read init_param: max_speed: %f, max_angle_speed: %f, rc_enable: %d.\n",
-		    params.max_speed, params.max_angle_speed, params.rc_enable);
-    if ((params.max_speed < 0) ||
-	  (params.max_speed > MAX_SPEED))
+    if (next->rc_client_callback == NULL)
     {
-      g_rc_ctrl.init_setting.x_speed = MAX_SPEED;
+      continue;
     }
-    else
+    status = next->rc_client_callback(action,data);
+    if (status != OK)
     {
-      g_rc_ctrl.init_setting.x_speed = params.max_speed;
+      syslog(LOG_INFO,"rc_mgr callback :%pf fail \n",next->rc_client_callback);
     }
-
-    if ((params.max_angle_speed < 0) ||
-	  (params.max_angle_speed > MAX_ANGULAR_VELOCITY))
-    {
-      g_rc_ctrl.init_setting.z_speed = MAX_ANGULAR_VELOCITY;
-    }
-    else
-    {
-      g_rc_ctrl.init_setting.z_speed = params.max_angle_speed;
-    }
-
-    /*if rc_enable illegal, keep default value*/
-    if (params.rc_enable == DISABLE)
-    {
-      g_rc_ctrl.init_setting.enable_rc_management = false;
-    }
-    else if (params.rc_enable == ENABLE)
-    {
-      g_rc_ctrl.init_setting.enable_rc_management = true;
-    }
-  }
-  else
-  {
-    syslog(LOG_INFO,"rc read param fail \n");
-    return status;
+#ifdef RC_MGR_DEBUG
+    syslog(LOG_INFO,"rc_mgr callback :%pf success \n",next->rc_client_callback);
+#endif
   }
 
-  syslog(LOG_INFO,"rc param init result: max_speed: %f, max_angle_speed: %f, rc_enable: %d.\n",
-		  g_rc_ctrl.init_setting.x_speed,
-		  g_rc_ctrl.init_setting.z_speed,
-		  g_rc_ctrl.init_setting.enable_rc_management);
-
-  return status;
+  return OK;
 }
 
+static int rc_manag_basic_init(void)
+{
+  int status;
 
+  nxmutex_init(&g_rc_mgr.lock);
+
+  g_root_cb.list_nlink = &g_root_cb;
+  g_root_cb.list_prelink = &g_root_cb;
+  g_root_cb.rc_client_callback = NULL;
+  nxmutex_init(&g_cb_list_lock);
+
+  status = pthread_mutex_init(&g_rc_mgr.mutex, NULL);
+  if (status != 0)
+  {
+    return ERROR;
+  }
+  status = pthread_cond_init(&g_rc_mgr.cond, NULL);
+  if (status != 0)
+  {
+    return ERROR;
+  }
+  g_rc_mgr.init_done = true;
+
+  return OK;
+}
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
-// struct remote_contrl_platform remote_controller_manage_platform on HAL define
-
-int rc_controller_task(int argc, char *argv[])
+int register_rc_mgr_callback(struct rc_management_cb_s *cb)
 {
-  int ret = 0;
-
-#ifndef TEST_RC_ONLY
-#ifndef SKIP_PARAM_INIT
-  /*read basic setting*/
-  ret = read_the_RC_init_setting();
-  if (ret != OK)
+  if ((cb->rc_client_callback == NULL)||(g_rc_mgr.init_done == false))
   {
-    syslog(LOG_INFO,"%s read rc params fail.\n",__func__);
-    goto err;
+    return ERROR;
   }
-#endif
-#endif
-  /*set the init setting into RC manager*/
-  set_rc_manage_init_setting(g_rc_ctrl.init_setting);
+  nxmutex_lock(&g_cb_list_lock);
+  cb->list_nlink = g_root_cb.list_nlink;
+  g_root_cb.list_nlink = cb;
+  cb->list_prelink = &g_root_cb;
+  nxmutex_unlock(&g_cb_list_lock);
+  return OK;
+}
 
-  if (g_rc_ctrl.init_setting.enable_rc_management == false)
+int rc_manag_enable(void)
+{
+  int status = OK;
+
+  status = pthread_mutex_lock(&g_rc_mgr.mutex);
+  if (status != 0)
   {
-    /*let rc_mgr_thread exit*/
-    syslog(LOG_INFO,"%s disable rc function.\n",__func__);
-    rc_manag_enable();
-    goto end;
+    return ERROR;
+  }
+  g_rc_mgr.rc_need_update = true;
+  status = pthread_cond_signal(&g_rc_mgr.cond);
+#ifdef RC_MGR_DEBUG
+  syslog(LOG_INFO,"rc_debug : set rc_need_update: true.\n");
+#endif
+  if (status != 0)
+  {
+    return ERROR;
+  }
+  status = pthread_mutex_unlock(&g_rc_mgr.mutex);
+  if (status != 0)
+  {
+    return ERROR;
   }
 
-#ifdef TEST_RC_ONLY
-  rc_manag_enable();
+  return status;
+}
+
+int rc_manag_disable(void)
+{
+  int status = OK;
+
+  status = pthread_mutex_lock(&g_rc_mgr.mutex);
+  if (status != 0)
+  {
+    return ERROR;
+  }
+  g_rc_mgr.rc_need_update = false;
+#ifdef RC_MGR_DEBUG
+  syslog(LOG_INFO,"rc_debug : set rc_need_update: false.\n");
 #endif
-  ret = register_rc_mgr_callback(&rc_mgr_cb);
-#ifndef TEST_RC_ONLY
-  ret = client_control_sm_register_notify_cb(MCB_status_callback);
-#endif
-end:
-  syslog(LOG_INFO,"%s thread done.\n",__func__);
+  status = pthread_mutex_unlock(&g_rc_mgr.mutex);
+  if (status != 0)
+  {
+    return ERROR;
+  }
+  return OK;
+}
+
+int set_rc_manage_init_setting(struct rc_parameter_s data)
+{
+  int status = OK;
+  g_rc_mgr.init_setting = data;
+
+  status = set_rc_hal_max_speed(data.x_speed, data.z_speed);
+
+  return status;
+}
+
+int rc_management_task(int argc, char *argv[])
+{
+  int status = 0;
+  struct speed_req_s speed_req;
+  /*chose hal dirver*/
+
+  status = rc_dev_manag_hal_init();
+  if (status != 0)
+  {
+    syslog(LOG_INFO,"%s: rc_mgr_hal_init error.\n",__func__);
+    config_notify_completed(false);
+    return ERROR;
+  }
+  status = rc_manag_basic_init();
+  if (status != 0)
+  {
+    syslog(LOG_INFO,"%s: rc_mgr_init error.\n",__func__);
+    config_notify_completed(false);
+    return ERROR;
+  }
+  syslog(LOG_INFO,"%s: rc_mgr_init done.\n",__func__);
   config_notify_completed(true);
-  return ret;
-err:
-  syslog(LOG_INFO,"%s thread error.\n",__func__);
-  config_notify_completed(false);
+  while(1)
+  {
+    /*wait enable condtion*/
 
-  return ret;
+    status = wait_condtion();
+    if (status != 0)
+    {
+      syslog(LOG_INFO,"%s: wait_condition error.\n",__func__);
+      return ERROR;
+    }
+    if (!g_rc_mgr.init_setting.enable_rc_management)
+    {
+      /*disable RC module*/
+      syslog(LOG_INFO,"%s: disable rc mode, thread will exit.\n",__func__);
+      rc_dev_manage_release();
+      syslog(LOG_INFO,"%s: disable rc mode, thread exit.\n",__func__);
+      break;
+    }
+    while(1)
+    {
+      if (!g_rc_mgr.rc_need_update)
+      {
+        break;
+      }
+      /*get speed*/
+      speed_req.x_speed = 0;
+      speed_req.z_speed = 0;
+      status = get_vx_vz_speed_from_hal(&speed_req);
+      if (status != OK)
+      {
+        speed_req.x_speed = 0;
+        speed_req.z_speed = 0;
+        syslog(LOG_INFO,"%s:get speed fail, clear vx/vz \n",__func__);
+      }else
+      {
+        speed_req.x_speed = ABS_LIMIT(speed_req.x_speed,g_rc_mgr.init_setting.x_speed);
+        speed_req.z_speed = ABS_LIMIT(speed_req.z_speed,g_rc_mgr.init_setting.z_speed);
+      }
+#ifdef RC_MGR_DEBUG
+      syslog(LOG_INFO,"rc_debug %s :vx: %f , vz: %f \n",__func__, speed_req.x_speed, speed_req.z_speed);
+#endif
+      /*notify speed*/
+      notify_client_cb(RC_UPDATE_SPEED, &speed_req);
+      usleep(100*1000);
+    }
+  }
+  return OK;
 }

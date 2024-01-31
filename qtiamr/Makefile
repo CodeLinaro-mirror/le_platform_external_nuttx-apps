@@ -41,6 +41,7 @@ C_INCLUDES +=  \
     -I$(QTIARM_DIR)/app/charger_controller \
     -I$(QTIARM_DIR)/app/time_sync \
     -I$(QTIARM_DIR)/app/imu \
+    -I$(QTIARM_DIR)/app/remote_controller \
     -I$(QTIARM_DIR)/app/emergency_avoidance \
     -I$(QTIARM_DIR)/libqrc/include/app_msg \
     -I$(QTIARM_DIR)/libqrc/include/module \
@@ -79,6 +80,7 @@ CSRCS += $(QTIARM_DIR)/app/robot_controller/robot_controller.c
 CSRCS += $(QTIARM_DIR)/app/time_sync/time_sync.c
 CSRCS += $(QTIARM_DIR)/app/imu/imu.c
 CSRCS += $(QTIARM_DIR)/app/charger_controller/charger_controller.c
+CSRCS += $(QTIARM_DIR)/app/remote_controller/remote_controller.c
 CSRCS += $(QTIARM_DIR)/app/emergency_avoidance/emergency_avoidance.c
 
 
