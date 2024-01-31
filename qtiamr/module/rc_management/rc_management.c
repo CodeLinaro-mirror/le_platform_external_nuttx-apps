@@ -20,7 +20,7 @@
 #include "motion_management.h"
 #include "motion_sm.h"
 #include "rc_management.h"
-#include "remote_controller.h"
+#include "rc_dev_management.h"
 #include "config_msg.h"
 #include "main.h"
 

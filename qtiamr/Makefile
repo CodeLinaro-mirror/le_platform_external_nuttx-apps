@@ -60,9 +60,9 @@ C_INCLUDES +=  \
     -I$(QTIARM_DIR)/module/charger/charger_hal \
     -I$(QTIARM_DIR)/module/charger/charger_hal/ec130 \
     -I$(QTIARM_DIR)/module/charger/charger_hal/voltage_adc \
-    -I$(QTIARM_DIR)/module/remote_controller/ \
-    -I$(QTIARM_DIR)/module/remote_controller/rc_management/ \
-    -I$(QTIARM_DIR)/module/remote_controller/rc_management/hotrc/ \
+    -I$(QTIARM_DIR)/module/rc_management/ \
+    -I$(QTIARM_DIR)/module/rc_management/rc_dev_management/ \
+    -I$(QTIARM_DIR)/module/rc_management/rc_dev_management/hotrc/ \
     -I$(QTIARM_DIR)/module/avoidance \
     -I$(QTIARM_DIR)/module/avoidance/avoid_management \
     -I$(QTIARM_DIR)/module/avoidance/avoid_management/ultra/ \
@@ -105,9 +105,9 @@ CSRCS += $(QTIARM_DIR)/module/charger/charger_device/charger_sm.c
 CSRCS += $(QTIARM_DIR)/module/charger/charger_hal/charger_hal.c
 CSRCS += $(QTIARM_DIR)/module/charger/charger_hal/ec130/ec130.c
 CSRCS += $(QTIARM_DIR)/module/charger/charger_hal/voltage_adc/voltage_adc.c
-CSRCS += $(QTIARM_DIR)/module/remote_controller/remote_controller.c
-CSRCS += $(QTIARM_DIR)/module/remote_controller/rc_management/rc_management.c
-CSRCS += $(QTIARM_DIR)/module/remote_controller/rc_management/hotrc/hotrc.c
+CSRCS += $(QTIARM_DIR)/module/rc_management/rc_management.c
+CSRCS += $(QTIARM_DIR)/module/rc_management/rc_dev_management/rc_dev_management.c
+CSRCS += $(QTIARM_DIR)/module/rc_management/rc_dev_management/hotrc/zls_hotrc.c
 CSRCS += $(QTIARM_DIR)/module/avoidance/avoidance.c
 CSRCS += $(QTIARM_DIR)/module/avoidance/avoid_management/avoid_management.c
 CSRCS += $(QTIARM_DIR)/module/avoidance/avoid_management/ultra/dyp_02.c
