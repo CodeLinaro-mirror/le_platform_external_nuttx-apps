@@ -67,8 +67,8 @@ enum kinematic_model_e
 
 struct config_car_s
 {
-  enum car_model_e car_model;
-  enum kinematic_model_e kinematic_model;
+  int car_model;
+  int kinematic_model;
   float wheel_space;
   float wheel_perimeter;
 }__attribute__((aligned(4)));

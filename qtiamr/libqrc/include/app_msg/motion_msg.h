@@ -22,7 +22,8 @@ enum control_mode_e
   INACTIVE = 0,
   SPEED,
   POSITION,
-  TORQUE
+  TORQUE,
+  SET_DRV_ERR /* Just for test */
 };
 
 enum odom_msg_type_e
@@ -52,8 +53,8 @@ enum motor_err_e
 
 struct speed_cmd_s
 {
-	  float vx;
-	  float vz;
+	float vx;
+	float vz;
 };
 
 struct position_cmd_s

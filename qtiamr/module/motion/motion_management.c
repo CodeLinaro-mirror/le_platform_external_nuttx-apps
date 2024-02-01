@@ -162,6 +162,15 @@ int motion_management_init(int argc, char *argv[])
       config_notify_completed(false);
       return result;
     }
+
+  /* check car mode */
+  if( config_car.car_model >= CAR_MODE_MAX || config_car.car_model < 0)
+  {
+    syslog(LOG_ERR,"motion_management_init: car_model=%d is invalid\n",config_car.car_model);
+    config_notify_completed(false);
+    return ERROR;
+  }
+
   parameters.speed_line_scale = config_scales.speed_scale[0];
   parameters.speed_angle_scale = config_scales.speed_scale[1];
   parameters.speed_odom_line_scale = config_scales.speed_odom_scale[0];
