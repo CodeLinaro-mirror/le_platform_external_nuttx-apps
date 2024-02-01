@@ -117,6 +117,7 @@ CSRCS += $(QTIARM_DIR)/module/avoidance/avoid_management/ultra/dyp_02.c
 
 # add define
 CFLAGS += -DQRC_MCB
+CFLAGS += -DDEBUG_MCB
 
 CFLAGS += $(C_INCLUDES)
 

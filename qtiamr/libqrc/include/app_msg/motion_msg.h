@@ -68,7 +68,7 @@ union motion_control_data_u
   struct speed_cmd_s speed_cmd;
   struct position_cmd_s position_cmd;
   int emergency;
-  enum control_mode_e mode;
+  int mode;
 } __attribute__((aligned(4)));
 
 struct motion_control_msg_s

@@ -16,6 +16,7 @@
 #include <debug.h>
 
 #include "robot_controller.h"
+#include "motion_sm.h"
 #include "main.h"
 
 /* switch done cb register need to do  */
@@ -35,6 +36,9 @@
 
 static void robot_control_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response);
 static void robot_control_msg_parse(struct qrc_pipe_s *pipe, struct motion_control_msg_s *control_msg);
+static void motion_emergency_done_cb(void *user, int data);
+static void motion_drv_err_cb(void *user, int data);
+static void motion_switch_done_cb(void *user, int data);
 
 /****************************************************************************
  * Private Data
@@ -87,6 +91,86 @@ static void robot_control_msg_parse(struct qrc_pipe_s *pipe, struct motion_contr
     }
 }
 
+static enum control_mode_e get_control_mode(enum motion_sm_state_e state)
+{
+  enum control_mode_e control_mode;
+
+  switch (state)
+  {
+    case ST_SPEED:
+      {
+        control_mode = SPEED;
+        break;
+      }
+    case ST_DRIVER_ERR:
+      {
+        control_mode = SET_DRV_ERR;
+        break;
+      }
+    default:/* control mode is inactive */
+      {
+        control_mode = INACTIVE;
+      }
+  }
+
+  return control_mode;
+}
+
+
+/* robot controller motion work done callback */
+
+static void motion_switch_done_cb(void *user, int data)
+{
+  struct qrc_pipe_s *pipe = (struct qrc_pipe_s *)user;
+  struct motion_control_msg_s control_msg;
+  int result;
+
+  control_msg.msg_type = SWITCH_MODE;
+  control_msg.data.mode = get_control_mode((enum motion_sm_state_e) data);
+
+  /* write status to rb5 */
+  result = qrc_write(pipe, (uint8_t *)&control_msg, sizeof(struct motion_control_msg_s), false);
+  if (result != SUCCESS)
+    {
+      syslog(LOG_ERR, "Motion cb qrc send failed %d\n", result);
+    }
+}
+
+static void motion_emergency_done_cb(void *user, int data)
+{
+  struct qrc_pipe_s *pipe = (struct qrc_pipe_s *)user;
+  struct motion_control_msg_s control_msg;
+  int result;
+
+  control_msg.msg_type = SET_EMERGENCY;
+  control_msg.data.emergency = data;
+
+  /* write status to rb5 */
+  result = qrc_write(pipe, (uint8_t *)&control_msg, sizeof(struct motion_control_msg_s), false);
+  if (result != SUCCESS)
+    {
+      syslog(LOG_ERR, "Motion cb qrc send failed %d\n", result);
+    }
+}
+
+static void motion_drv_err_cb(void *user, int data)
+{
+  struct qrc_pipe_s *pipe = (struct qrc_pipe_s *)user;
+  struct motion_control_msg_s control_msg;
+  int result;
+
+  control_msg.msg_type = SWITCH_MODE;
+  control_msg.data.mode = get_control_mode((enum motion_sm_state_e) data);
+
+  /* write status to rb5 */
+  result = qrc_write(pipe, (uint8_t *)&control_msg, sizeof(struct motion_control_msg_s), false);
+  if (result != SUCCESS)
+    {
+      syslog(LOG_ERR, "Motion odom send failed %d\n", result);
+    }
+}
+
+
 /* robot controller qrc msg callback */
 
 static void robot_control_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response)
@@ -116,7 +200,6 @@ static void robot_control_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t
 int robot_controller(int argc, char *argv[])
 {
   char pipe_name[] = MOTION_PIPE;
-  enum motion_result_e motion_res;
   struct qrc_pipe_s *pipe;
 
   pipe =  qrc_get_pipe(pipe_name);
@@ -133,10 +216,18 @@ int robot_controller(int argc, char *argv[])
       return -1;
     }
 
+  /* register motion cb */
+  register_motion_switch_done_cb(motion_switch_done_cb, (void *)pipe);
+  register_motion_emergency_done_cb(motion_emergency_done_cb, (void *)pipe);
+  register_motion_drv_err_cb(motion_drv_err_cb, (void *)pipe);
+
   /* notify ok */
   config_notify_completed(true);
-  sleep(18);
+
   /* set motion as speed mode */
+  /*
+  sleep(18);
+  enum motion_result_e motion_res;
   motion_res = motion_switch_mode(SPEED);
   if (M_OK != motion_res)
     {
@@ -144,6 +235,6 @@ int robot_controller(int argc, char *argv[])
                                                           motion_res);
     }
   syslog(LOG_INFO,"robot_controller switch motion as speed mode\n");
-
+  */
   return 0;
 }

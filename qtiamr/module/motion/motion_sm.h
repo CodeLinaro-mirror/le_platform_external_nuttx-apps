@@ -22,7 +22,7 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-typedef void (*motion_cb)(void *user);  /* motion cb for user */
+typedef void (*motion_cb)(void *user,int data);  /* motion cb for user */
 
 typedef int (*do_action_fun)(union motion_control_data_u data);  /* action function format */
 
@@ -69,7 +69,9 @@ enum motion_sm_state_e get_motion_sm_state(void);
 int motion_sm_event(enum motion_sm_event_e event ,union motion_control_data_u data);
 
 void register_motion_switch_done_cb(motion_cb cb_fun, void *arg);
-void register_motion_odom_done_cb(motion_cb cb_fun, void *arg);
+void register_motion_emergency_done_cb(motion_cb cb_fun, void *arg);
+void register_motion_drv_err_cb(motion_cb cb_fun, void *arg);
+
 
 int motion_sm_init(void);
 

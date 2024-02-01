@@ -35,9 +35,9 @@ struct motion_sm_s
   enum motion_sm_state_e state;
   pthread_mutex_t mutex;
   motion_cb switch_done_cb;
-  motion_cb position_done_cb;
+  motion_cb emergency_done_cb;
   motion_cb drv_err_cb;
-  void *pose_cb_data;
+  void *emergency_cb_data;
   void *switch_cb_data;
   void *drv_err_cb_data;
 
@@ -89,7 +89,7 @@ struct motion_sm_transform_s statetrans_inactive[]={
   {EV_POSITION_ATTACHED,ST_INACTIVE, ST_INACTIVE,   NULL},
   {EV_ENTER_EMERGENCY,  ST_INACTIVE, ST_INACTIVE,   NULL},
   {EV_EXIT_EMERGENCY,   ST_INACTIVE, ST_INACTIVE,   NULL},
-  {EV_DRI_ERR,          ST_INACTIVE, ST_DRIVER_ERR, NULL},
+  {EV_DRI_ERR,          ST_INACTIVE, ST_DRIVER_ERR, do_action_drv_error},
 };
 
 /* switching */
@@ -103,7 +103,7 @@ struct motion_sm_transform_s statetrans_switching[]={
   {EV_POSITION_ATTACHED,ST_SWITCHING, ST_SWITCHING,     NULL},
   {EV_ENTER_EMERGENCY,  ST_SWITCHING, ST_EMERGENCY,     do_action_emergency},
   {EV_EXIT_EMERGENCY,   ST_SWITCHING, ST_SWITCHING,     NULL},
-  {EV_DRI_ERR,          ST_SWITCHING, ST_INACTIVE,      do_action_drv_error},
+  {EV_DRI_ERR,          ST_SWITCHING, ST_DRIVER_ERR,    do_action_drv_error},
 };
 
 /* speed */
@@ -117,7 +117,7 @@ struct motion_sm_transform_s statetrans_speed[]={
   {EV_POSITION_ATTACHED,ST_SPEED, ST_SPEED,         NULL},
   {EV_ENTER_EMERGENCY,  ST_SPEED, ST_EMERGENCY,     do_action_emergency},
   {EV_EXIT_EMERGENCY,   ST_SPEED, ST_SPEED,         NULL},
-  {EV_DRI_ERR,          ST_SPEED, ST_INACTIVE,      do_action_drv_error},
+  {EV_DRI_ERR,          ST_SPEED, ST_DRIVER_ERR,    do_action_drv_error},
 };
 
 /* emergency */
@@ -131,7 +131,7 @@ struct motion_sm_transform_s statetrans_emergency[]={
   {EV_POSITION_ATTACHED,ST_EMERGENCY, ST_EMERGENCY,     NULL},
   {EV_ENTER_EMERGENCY,  ST_EMERGENCY, ST_EMERGENCY,     NULL},
   {EV_EXIT_EMERGENCY,   ST_EMERGENCY, ST_INACTIVE,      do_action_emergency},
-  {EV_DRI_ERR,          ST_EMERGENCY, ST_INACTIVE,      do_action_drv_error},
+  {EV_DRI_ERR,          ST_EMERGENCY, ST_DRIVER_ERR,    do_action_drv_error},
 };
 
 /****************************************************************************
@@ -219,7 +219,6 @@ static int motion_sm_do_action(struct motion_sm_transform_s *statetrans, union m
     }
 }
 
-
 /****************************************************************************
  * Action functions
  ****************************************************************************/
@@ -240,9 +239,14 @@ syslog(LOG_INFO,"do_action_switch:  result = %d mode=%d \n",result,mode);
           syslog(LOG_INFO,"switch motion speed done change state\n");
           motion_sm_event(EV_SPEED_SWITCH_DONE, data);
         }
+      else if (SET_DRV_ERR == mode)
+        {
+          syslog(LOG_INFO,"switch motion SET_DRV_ERR\n");
+          motion_sm_event(EV_SPEED_SWITCH_DONE, data);
+        }
       else if (POSITION == mode)
         {
-          motion_sm_event(EV_POS_SWITCH_DONE, data);
+          motion_sm_event(EV_DRI_ERR, data);
         }
       else
         {
@@ -260,18 +264,41 @@ syslog(LOG_INFO,"do_action_switch:  result = %d mode=%d \n",result,mode);
 static int do_action_emergency(union motion_control_data_u data)
 {
   bool emergency = data.emergency;
-  
-  syslog(LOG_INFO,"do_action_emergency: EXECUTED emergency = %d\n",emergency);
-  return motor_quick_stop(emergency);
+  int result;
+  int emergency_result = 1;
 
+  result = motor_quick_stop(emergency);
+
+  if (result != OK)
+    {
+      syslog(LOG_INFO,"do_action_emergency:  emergency quick stop failed\n");
+      emergency_result = 0;
+    }
+
+  if (NULL != g_motion_sm.emergency_done_cb)
+    {
+      g_motion_sm.emergency_done_cb(g_motion_sm.emergency_cb_data, emergency_result);
+    }
+  syslog(LOG_INFO,"do_action_emergency: EXECUTED emergency = %d\n",emergency);
+
+  return OK;
 }
 
 static int do_action_drv_error(union motion_control_data_u data)
 {
-  /* try stop motor driver */
-  syslog(LOG_INFO,"do_action_drv_error: EXECUTED \n");
-  return motor_quick_stop(true);
+  enum motion_sm_state_e state = get_motion_sm_state();
 
+  /* try stop motor driver */
+  //motor_quick_stop(true);
+
+  if (NULL != g_motion_sm.drv_err_cb)
+    {
+      g_motion_sm.drv_err_cb(g_motion_sm.drv_err_cb_data, state);
+    }
+
+  syslog(LOG_INFO,"do_action_drv_error: EXECUTED \n");
+
+  return OK;
 }
 
 static int do_action_speed(union motion_control_data_u data)
@@ -286,10 +313,13 @@ static int do_action_speed(union motion_control_data_u data)
 
 static int do_action_switch_done(union motion_control_data_u data)
 {
-  /* switch done call back*/
+  enum motion_sm_state_e state;
+  state = get_motion_sm_state();
+
+    /* switch done call back*/
   if (NULL != g_motion_sm.switch_done_cb)
     {
-      g_motion_sm.switch_done_cb(g_motion_sm.switch_cb_data);
+      g_motion_sm.switch_done_cb(g_motion_sm.switch_cb_data, (int)state);
     }
   syslog(LOG_INFO,"do_action_switch_done: EXECUTED \n");
   return OK;
@@ -374,6 +404,19 @@ void register_motion_switch_done_cb(motion_cb cb_fun, void *arg)
   g_motion_sm.switch_done_cb = cb_fun;
   g_motion_sm.switch_cb_data = arg;
 }
+
+void register_motion_emergency_done_cb(motion_cb cb_fun, void *arg)
+{
+  g_motion_sm.emergency_done_cb = cb_fun;
+  g_motion_sm.emergency_cb_data = arg;
+}
+
+void register_motion_drv_err_cb(motion_cb cb_fun, void *arg)
+{
+  g_motion_sm.drv_err_cb = cb_fun;
+  g_motion_sm.drv_err_cb_data = arg;
+}
+
 
 void register_motion_odom_done_cb(motion_cb cb_fun, void *arg)
 {

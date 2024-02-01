@@ -115,6 +115,10 @@ enum motion_result_e motion_switch_mode(enum control_mode_e mode)
     {
       motion_event = EV_CMD_SWITCH_POS;
     }
+  else if (mode == SET_DRV_ERR)
+    {
+      motion_event = EV_DRI_ERR;
+    }
   else
     {
       syslog(LOG_ERR, "Motion switch mode invalid %d\n", mode);
