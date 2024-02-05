@@ -153,11 +153,12 @@ static void ec130_raw_data_parse(struct ec130_raw_data_s *buff)
   ec130_data_p->is_charging = buff->flags & (0x01);
   ec130_data_p->current = (buff->current - ((buff->current >> 7) * (0xFF + 1))) * CHARGING_CURR_UNIT;
 
-  if (ec130_data_p->is_infrared == 0)
+  if (ec130_data_p->is_infrared == 0) 
   {
     ec130_data_p->vx = 0;
     ec130_data_p->vz = 0;
   }
+
   if (ec130_data_p->is_charging == 1)
   {
     ec130_data_p->vx = 0;
@@ -214,15 +215,15 @@ static int32_t ec130_get_can_data(void)
       close(fd);
       return ERROR;
     }
-    //printf("  ID: %4u DLC: %u\n", rxmsg.cm_hdr.ch_id, rxmsg.cm_hdr.ch_dlc);
+    //syslog(LOG_ERR, "  ID: %4u DLC: %u\n", rxmsg.cm_hdr.ch_id, rxmsg.cm_hdr.ch_dlc);
     if (rxmsg.cm_hdr.ch_id == AUTO_CHARGER_MSG_ID)
     {
       ec130_raw_data_parse((struct ec130_raw_data_s *) &rxmsg.cm_data);
-      close(fd);
       goto out;
     }
   }
 out:
+  close(fd);
   return OK;
 }
 
@@ -243,9 +244,9 @@ static int32_t ec130_get_wheel_speed(float *vx, float *vz)
     return ERROR;
   }
   /*mm/s to m/s*/
-  *vx = -(ec130_data_p->vx * WHEEL_SPEED_UNIT_TRANS);
+  *vx = (ec130_data_p->vx * WHEEL_SPEED_UNIT_TRANS);
   /*0.001rad/s to 1rad/s*/
-  *vz = -(ec130_data_p->vz * WHEEL_SPEED_UNIT_TRANS);
+  *vz = (ec130_data_p->vz * WHEEL_SPEED_UNIT_TRANS);
 
   ec130_mutex_unlock(ec_mutex);
   return OK;
