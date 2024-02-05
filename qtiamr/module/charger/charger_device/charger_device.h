@@ -33,7 +33,7 @@
 /*polling time definition*/
 #define CHARGER_EXCEPTION_DELAY     10000000  //10s
 #define IDLE_BATT_VOLT_NOTIFY       5000000   //5s
-#define CHARGING_DONE_DELAY         500000   //500ms  ==> need to debug
+#define CHARGING_DONE_DELAY         2000000   //2s 
 #define CONTROLLING_SPEED_NOTIFY    20000     //20ms
 #define CHARGING_POLL_DELAY         2000000   //2s
 #define CHR_CTL_MODE_TIMEOUT        SEC2TICK(200)

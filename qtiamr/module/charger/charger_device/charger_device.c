@@ -33,10 +33,11 @@ extern const char * sm_event_labels[];
 #define CHARGER_DEVICE_NAME             "ec130"
 
 /*move forward and stop charging param*/
-#define CHARGER_SM_STOP_VX_SPEED        0.1  //0.1m/s
-#define CHARGER_SM_STOP_VX_ZERO         0    //0.1m/s
-#define CHARGER_SM_STOP_VZ_ZERO         0    //0 rad/s
+#define CHARGER_SM_STOP_VX_SPEED        0.03  //m/s
+#define CHARGER_SM_STOP_VX_ZERO         0    //m/s
+#define CHARGER_SM_STOP_VZ_ZERO         0    //rad/s
 
+#define CHARGER_DEV_TRYING_COUNT        5
 
 /****************************************************************************
  * Private Types
@@ -47,6 +48,7 @@ extern const char * sm_event_labels[];
  ****************************************************************************/
 
 static int32_t charger_dev_get_speed(float * vx, float * vz);
+static void charger_send_speed(void);
 
 /****************************************************************************
  * Public Data
@@ -114,6 +116,7 @@ static void charger_pile_attached_event_in_controlling(void)
   bool is_charging;
   bool pile_stats;
   int32_t ret;
+  int i;
   ret = charger_dev_get_all_stats(NULL,NULL,&pile_stats,&is_charging);
   if(ret != OK)
   {
@@ -122,19 +125,59 @@ static void charger_pile_attached_event_in_controlling(void)
       charger_dev_sm_signal_send((int32_t)SM_EVENT_EXCEPTION);
     return;
   }
+/*
   if(pile_stats == FALSE)
     {
       if(charger_dev_p->sm.sm_task_started)
+      {
         charger_dev_sm_signal_send((int32_t)SM_EVENT_BACK_TO_IDLE);
+      }
+      motion_speed_notify(CHARGER_SM_STOP_VX_ZERO, CHARGER_SM_STOP_VZ_ZERO);
       syslog(LOG_DEBUG, "CHARGER: controlling state: loss pile signal, back to idle!!!!\n");
       return;
-    }
-
-  syslog(LOG_DEBUG, "CHARGER: controlling state: is_charging = (%d) !\n", is_charging);
+    }*/
   if(is_charging == TRUE)
     {
-      if(charger_dev_p->sm.sm_task_started)
-        charger_dev_sm_signal_send((int32_t)SM_EVENT_ATTACH_PILE);
+      /*stop the car*/
+      motion_speed_notify(CHARGER_SM_STOP_VX_ZERO, CHARGER_SM_STOP_VZ_ZERO);
+      for(i = 0; i < CHARGER_DEV_TRYING_COUNT; i++)
+      {
+        sleep(2);
+
+        /*re-check charging status*/
+        ret = charger_dev_get_all_stats(NULL,NULL,&pile_stats,&is_charging);
+        if(ret != OK)
+        {
+          charger_exception_notify(CHARGER_ENTER_EXCEPTION);
+          if(charger_dev_p->sm.sm_task_started)
+            charger_dev_sm_signal_send((int32_t)SM_EVENT_EXCEPTION);
+          return;
+        }
+        syslog(LOG_DEBUG, "CHARGER: controlling state: is_charging = (%d) trying(%d)!\n", is_charging, i);
+
+        /*if disconnect, try again with turn around a small angle*/
+        if(is_charging == FALSE)
+          {
+            motion_speed_notify(CHARGER_SM_STOP_VX_ZERO, 0.15);
+            usleep(500000);
+            motion_speed_notify(CHARGER_SM_STOP_VX_ZERO, CHARGER_SM_STOP_VZ_ZERO);
+            usleep(50000);
+            motion_speed_notify(-0.05, CHARGER_SM_STOP_VZ_ZERO);
+            usleep(50000);
+            motion_speed_notify(CHARGER_SM_STOP_VX_ZERO, CHARGER_SM_STOP_VZ_ZERO);
+          }
+        else
+          {
+              if(charger_dev_p->sm.sm_task_started && i == CHARGER_DEV_TRYING_COUNT - 1)
+              {
+                charger_dev_sm_signal_send((int32_t)SM_EVENT_ATTACH_PILE);
+              }
+          }
+      }
+    }
+  else
+    {
+      charger_send_speed();
     }
 }
 static void charger_send_speed(void)
@@ -173,13 +216,12 @@ static void charger_normal_charging_event_in_forcecharging(void)
     {
       if(charger_dev_p->sm.sm_task_started)
         charger_dev_sm_signal_send((int32_t)SM_EVENT_TO_NORMAL_CHARGING);
-      syslog(LOG_DEBUG, "CHARGER: force charging: charging disconnect, jump to charging state!!!!\n");
+      syslog(LOG_INFO, "CHARGER: force charging: charging disconnect, jump to charging state!!!!\n");
       return;
     }
   syslog(LOG_DEBUG, "CHARGER: force charging state: is_charging = (%d) !\n", is_charging);
   
   charging_current_notify(current);
-
   battery_voltage_notify(voltage);
   if(voltage >= (BATTERY_FORCE_VOLT_PERCETAGE * voltage_gap + charger_dev_p->low_battery_voltage))
     {
@@ -207,14 +249,14 @@ static void charger_stop_charging_event_in_charging(void)
   {
     if(charger_dev_p->sm.sm_task_started)
       charger_dev_sm_signal_send((int32_t)SM_EVENT_BACK_TO_IDLE);
-    syslog(LOG_DEBUG, "CHARGER: charging state: charging disconnect, back to idle!!!!\n");
+    syslog(LOG_INFO, "CHARGER: charging state: charging disconnect, back to idle!!!!\n");
     return;
   }
   syslog(LOG_DEBUG, "CHARGER: charging state: is_charging = (%d) !\n", is_charging);
 
   charging_current_notify(current);
-
   battery_voltage_notify(voltage);
+
   if(voltage >= charger_dev_p->full_battery_voltage)
     {
       if(charger_dev_p->sm.sm_task_started)
@@ -226,24 +268,29 @@ static void charger_back_to_idle_event_charging_done(void)
 {
   bool is_charging;
   int32_t ret;
-
-  ret = charger_dev_get_is_charging_stats(&is_charging);
-  if(ret != OK)
+  while(1)
     {
-      charger_exception_notify(CHARGER_IS_CHARGING_ERROR);
-      if(charger_dev_p->sm.sm_task_started)
-        charger_dev_sm_signal_send((int32_t)SM_EVENT_EXCEPTION);
-      return;
+      ret = charger_dev_get_is_charging_stats(&is_charging);
+      if(ret != OK)
+        {
+          charger_exception_notify(CHARGER_IS_CHARGING_ERROR);
+          if(charger_dev_p->sm.sm_task_started)
+            charger_dev_sm_signal_send((int32_t)SM_EVENT_EXCEPTION);
+          return;
+        }
+      if(is_charging == TRUE)
+        {
+          motion_speed_notify(CHARGER_SM_STOP_VX_SPEED, CHARGER_SM_STOP_VZ_ZERO);
+        }
+      else
+        {
+          syslog(LOG_INFO, "CHARGER: charging done state:  *** move and stop *** !!!!\n");
+          motion_speed_notify(CHARGER_SM_STOP_VX_ZERO, CHARGER_SM_STOP_VZ_ZERO);
+          if(charger_dev_p->sm.sm_task_started)
+            charger_dev_sm_signal_send((int32_t)SM_EVENT_BACK_TO_IDLE);
+          return;
+        }
     }
-  if(is_charging == FALSE)
-    {
-      syslog(LOG_DEBUG, "CHARGER: charging done state:  *** move and stop *** !!!!\n");
-      motion_speed_notify(CHARGER_SM_STOP_VX_ZERO, CHARGER_SM_STOP_VZ_ZERO);
-      if(charger_dev_p->sm.sm_task_started)
-        charger_dev_sm_signal_send((int32_t)SM_EVENT_BACK_TO_IDLE);
-      return;
-    }
-  motion_speed_notify(CHARGER_SM_STOP_VX_SPEED, CHARGER_SM_STOP_VZ_ZERO);
 }
 
 static int32_t charger_dev_get_speed(float * vx, float * vz)
@@ -690,7 +737,6 @@ static void start_polling(void)
             }
           
           charger_pile_attached_event_in_controlling();
-          charger_send_speed();
           
           elapsed = clock_systime_ticks() - start;
           if(elapsed >= CHR_CTL_MODE_TIMEOUT)
@@ -752,11 +798,10 @@ int charger_management(int argc, char *argv[])
     config_notify_completed(false);
     return ERROR;
   }
-  usleep(500 * 1000L);
+  usleep(50 * 1000L);
   charger_dev_p->initialized = TRUE;
   syslog(LOG_INFO, "CHARGER: charger_management_main_task: Charger device Initialize successfully!\n");
   config_notify_completed(true);
-  usleep(500 * 1000L);
   start_polling();
   return OK;
 }

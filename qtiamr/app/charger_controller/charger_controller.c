@@ -134,7 +134,7 @@ static void charger_send_qrc_async_msg_cb(struct charger_msg_s *charger_msg){
 static void charger_motion_speed_send_cb(float vx, float vz)
 {
   int ret;
-  ret = motion_speed_control(CHARGER_CONTROLLER, vx,vz);
+  ret = motion_speed_control(CHARGER_CONTROLLER, vx, vz);
   if (ret != OK)
     {
       syslog(LOG_DEBUG, "CHARGER CONTROLLER: motion_speed_control error(%d): vx = (%f), vz = (%f)\n",ret, vx, vz);
@@ -339,9 +339,9 @@ int32_t charger_controller(int argc, char *argv[])
       config_notify_completed(false);
       return ERROR;
     }
+    syslog(LOG_DEBUG, "CHARGER CONTROLLER: charger_controller Initialize successfully!\n");
     /* notify ok */
     config_notify_completed(true);
-    syslog(LOG_DEBUG, "CHARGER CONTROLLER: charger_controller Initialize successfully!\n");
 
     return OK;
 }

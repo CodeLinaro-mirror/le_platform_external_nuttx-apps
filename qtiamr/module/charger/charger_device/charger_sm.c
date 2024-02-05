@@ -86,7 +86,7 @@ static int32_t state_available(int state){
         ret = ERROR;
       break;
     case CHR_SM_CONTROLLING:
-      if(state != CHR_SM_IDLE && state != CHR_SM_FORCE_CHARGING && state != CHR_SM_EXCEPTION)
+      if(state != CHR_SM_IDLE && state != CHR_SM_FORCE_CHARGING && state != CHR_SM_CHARGER_DONE && state != CHR_SM_EXCEPTION)
         ret = ERROR;
       break;
     case CHR_SM_FORCE_CHARGING:
@@ -111,8 +111,6 @@ static int32_t state_available(int state){
 
   return ret;
 }
-
-
 
 static int32_t sm_enter_state(enum chr_sm_st_e state){
   
@@ -167,6 +165,7 @@ static int sm_task(int argc, FAR char *argv[]){
         case SM_EVENT_START_CHARGING:
 
           sm_enter_state(CHR_SM_SEARCHING); 
+          set_polling_interval(CHARGING_POLL_DELAY);
           break;
 
         case SM_EVENT_FIND_PILE:
