@@ -123,7 +123,7 @@ static struct mcb_task_s mcb_tasks[] = {
   {"MOTION_MANAGEMENT",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_management_init, NULL ,0},
   {"CHARGER_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
   {"RC_MANAGEMENT",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, rc_management_task,     NULL ,0},
-  {"AVOID_MANAGEMENT",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"AVOID_MANAGEMENT",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, avoidance_main,         NULL ,0},
   {"TIME_SYNC",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, time_sync_thread,       NULL ,0},
   {"IMU",                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, imu_task,               NULL ,0},
   {"MISC",                DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
@@ -132,7 +132,7 @@ static struct mcb_task_s mcb_tasks[] = {
   {"CLIENT_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, client_controller,      NULL ,0},
   {"CHARGER_CONTROLLER",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
   {"REMOTE_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, rc_controller_task,     NULL ,0},
-  {"EMERGENCY",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"EMERGENCY",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, emergency_main,         NULL ,0},
 };
 
 static struct config_parameters_s g_config_parameter;
