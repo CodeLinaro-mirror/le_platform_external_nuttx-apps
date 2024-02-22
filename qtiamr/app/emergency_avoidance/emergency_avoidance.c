@@ -19,11 +19,12 @@
 #include "avoid_management.h"
 #include "emergency_avoidance.h"
 #include "motion_management.h"
+#include "motion_sm.h"
 
 /****************************************************************************
  * Public data
  ****************************************************************************/
-static struct avoid_client *emerg_client;
+static struct avoid_client emerg_client;
 static struct qrc_pipe_s *emerg_pipe = NULL;
 
 
@@ -31,9 +32,47 @@ static struct qrc_pipe_s *emerg_pipe = NULL;
  * Private Functions
  ****************************************************************************/
  /*callback of qrc_message*/
-static void emerg_msg_cb (struct qrc_pipe_s *pipe,void * data, size_t len, bool response)
+static void emerg_qrc_msg_parse(struct qrc_pipe_s *pipe, struct emerg_msg_s *emerg_msg)
 {
-	struct emerg_msg_s *emerg_msg = NULL;
+	int ret;
+	struct emerg_msg_s emerg_msg_reply = {0};
+
+	if(!pipe || !emerg_msg)
+		return;
+
+	switch(emerg_msg->msg_type)
+	{
+		case ENABLEMENT:
+			syslog(LOG_INFO, "Received emergency enablement %d \n",emerg_msg->data.value);
+			emerg_msg_reply.msg_type = ENABLEMENT;
+			emerg_msg_reply.data.value = emerg_msg->data.value;
+			if(emerg_msg->data.value)
+			{
+				register_ultra_client(&emerg_client);
+			} else {
+				motion_set_emergency(FALSE);
+				unregister_ultra_client(&emerg_client);
+			}
+			break;
+
+		case EVENT:
+			syslog(LOG_DEBUG, "emerg event received\n");
+			return;
+
+		default:
+			syslog(LOG_DEBUG, "emerg receive qrc msg unknown\n");
+			return;
+	}
+
+	ret = qrc_write(pipe, (void *)&emerg_msg_reply, sizeof(struct emerg_msg_s),false);
+	if (ret != SUCCESS)
+	{
+		syslog(LOG_ERR, "emerg_qrc_msg responde failed\n");
+	}
+}
+static void emerg_msg_cb(struct qrc_pipe_s *pipe, void * data, size_t len, bool response)
+{
+	struct emerg_msg_s *emerg_msg;
 
 	if(!pipe || !data)
 		return;
@@ -41,35 +80,37 @@ static void emerg_msg_cb (struct qrc_pipe_s *pipe,void * data, size_t len, bool 
 	if(len == sizeof(struct emerg_msg_s))
 	{
 		emerg_msg = (struct emerg_msg_s *)data;
-
-		if(emerg_msg->value)
-		{
-			register_ultra_client(emerg_client);
-		} else {
-			motion_set_emergency(FALSE);
-			unregister_ultra_client(emerg_client);
-		}
+		emerg_qrc_msg_parse(pipe, emerg_msg);
+	} else {
+		syslog(LOG_ERR, "emerg qrc message received fail, need:%d, actual:%d \n",
+			sizeof(struct emerg_msg_s), len);
 	}
-
-	syslog(LOG_DEBUG, "Received emergency message %u\n", emerg_msg->value);
 }
 
 /*callback of avoidance client*/
-static void emerg_client_cb (uint8_t addr, uint16_t dist)
+static void emerg_client_cb(uint8_t addr, uint16_t dist)
 {
+	int ret = 0;
 	struct emerg_msg_s msg = {0};
 
-	msg.msg_type = T_SENSOR;
-	msg.value = (int)addr;
+	msg.msg_type = EVENT;
+	msg.data.event.type = ENTER;
+	msg.data.event.trigger_sensor = (int)addr;
 
-	motion_set_emergency(TRUE);
+	if (ST_EMERGENCY != get_motion_sm_state())
+		motion_set_emergency(TRUE);
 
-	if(emerg_pipe)
+	if(!emerg_pipe)
 	{
-		qrc_write(emerg_pipe, (uint8_t*)&msg, sizeof(struct emerg_msg_s), FALSE);
+		syslog(LOG_ERR, "emerg pipe NULL\n");
+		return;
 	}
 
-	syslog(LOG_DEBUG, "sensor %d triggerd emergency stop: %d\n", addr, dist);
+	ret = qrc_write(emerg_pipe, (void*)&msg, sizeof(struct emerg_msg_s), false);
+	if (ret != SUCCESS)
+	{
+		syslog(LOG_ERR, "emerg send event qrc_msg failed\n");
+	}
 }
 
 /****************************************************************************
@@ -82,44 +123,44 @@ int emergency_main(int argc, char *argv[])
 
 	if (!avoidance_inited)
 	{
-		syslog(LOG_INFO, "emergency_main exit cause avoidance management fail\n");
+		syslog(LOG_INFO, "emergency_main exit cause avoidance management disabled\n");
 		return ERROR;
 	}
 
-	memset(emerg_client, 0, sizeof(struct avoid_client));
-	emerg_client->name = EMERG_PIPE;
-	emerg_client->cb = emerg_client_cb;
+	emerg_client.name = EMERG_PIPE;
+	emerg_client.cb = emerg_client_cb;
 
-	ret = get_configuration_parameters(SENSOR, &obs_avoid_param);
-	if (ret > 0 )
+	ret = get_configuration_parameters(OBSTACLE_AVOIDANCE, (void*)&obs_avoid_param);
+	if (ret < 0 )
 	{
-		emerg_client->thres_bottom = (uint16_t) (obs_avoid_param.bottom_dist * 1000);
-		emerg_client->thres_side = (uint16_t) (obs_avoid_param.side_dist * 1000);
-		emerg_client->thres_front = (uint16_t) (obs_avoid_param.front_dist * 1000);
-	} else {
-		syslog(LOG_INFO, "emergency avoidance parameters get failed\n");
+		syslog(LOG_ERR, "emergency avoidance parameters get failed\n");
 		config_notify_completed(false);
 		return ERROR;
 	}
 
-	register_ultra_client(emerg_client);
+	emerg_client.thres_bottom = (uint16_t) (obs_avoid_param.bottom_dist * 1000);
+	emerg_client.thres_side = (uint16_t) (obs_avoid_param.side_dist * 1000);
+	emerg_client.thres_front = (uint16_t) (obs_avoid_param.front_dist * 1000);
+	syslog(LOG_INFO, "emergency threshold (b,s,f)-(%d,%d,%d) \n",
+		emerg_client.thres_bottom, emerg_client.thres_side, emerg_client.thres_front);
 
 	emerg_pipe = qrc_get_pipe(EMERG_PIPE);
 	if (!emerg_pipe)
 	{
-		syslog(LOG_INFO, "emergency avoidance get pipe failed\n");
+		syslog(LOG_ERR, "emergency avoidance get pipe failed\n");
 		config_notify_completed(false);
 		return ERROR;
 	}
 
 	if(!qrc_register_message_cb(emerg_pipe, emerg_msg_cb)) {
-		syslog(LOG_INFO, "register qrc_msg callback failed\n");
+		syslog(LOG_ERR, "emergency stop register qrc_msg callback failed\n");
 		config_notify_completed(false);
 		return ERROR;
 	}
 
-	syslog(LOG_DEBUG,"ultrasound management init done\n");
+	syslog(LOG_DEBUG,"emergency avoidance init done\n");
 	config_notify_completed(true);
+
 	return ret;
 }
 

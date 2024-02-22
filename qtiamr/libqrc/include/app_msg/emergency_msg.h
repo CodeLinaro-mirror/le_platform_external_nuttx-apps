@@ -22,16 +22,34 @@
 /****************************************************************************
  * Public types
  ****************************************************************************/
-enum emerg_msg_type
+enum emerg_msg_type_e
 {
 	ENABLEMENT,
-	T_SENSOR,
+	EVENT,
 };
+
+enum emerg_msg_event_type_e
+{
+  ENTER,
+  EXIT,
+};
+
+
+struct emerg_msg_event_s
+{
+  int type; //enum emerg_msg_event_type_e
+  int trigger_sensor;
+};
+
 
 struct emerg_msg_s
 {
-	enum emerg_msg_type msg_type;
-	int value;
+	int msg_type; //enum emerg_msg_type_e
+	union
+	{
+		int value;
+		struct emerg_msg_event_s event;
+	} data;
 } __attribute__((aligned(4)));
 
 
