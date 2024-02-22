@@ -27,8 +27,8 @@
 #define CONFIG_EXAMPLES_CAN_DEVPATH   "/dev/can1"
 #define AUTO_CHARGER_MSG_ID           0x182
 #define CHARGING_CURR_UNIT            0.033
-#define WHELL_SPEED_VX_DIV            1500
-#define WHELL_SPEED_VZ_DIV            800
+#define WHELL_SPEED_VX_DIV            0.67
+#define WHELL_SPEED_VZ_DIV            0.67
 #define CRITICAL_ERROR_DELAY          2000000
 #define WHEEL_SPEED_UNIT_TRANS        0.001
 
@@ -244,9 +244,9 @@ static int32_t ec130_get_wheel_speed(float *vx, float *vz)
     return ERROR;
   }
   /*mm/s to m/s*/
-  *vx = (ec130_data_p->vx * WHEEL_SPEED_UNIT_TRANS);
+  *vx = (ec130_data_p->vx * WHEEL_SPEED_UNIT_TRANS) * WHELL_SPEED_VX_DIV;
   /*0.001rad/s to 1rad/s*/
-  *vz = (ec130_data_p->vz * WHEEL_SPEED_UNIT_TRANS);
+  *vz = (ec130_data_p->vz * WHEEL_SPEED_UNIT_TRANS) * WHELL_SPEED_VZ_DIV;
 
   ec130_mutex_unlock(ec_mutex);
   return OK;

@@ -25,15 +25,15 @@ extern const char * sm_event_labels[];
 
 /*battery property*/
 #define BATTERY_FORCE_VOLT_PERCETAGE    (0.4)
-#define BATTERY_FULL_VOLT               25   
-#define BATTERY_LOW_VOLT                20   
+#define BATTERY_FULL_VOLT               25
+#define BATTERY_LOW_VOLT                20
 #define BATTERY_VOLTAGE_NOTIFY_THRES    0.2   /*this value need to debug*/
 
 /*define charger driver name for use*/
 #define CHARGER_DEVICE_NAME             "ec130"
 
 /*move forward and stop charging param*/
-#define CHARGER_SM_STOP_VX_SPEED        0.03  //m/s
+#define CHARGER_SM_STOP_VX_SPEED        0.15  //m/s
 #define CHARGER_SM_STOP_VX_ZERO         0    //m/s
 #define CHARGER_SM_STOP_VZ_ZERO         0    //rad/s
 
@@ -280,11 +280,13 @@ static void charger_back_to_idle_event_charging_done(void)
         }
       if(is_charging == TRUE)
         {
+          syslog(LOG_INFO, "CHARGER: charging done state:  *** move *** !!!!\n");
           motion_speed_notify(CHARGER_SM_STOP_VX_SPEED, CHARGER_SM_STOP_VZ_ZERO);
+          usleep(50000);
         }
       else
         {
-          syslog(LOG_INFO, "CHARGER: charging done state:  *** move and stop *** !!!!\n");
+          syslog(LOG_INFO, "CHARGER: charging done state:  *** stop *** !!!!\n");
           motion_speed_notify(CHARGER_SM_STOP_VX_ZERO, CHARGER_SM_STOP_VZ_ZERO);
           if(charger_dev_p->sm.sm_task_started)
             charger_dev_sm_signal_send((int32_t)SM_EVENT_BACK_TO_IDLE);
