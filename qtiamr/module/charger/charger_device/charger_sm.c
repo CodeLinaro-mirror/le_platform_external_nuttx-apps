@@ -165,37 +165,37 @@ static int sm_task(int argc, FAR char *argv[]){
         case SM_EVENT_START_CHARGING:
 
           sm_enter_state(CHR_SM_SEARCHING); 
-          set_polling_interval(CHARGING_POLL_DELAY);
+          set_polling_interval(500*1000);
           break;
 
         case SM_EVENT_FIND_PILE:
-          sm_enter_state(CHR_SM_CONTROLLING);
           set_polling_interval(CONTROLLING_SPEED_NOTIFY);
+          sm_enter_state(CHR_SM_CONTROLLING);
           break;
 
         case SM_EVENT_ATTACH_PILE:
-          sm_enter_state(CHR_SM_FORCE_CHARGING);
           set_polling_interval(CHARGING_POLL_DELAY);
+          sm_enter_state(CHR_SM_FORCE_CHARGING);
           break;
 
         case SM_EVENT_TO_NORMAL_CHARGING:
-          sm_enter_state(CHR_SM_CHARGING);
           set_polling_interval(CHARGING_POLL_DELAY);
+          sm_enter_state(CHR_SM_CHARGING);
           break;
 
         case SM_EVENT_STOP_CHARGING:
-          sm_enter_state(CHR_SM_CHARGER_DONE);
           set_polling_interval(CHARGING_DONE_DELAY);
+          sm_enter_state(CHR_SM_CHARGER_DONE);
           break;
 
         case SM_EVENT_BACK_TO_IDLE:
-          sm_enter_state(CHR_SM_IDLE);
           set_polling_interval(IDLE_BATT_VOLT_NOTIFY);
+          sm_enter_state(CHR_SM_IDLE);
           break;
 
         case SM_EVENT_EXCEPTION:
-          sm_enter_state(CHR_SM_EXCEPTION);
           set_polling_interval(CHARGER_EXCEPTION_DELAY);
+          sm_enter_state(CHR_SM_EXCEPTION);
           break;
 
         default:
@@ -204,7 +204,6 @@ static int sm_task(int argc, FAR char *argv[]){
    }
 errout:
   charger_dev_p->sm.sm_task_started = FALSE;
-  
   syslog(LOG_ERR, "charger sm_task: Terminating\n");
   return ERROR;
 }
@@ -238,28 +237,16 @@ void sm_start_charging(void)
 
 void sm_stop_charging(void)
 {
-   uint32_t sm_state;
    syslog(LOG_DEBUG, "CHARGER: sm_stop_charging: stop charging...\n");
    if(charger_dev_p->initialized == TRUE && charger_dev_p->sm.sm_task_started == TRUE)
     {
-      sm_state = get_curr_state();
-      if(sm_state == CHR_SM_CHARGING)
-        {
-          charger_dev_sm_signal_send((int32_t)SM_EVENT_STOP_CHARGING);
-        }
-      else
-        {
-          charger_dev_sm_signal_send((int32_t)SM_EVENT_BACK_TO_IDLE);
-        }
+      charger_dev_sm_signal_send((int32_t)SM_EVENT_STOP_CHARGING);
     }
    else
     {
       charger_exception_notify(CHARGER_DEV_NOT_READY_ERROR);
     }
 }
-
-
-
 
 int32_t start_sm_task(void)
 {
