@@ -25,7 +25,6 @@
 #define FRAME_READ_LEN	(7)	/*  Return data frame length of read */
 #define FRAME_FULL_LEN	(8)	/*  RW command frame length with crc16 */
 
-
 #define BROADCAST_ADDR  (0xFF)
 #define CONTROLLER_ADDR (0x01) /*default address*/
 #define R_SINGLE_REG	(0x03) /*modbus protocol read*/
@@ -45,9 +44,9 @@
 
 /* DYP Ultra data frame structure */
 struct rs485_data_msg {
-    uint8_t addr;
-    uint8_t cmd;
-    uint16_t reg;
+    uint8_t addr;  /*ultrasound sensor address*/
+    uint8_t cmd;   /*read dist 0x03 or write address 0x06*/
+    uint16_t reg;  /*host register or slave read data len*/
     uint16_t data;
     uint16_t crc16;
 }__attribute__((aligned(4)));
@@ -59,7 +58,7 @@ struct rs485_data_msg {
 /****************************************************************************
  * Name: dist_debounce
  * Description:
- *  Data accurancy +-(1+S*0.3%)
+ *  RS485 blind zone 3cm, range 3~450cm, accurancy +-(1+S*0.3%)cm
  *
  ****************************************************************************/
 static int dist_debounce(int dist)
@@ -67,8 +66,6 @@ static int dist_debounce(int dist)
 	int d_dist;
 
 	d_dist = (int)(dist * DEBOUNCE_ACC);
-	
-	syslog(LOG_DEBUG,"dist after debounce %d \n", d_dist);
 
 	return d_dist;
 }
@@ -121,10 +118,11 @@ static uint16_t crc16_modbus(const uint8_t *data, uint8_t data_len)
  *	but nuttx use little debian, need convert the message data first
  ****************************************************************************/
 
-static void rs485_frame_coding( struct rs485_data_msg *msg, uint8_t buff_len) {
-	
+static void rs485_frame_coding( struct rs485_data_msg *msg, uint8_t buff_len)
+{
+
 	int16_t temp;
-	
+
 	if ( !msg )
 		return;
 
@@ -148,34 +146,33 @@ static void rs485_frame_coding( struct rs485_data_msg *msg, uint8_t buff_len) {
  *	Send rs485 command and receive the respone
  ****************************************************************************/
 
-static int rs485_transmit(uint8_t *buff, int fd, bool is_read){
+static int rs485_transmit(uint8_t *buff, int fd, bool is_read)
+{
 
-    int retry= 0;
+	int retry= 0;
 	int crc16 =0, rec_crc16=0;
-    int ret, data_len,data_value;
+	int ret, data_len,data_value;
 	uint8_t rec_buff[10] = {0};
 
-	
 	ret = write(fd, buff, FRAME_FULL_LEN);
 
-	if (ret > 0)
+	if (ret < 0)
 	{
-#ifdef DYP_DEBUG
-		syslog(LOG_DEBUG, "DEBUG send cmd: ");
-    	for(int i = 0; i < FRAME_FULL_LEN; i++)
-    	{
-        	printf("%X ",buff[i]);
-    	}
-    	printf("\n");
-#endif
-	} else {
 		syslog(LOG_INFO, "rs485 write failed\n");
 		return ERROR;
 	}
-	
-	syslog(LOG_DEBUG,"Waiting receive rs485 data ...\n");
-	usleep(200000); /*sleep 200ms*/
 
+#if DYP_DEBUG
+	syslog(LOG_DEBUG, "DEBUG send cmd: ");
+	for(int i = 0; i < FRAME_FULL_LEN; i++)
+	{
+		printf("%X ",buff[i]);
+	}
+	printf("\n");
+	syslog(LOG_DEBUG,"Waiting receive rs485 data ...\n");
+#endif
+
+	usleep(200000); /*sleep 200ms*/
 
 	if (is_read)
 		data_len = FRAME_READ_LEN;
@@ -189,15 +186,15 @@ static int rs485_transmit(uint8_t *buff, int fd, bool is_read){
 		
 		if (ret == data_len)
 		{
-            retry =0;
-            rec_crc16 = (rec_buff[data_len - 1] << 8 ) + (rec_buff[ data_len - 2 ]);
-            crc16 = crc16_modbus(rec_buff, data_len - 2); 
+			retry =0;
+			rec_crc16 = (rec_buff[data_len - 1] << 8 ) + (rec_buff[ data_len - 2 ]);
+			crc16 = crc16_modbus(rec_buff, data_len - 2); 
 
-            if(rec_crc16 == crc16)
-            {
-#ifdef DYP_DEBUG
-            	syslog(LOG_DEBUG, "Rec data %d byte:", ret);
-  				for(int i=0; i < ret; i++ )
+			if(rec_crc16 == crc16)
+			{
+#if DYP_DEBUG
+				syslog(LOG_DEBUG, "Rec data %d byte:", ret);
+				for(int i=0; i < ret; i++ )
 				{
 					printf("%X ",rec_buff[i]);
 				}
@@ -209,9 +206,8 @@ static int rs485_transmit(uint8_t *buff, int fd, bool is_read){
 				else
 					data_value = ((rec_buff[4] << 8) + rec_buff[5]);
 
-				syslog(LOG_DEBUG, "data: %d \n", data_value);
 				return data_value;
-            }
+			}
 
 		} else {
 			/*sleep 100ms*/
@@ -219,25 +215,8 @@ static int rs485_transmit(uint8_t *buff, int fd, bool is_read){
 			retry++;
 		}
 	}
-    syslog(LOG_INFO,"Recive time out!\n");
-    return ERROR;
-}
-
-
-static int rs485_ultra_write(uint16_t dist_addr, int fd)
-{
-	int ret = 0;
-	struct rs485_data_msg send_data;
-
-	send_data.addr = CONTROLLER_ADDR;
-	send_data.cmd = W_SINGLE_REG;
-	send_data.reg = ADDR_REG;
-	send_data.data = dist_addr;
-
-	rs485_frame_coding(&send_data, FRAME_DATA_LEN);
-	ret = rs485_transmit((uint8_t*)&send_data, fd, 0);
-
-	return ret;
+	syslog(LOG_INFO,"Recive time out!\n");
+	return ERROR;
 }
 
 static int rs485_ultra_read(uint8_t addr, uint16_t reg, int fd)
@@ -266,6 +245,17 @@ int rs485_ultra_check(uint8_t addr, int fd)
 
 int rs485_ultra_raw_dist(uint8_t addr, int fd)
 {
-	return rs485_ultra_read(addr, RAWDIST_REG, fd);
+	int dist = 0;
+	int deb_dist = 0;
+
+	dist = rs485_ultra_read(addr, RAWDIST_REG, fd);
+
+	if (dist > 0)
+	{
+		deb_dist = dist_debounce(dist);
+	}
+	syslog(LOG_DEBUG, "ultra sensor %u: dist %d, after debounce %d\n",addr, dist, deb_dist);
+
+	return deb_dist;
 }
 

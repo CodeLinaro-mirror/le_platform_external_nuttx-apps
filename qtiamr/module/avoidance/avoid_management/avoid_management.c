@@ -43,23 +43,23 @@ int avoid_init(void)
 	fd = open(ULTRASOUND_DEV, O_RDWR|O_NONBLOCK);
 	if (fd < 0 )
 	{
-		syslog(LOG_INFO, "ultrasound device open failed \n");
+		syslog(LOG_ERR, "ultrasound device open failed \n");
 		return fd;
 	}
 
-	syslog(LOG_INFO, "ultrasound device open  %s done \n",ULTRASOUND_DEV);
+	syslog(LOG_DEBUG, "ultrasound device open  %s done \n",ULTRASOUND_DEV);
 	g_avoid_fd = fd;
 
-	usleep(1000000 *2);
+	usleep(100000 *2);
 
 	for (int i = 0; i < ultras_num; i++)
 	{
-		syslog(LOG_INFO, "check sensor %u \n", g_sensor_list[i].addr);
+		syslog(LOG_DEBUG, "check sensor %u \n", g_sensor_list[i].addr);
 		ret = rs485_ultra_check(g_sensor_list[i].addr , g_avoid_fd);
 
 		if ( ret < 0 )
 		{
-			syslog(LOG_INFO, "ultrasound sensor %u unreachable \n",g_sensor_list[i].addr);
+			syslog(LOG_ERR, "ultrasound sensor %u unreachable \n",g_sensor_list[i].addr);
 			return ERROR;
 		}
 	}
@@ -81,46 +81,59 @@ int avoid_management_thread(int argc, char *argv[])
 	while(1)
 	{
 		if(list_is_empty(&g_avoid_client)) {
-			syslog(LOG_INFO, "avoidance client empty \n");
+			syslog(LOG_INFO, "[avoidance mangement] client empty, pending...\n");
 			sigwaitinfo(&set, NULL);
+			syslog(LOG_INFO, "[avoidance mangement] receive client register...\n");
 		}
 
+		syslog(LOG_DEBUG,"[avoidance mangement]fetch ultra sensor dist, unit(mm)\n"); 
 		for( int i = 0; i < ultras_num; i++)
 		{
 			ret = rs485_ultra_raw_dist(g_sensor_list[i].addr, g_avoid_fd);
-			if (ret > 0)
+			if (ret < 0)
 			{
-				list_for_every_entry(&g_avoid_client, client, struct avoid_client, node)
-				{
-					switch(g_sensor_list[i].type)
-					{
-						case BOTTOM:
-							if ( ret > client->thres_bottom )
-							{
-								client->cb(g_sensor_list[i].addr, ret);
-							}
-							break;
-
-						case SIDE:
-							if ( ret < client->thres_side )
-							{
-								client->cb(g_sensor_list[i].addr, ret);
-							}
-								break;
-
-						case FRONT:
-							if ( ret < client->thres_front)
-							{
-								client->cb(g_sensor_list[i].addr, ret);
-							}
-							break;
-						}
-					}
-			}else {
-				syslog(LOG_DEBUG,"sensor %d read failed\n", g_sensor_list[i].addr);
+				syslog(LOG_ERR,"sensor %d read failed\n", g_sensor_list[i].addr);
 				return ERROR;
 			}
+
+			list_for_every_entry(&g_avoid_client, client, struct avoid_client, node)
+			{
+				switch(g_sensor_list[i].type)
+				{
+					case BOTTOM:
+						if ( ret > client->thres_bottom )
+						{
+							syslog(LOG_INFO, "!!!!!! BOTTOM sensor %d triggerd emergency stop: %d\n", 
+								g_sensor_list[i].addr, ret);
+							client->cb(g_sensor_list[i].addr, ret);
+						}
+						break;
+
+					case SIDE:
+						if ( ret < client->thres_side )
+						{
+							syslog(LOG_INFO, "!!!!!! SIDE sensor %d triggerd emergency stop: %d\n", 
+								g_sensor_list[i].addr, ret);
+							client->cb(g_sensor_list[i].addr, ret);
+						}
+						break;
+
+					case FRONT:
+						if ( ret < client->thres_front)
+						{
+							syslog(LOG_INFO, "!!!!!! FRONT sensor %d triggerd emergency stop: %d\n", 
+								g_sensor_list[i].addr, ret);
+							client->cb(g_sensor_list[i].addr, ret);
+						}
+						break;
+
+					default:
+						syslog(LOG_ERR,"sensor type unrecognized\n");
+				}
+			}
 		}
+
+		usleep(100000);
 	}
 }
 

@@ -30,7 +30,6 @@ enum sensor_type {
 	FRONT,
 	SIDE,
 	BOTTOM,
-	SENSOR_TYPE_MAX,
 };
 
 struct avoid_sensor
