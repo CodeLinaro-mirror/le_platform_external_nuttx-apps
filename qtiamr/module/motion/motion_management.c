@@ -232,3 +232,15 @@ syslog(LOG_INFO,"motion_management_init: client sm init done \n");
   return OK;
 }
 
+void motion_motor_stop(bool stop)
+{
+  motion_sm_stop_speed(stop);
+}
+
+void register_emergency_check_speed_cb(emergency_speed_check_cb check_cb)
+{
+  register_motor_emergency_check_cb(check_cb);
+}
+
+
+

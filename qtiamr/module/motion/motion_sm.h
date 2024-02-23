@@ -72,6 +72,8 @@ void register_motion_switch_done_cb(motion_cb cb_fun, void *arg);
 void register_motion_emergency_done_cb(motion_cb cb_fun, void *arg);
 void register_motion_drv_err_cb(motion_cb cb_fun, void *arg);
 
+void motion_sm_stop_speed(bool stop);
+void register_motor_emergency_check_cb(emergency_speed_check_cb check_cb);
 
 int motion_sm_init(void);
 
