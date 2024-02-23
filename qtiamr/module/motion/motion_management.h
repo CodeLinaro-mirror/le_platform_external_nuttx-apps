@@ -32,6 +32,8 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
+typedef bool (*emergency_speed_check_cb)(float vx, float vz);  /* emergency check speed callback */
+
 /* Pose type, used to position control */
 #define POSE_ANGLE (false)
 #define POSE_DIST (true)
@@ -110,6 +112,7 @@ void motor_set_odom_frquency(uint32_t frequency);
 
 int motion_management_init(int argc, char *argv[]);
 
-
+void motion_motor_stop(bool stop);
+void register_emergency_check_speed_cb(emergency_speed_check_cb check_cb);
 
 #endif /* __MOTION_MANAGEMENT_H */

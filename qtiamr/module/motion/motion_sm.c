@@ -42,6 +42,10 @@ struct motion_sm_s
   void *drv_err_cb_data;
 
   struct motion_thread_pool_s *threadpool;
+
+  bool stop_tag;
+  emergency_speed_check_cb emergency_speed_cb;
+
 }__attribute__((aligned(4)));
 
 struct motion_sm_transform_s
@@ -306,8 +310,18 @@ static int do_action_speed(union motion_control_data_u data)
   float vx = data.speed_cmd.vx;
   float vz = data.speed_cmd.vz;
 
-  syslog(LOG_INFO,"do_action_speed: EXECUTED vx =%f, vz =%f \n",vx,vz);
+  if (g_motion_sm.stop_tag)
+    {
+      if(NULL != g_motion_sm.emergency_speed_cb)
+        {
+          if(!g_motion_sm.emergency_speed_cb(vx,vz))
+            {
+              return OK;  /* don't execute speed */
+            }
+        }
+    }
 
+  syslog(LOG_INFO,"do_action_speed: EXECUTED vx =%f, vz =%f \n",vx,vz);
   return motor_set_speed(vx, vz);
 }
 
@@ -976,3 +990,19 @@ void motion_add_work(do_action_fun work_fun, union motion_control_data_u data)
   motion_args.data = data;
   motion_threadpool_add_work(g_motion_sm.threadpool, motion_action_work, motion_args);
 }
+
+void motion_sm_stop_speed(bool stop)
+{
+  g_motion_sm.stop_tag = stop;
+
+  if (stop == true)
+    {
+      motor_set_speed(0.0, 0.0);
+    }
+}
+
+void register_motor_emergency_check_cb(emergency_speed_check_cb check_cb)
+{
+  g_motion_sm.emergency_speed_cb = check_cb;
+}
+
