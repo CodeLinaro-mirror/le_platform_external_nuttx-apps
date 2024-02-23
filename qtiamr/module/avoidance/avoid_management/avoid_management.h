@@ -38,10 +38,10 @@ struct avoid_sensor
 	uint8_t addr;
 }__attribute__((aligned(4)));
 
-
 /****************************************************************************
  * Public data
  ****************************************************************************/
+extern bool emerg_enter;
 extern uint8_t ultras_num;
 extern const struct avoid_sensor g_sensor_list[SENSOR_MAX];
 

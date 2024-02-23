@@ -31,6 +31,13 @@ static struct qrc_pipe_s *emerg_pipe = NULL;
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
+
+ /*AMR could go backward if emergency stop triggered, so return TRUE if vx<0  */
+ static bool emerg_motion_cb(float vx,float vz)
+ {
+	 return (vx < 0) ? TRUE : FALSE;
+ }
+
  /*callback of qrc_message*/
 static void emerg_qrc_msg_parse(struct qrc_pipe_s *pipe, struct emerg_msg_s *emerg_msg)
 {
@@ -88,17 +95,30 @@ static void emerg_msg_cb(struct qrc_pipe_s *pipe, void * data, size_t len, bool 
 }
 
 /*callback of avoidance client*/
-static void emerg_client_cb(uint8_t addr, uint16_t dist)
+static void emerg_client_cb(uint8_t addr, uint16_t dist, bool enter)
 {
 	int ret = 0;
 	struct emerg_msg_s msg = {0};
 
-	msg.msg_type = EVENT;
-	msg.data.event.type = ENTER;
-	msg.data.event.trigger_sensor = (int)addr;
+	if (enter)
+	{
+		msg.msg_type = EVENT;
+		msg.data.event.type = ENTER;
+		msg.data.event.trigger_sensor = (int)addr;
 
-	if (ST_EMERGENCY != get_motion_sm_state())
-		motion_set_emergency(TRUE);
+		if (!emerg_enter)
+		{
+			motion_motor_stop(TRUE);
+			emerg_enter = TRUE;
+		}
+	} else {
+		msg.msg_type = EVENT;
+		msg.data.event.type = EXIT;
+		msg.data.event.trigger_sensor = (int)addr;
+
+		motion_motor_stop(FALSE);
+		emerg_enter = FALSE;
+	}
 
 	if(!emerg_pipe)
 	{
@@ -116,6 +136,7 @@ static void emerg_client_cb(uint8_t addr, uint16_t dist)
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
+
 int emergency_main(int argc, char *argv[])
 {
 	int ret = 0;
@@ -157,6 +178,8 @@ int emergency_main(int argc, char *argv[])
 		config_notify_completed(false);
 		return ERROR;
 	}
+
+	register_emergency_check_speed_cb(emerg_motion_cb);
 
 	syslog(LOG_DEBUG,"emergency avoidance init done\n");
 	config_notify_completed(true);

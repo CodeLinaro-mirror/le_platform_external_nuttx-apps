@@ -18,11 +18,18 @@
 #include "avoid_management.h"
 
 /****************************************************************************
+ * Pre-processor Definitions
+ ****************************************************************************/
+#define RETRY_NUM 3
+
+
+/****************************************************************************
  * Public data
  ****************************************************************************/
 static int g_avoid_fd;
 
 uint8_t ultras_num = 5;
+bool emerg_enter = FALSE;
 const struct avoid_sensor g_sensor_list[SENSOR_MAX] = {
 	{ BOTTOM, 0X1},
 	{ BOTTOM, 0X2},
@@ -70,7 +77,11 @@ int avoid_init(void)
 
 int avoid_management_thread(int argc, char *argv[])
 {
-	int ret;
+	int ret = 0;
+	int b = 0;
+	int s = 0;
+	int f = 0;
+	int thres_r = 0;
 	sigset_t set;
 	struct avoid_client *client;
 
@@ -103,32 +114,76 @@ int avoid_management_thread(int argc, char *argv[])
 					case BOTTOM:
 						if ( ret > client->thres_bottom )
 						{
-							syslog(LOG_INFO, "!!!!!! BOTTOM sensor %d triggerd emergency stop: %d\n", 
-								g_sensor_list[i].addr, ret);
-							client->cb(g_sensor_list[i].addr, ret);
+							thres_r |= (0x1 << g_sensor_list[i].addr);
+							syslog(LOG_INFO, "!!!!!! [%#X] BOTTOM sensor %d triggerd emergency stop: %d\n",
+								thres_r, g_sensor_list[i].addr, ret);
+
+							client->cb(g_sensor_list[i].addr, ret, TRUE);
+						} else {
+							if (thres_r & (0x1 << g_sensor_list[i].addr))
+							{
+								if (++b > RETRY_NUM)
+								{
+									thres_r ^= (0x1 << g_sensor_list[i].addr);
+									b = 0;
+									syslog(LOG_INFO, "!!!!!! [%#X] BOTTOM sensor %d exit emergency stop: %d\n",
+										thres_r, g_sensor_list[i].addr, ret);
+								}
+							}
 						}
 						break;
 
 					case SIDE:
 						if ( ret < client->thres_side )
 						{
-							syslog(LOG_INFO, "!!!!!! SIDE sensor %d triggerd emergency stop: %d\n", 
-								g_sensor_list[i].addr, ret);
-							client->cb(g_sensor_list[i].addr, ret);
+							thres_r |= (0x1 << g_sensor_list[i].addr);
+							syslog(LOG_INFO, "!!!!!![%#X] SIDE sensor %d triggerd emergency stop: %d\n",
+								thres_r, g_sensor_list[i].addr, ret);
+
+							client->cb(g_sensor_list[i].addr, ret, TRUE);
+						} else {
+							if (thres_r & (0x1 << g_sensor_list[i].addr))
+							{
+								if (++s > RETRY_NUM)
+								{
+									thres_r ^= (0x1 << g_sensor_list[i].addr);
+									s = 0;
+									syslog(LOG_INFO, "!!!!!! [%#X] SIDE sensor %d exit emergency stop: %d\n",
+										thres_r, g_sensor_list[i].addr, ret);
+								}
+							}
 						}
 						break;
 
 					case FRONT:
 						if ( ret < client->thres_front)
 						{
-							syslog(LOG_INFO, "!!!!!! FRONT sensor %d triggerd emergency stop: %d\n", 
-								g_sensor_list[i].addr, ret);
-							client->cb(g_sensor_list[i].addr, ret);
+							thres_r |= (0x1 << g_sensor_list[i].addr);
+							syslog(LOG_INFO, "!!!!!! [%#X] FRONT sensor %d triggerd emergency stop: %d\n",
+								thres_r, g_sensor_list[i].addr, ret);
+
+							client->cb(g_sensor_list[i].addr, ret, TRUE);
+						} else {
+							if (thres_r & (0x1 << g_sensor_list[i].addr))
+							{
+								if (++f > RETRY_NUM)
+								{
+									thres_r ^= (0x1 << g_sensor_list[i].addr);
+									f = 0;
+									syslog(LOG_INFO, "!!!!!! [%#X] FRONT sensor %d exit emergency stop: %d\n",
+										thres_r, g_sensor_list[i].addr, ret);
+								}
+							}
 						}
 						break;
 
 					default:
 						syslog(LOG_ERR,"sensor type unrecognized\n");
+				}
+
+				if ( emerg_enter && !thres_r)
+				{
+					client->cb(g_sensor_list[i].addr, ret, FALSE);
 				}
 			}
 		}

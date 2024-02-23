@@ -21,7 +21,7 @@
 	uint16_t thres_front;
 	uint16_t thres_side;
 	uint16_t thres_bottom;
-	void (*cb)(uint8_t addr, uint16_t dist);
+	void (*cb)(uint8_t addr, uint16_t dist, bool enter);
  }__attribute__((aligned(4)));
 
 

@@ -234,6 +234,7 @@ syslog(LOG_INFO,"motion_management_init: client sm init done \n");
 
 void motion_motor_stop(bool stop)
 {
+  syslog(LOG_INFO, "motion_motor_stop %s\n", stop ? "ENTER" : "EXIT");
   motion_sm_stop_speed(stop);
 }
 
