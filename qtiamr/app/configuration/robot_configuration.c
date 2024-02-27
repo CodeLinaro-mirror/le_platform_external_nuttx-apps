@@ -133,9 +133,9 @@ static struct mcb_task_s mcb_tasks[] = {
   {"MOTION_ODOM",         DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_odom,            NULL ,0},
   {"ROBOT_CONTROLLER",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, robot_controller,       NULL ,0},
   {"CLIENT_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, client_controller,      NULL ,0},
-  {"CHARGER_CONTROLLER",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, charger_controller,     NULL ,0},
   {"REMOTE_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, rc_controller_task,     NULL ,0},
   {"EMERGENCY",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, emergency_main,         NULL ,0},
+  {"CHARGER_CONTROLLER",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, charger_controller,     NULL ,0},
 };
 
 static struct config_parameters_s g_config_parameter;

@@ -166,7 +166,7 @@ static void motion_drv_err_cb(void *user, int data)
   result = qrc_write(pipe, (uint8_t *)&control_msg, sizeof(struct motion_control_msg_s), false);
   if (result != SUCCESS)
     {
-      syslog(LOG_ERR, "Motion odom send failed %d\n", result);
+      syslog(LOG_ERR, "Motion drv status send failed %d\n", result);
     }
 }
 
