@@ -144,7 +144,8 @@ static int sm_task(int argc, FAR char *argv[]){
 
   struct siginfo sig_value;
   int32_t event;
-  
+  uint32_t store_polling;
+
   syslog(LOG_INFO,"CHARGER: sm_task: Running...\n");
   usleep(500 * 1000L);
   sm_init();
@@ -163,39 +164,65 @@ static int sm_task(int argc, FAR char *argv[]){
      switch(event){
 
         case SM_EVENT_START_CHARGING:
-
-          sm_enter_state(CHR_SM_SEARCHING); 
-          set_polling_interval(500*1000);
+          if(sm_enter_state(CHR_SM_SEARCHING) == OK)
+            {
+              set_polling_interval(500*1000);
+            }
           break;
 
         case SM_EVENT_FIND_PILE:
+          store_polling = get_polling_interval();
           set_polling_interval(CONTROLLING_SPEED_NOTIFY);
-          sm_enter_state(CHR_SM_CONTROLLING);
+          if(sm_enter_state(CHR_SM_CONTROLLING) == ERROR)
+            {
+              set_polling_interval(store_polling);
+            }
           break;
 
         case SM_EVENT_ATTACH_PILE:
+          store_polling = get_polling_interval();
           set_polling_interval(CHARGING_POLL_DELAY);
-          sm_enter_state(CHR_SM_FORCE_CHARGING);
+          if(sm_enter_state(CHR_SM_FORCE_CHARGING) == ERROR)
+            {
+              set_polling_interval(store_polling);
+            }
           break;
 
         case SM_EVENT_TO_NORMAL_CHARGING:
+          store_polling = get_polling_interval();
           set_polling_interval(CHARGING_POLL_DELAY);
-          sm_enter_state(CHR_SM_CHARGING);
+          if(sm_enter_state(CHR_SM_CHARGING) == ERROR)
+            {
+              set_polling_interval(store_polling);
+            }
+
           break;
 
         case SM_EVENT_STOP_CHARGING:
+          store_polling = get_polling_interval();
           set_polling_interval(CHARGING_DONE_DELAY);
-          sm_enter_state(CHR_SM_CHARGER_DONE);
+          if(sm_enter_state(CHR_SM_CHARGER_DONE) == ERROR)
+            {
+              set_polling_interval(store_polling);
+            }
           break;
 
         case SM_EVENT_BACK_TO_IDLE:
+          store_polling = get_polling_interval();
           set_polling_interval(IDLE_BATT_VOLT_NOTIFY);
-          sm_enter_state(CHR_SM_IDLE);
+          if(sm_enter_state(CHR_SM_IDLE) == ERROR)
+            {
+              set_polling_interval(store_polling);
+            }
           break;
 
         case SM_EVENT_EXCEPTION:
+          store_polling = get_polling_interval();
           set_polling_interval(CHARGER_EXCEPTION_DELAY);
-          sm_enter_state(CHR_SM_EXCEPTION);
+          if(sm_enter_state(CHR_SM_EXCEPTION) == ERROR)
+            {
+              set_polling_interval(store_polling);
+            }
           break;
 
         default:

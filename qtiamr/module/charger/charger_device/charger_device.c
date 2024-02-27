@@ -25,8 +25,8 @@ extern const char * sm_event_labels[];
 
 /*battery property*/
 #define BATTERY_FORCE_VOLT_PERCETAGE    (0.4)
-#define BATTERY_FULL_VOLT               25
-#define BATTERY_LOW_VOLT                20
+#define BATTERY_FULL_VOLT               24.5
+#define BATTERY_LOW_VOLT                22
 #define BATTERY_VOLTAGE_NOTIFY_THRES    0.2   /*this value need to debug*/
 
 /*define charger driver name for use*/
