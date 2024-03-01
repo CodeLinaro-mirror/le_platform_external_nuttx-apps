@@ -106,10 +106,10 @@ static void emerg_client_cb(uint8_t addr, uint16_t dist, bool enter)
 		msg.data.event.type = ENTER;
 		msg.data.event.trigger_sensor = (int)addr;
 
-		if (!emerg_enter)
+		if (!(emerg_client.trigger & 0x1))
 		{
 			motion_motor_stop(TRUE);
-			emerg_enter = TRUE;
+			emerg_client.trigger |= 0x1;
 		}
 	} else {
 		msg.msg_type = EVENT;
@@ -117,7 +117,7 @@ static void emerg_client_cb(uint8_t addr, uint16_t dist, bool enter)
 		msg.data.event.trigger_sensor = (int)addr;
 
 		motion_motor_stop(FALSE);
-		emerg_enter = FALSE;
+		emerg_client.trigger =0;
 	}
 
 	if(!emerg_pipe)
@@ -142,13 +142,21 @@ int emergency_main(int argc, char *argv[])
 	int ret = 0;
 	struct config_obstacle_avoidance_s obs_avoid_param;
 
-	if (!avoidance_inited)
+	if (!is_ultra_enabled())
 	{
-		syslog(LOG_INFO, "emergency_main exit cause avoidance management disabled\n");
-		return ERROR;
+		syslog(LOG_INFO, "emergency_main exit cause ultra_enable disabled\n");
+		config_notify_completed(true);
+		return ret;
 	}
 
+	if(!is_avoidance_inited())
+	{
+		syslog(LOG_INFO, "emergency_main exit cause avoidance init failed\n");
+		config_notify_completed(false);
+		return ret;
+	}
 	emerg_client.name = EMERG_PIPE;
+	emerg_client.trigger = 0;
 	emerg_client.cb = emerg_client_cb;
 
 	ret = get_configuration_parameters(OBSTACLE_AVOIDANCE, (void*)&obs_avoid_param);
