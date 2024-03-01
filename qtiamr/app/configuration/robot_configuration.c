@@ -525,6 +525,7 @@ void config_notify_completed(bool initialized)
 {
   int status;
 
+  usleep(10000); /* It is used to solve cond sync */
   status = pthread_mutex_lock(&g_config_parameter.config_mutex);
   if (status != 0)
     {
