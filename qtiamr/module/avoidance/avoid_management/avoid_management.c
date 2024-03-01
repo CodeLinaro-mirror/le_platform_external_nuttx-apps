@@ -28,24 +28,78 @@
  ****************************************************************************/
 static int g_avoid_fd;
 
-uint8_t ultras_num = 5;
-bool emerg_enter = FALSE;
-const struct avoid_sensor g_sensor_list[SENSOR_MAX] = {
-	{ BOTTOM, 0X1},
-	{ BOTTOM, 0X2},
-	{ SIDE,   0X3},
-	{ SIDE,   0X4},
-	{ FRONT,  0X5},
-	{ FRONT,  0X6},
-	{ FRONT,  0X7},
+static struct avoid_sensor g_sensor_list[SENSOR_MAX] = {
+	{ BOTTOM, 0X1, 0},
+	{ BOTTOM, 0X2, 0},
+	{ SIDE,   0X3, 0},
+	{ SIDE,   0X4, 0},
+	{ FRONT,  0X5, 0},
+	{ FRONT,  0X6, 0},
+	{ FRONT,  0X7, 0},
 };
+
+/****************************************************************************
+ * Pravite Function
+ ****************************************************************************/
+void check_client_trigger(struct list_node* avoid_client_list, struct avoid_sensor *sensor, int dist)
+{
+	bool thres_meet = FALSE;
+	struct avoid_client *client;
+
+	list_for_every_entry(avoid_client_list, client, struct avoid_client, node)
+	{
+		switch(sensor->type)
+		{
+		case BOTTOM:
+			thres_meet = dist > client->thres_bottom;
+			break;
+		case SIDE:
+			thres_meet = dist < client->thres_side;
+			break;
+		case FRONT:
+			thres_meet = dist < client->thres_front;
+			break;
+		default:
+			syslog(LOG_ERR,"sensor type unrecognized\n");
+			return;
+		}
+
+		if(thres_meet)
+		{
+			client->trigger |= (0x1 << sensor->addr);
+			syslog(LOG_INFO, "!!!!!! [%#X] BOTTOM sensor %d triggerd emergency stop: %d\n",
+					client->trigger, sensor->addr, dist);
+
+			client->cb(sensor->addr, dist, TRUE);
+		} else {
+			if(((client->trigger >> sensor->addr) & 0x1) && (++(sensor->count) >= RETRY_NUM))
+			{
+				client->trigger ^= (0x1 << sensor->addr);
+				sensor->count = 0;
+				syslog(LOG_INFO, "!!!!!! [%#X] BOTTOM sensor %d exit emergency stop: %d\n",
+							client->trigger, sensor->addr, dist);
+			}
+		}
+
+		if (!(client->trigger ^ 0x1))
+		{
+			client->cb(sensor->addr, dist, FALSE);
+		}
+	}
+}
 
 /****************************************************************************
  * Public Function
  ****************************************************************************/
+struct avoid_sensor* get_ultra_sensor_list(void)
+{
+	return g_sensor_list;
+}
+
 int avoid_init(void)
 {
 	int ret, fd;
+	int ultra_sensor_num = get_ultra_num();
 
 	fd = open(ULTRASOUND_DEV, O_RDWR|O_NONBLOCK);
 	if (fd < 0 )
@@ -59,7 +113,7 @@ int avoid_init(void)
 
 	usleep(100000 *2);
 
-	for (int i = 0; i < ultras_num; i++)
+	for (int i = 0; i < ultra_sensor_num; i++)
 	{
 		syslog(LOG_DEBUG, "check sensor %u \n", g_sensor_list[i].addr);
 		ret = rs485_ultra_check(g_sensor_list[i].addr , g_avoid_fd);
@@ -78,114 +132,37 @@ int avoid_init(void)
 int avoid_management_thread(int argc, char *argv[])
 {
 	int ret = 0;
-	int b = 0;
-	int s = 0;
-	int f = 0;
-	int thres_r = 0;
 	sigset_t set;
-	struct avoid_client *client;
+
+	struct avoid_sensor *sensor;
+
+	int ultra_sensor_num = get_ultra_num();
+	struct list_node* avoid_client_list = get_avoid_client_list();
 
 	sigemptyset(&set);
 	sigaddset(&set, AVOID_WAKEUP);
 	sigprocmask(SIG_UNBLOCK, &set, NULL);
-
+	
 	while(1)
 	{
-		if(list_is_empty(&g_avoid_client)) {
+		if(list_is_empty(avoid_client_list))
+		{
 			syslog(LOG_INFO, "[avoidance mangement] client empty, pending...\n");
 			sigwaitinfo(&set, NULL);
 			syslog(LOG_INFO, "[avoidance mangement] receive client register...\n");
 		}
 
 		syslog(LOG_DEBUG,"[avoidance mangement]fetch ultra sensor dist, unit(mm)\n"); 
-		for( int i = 0; i < ultras_num; i++)
+		for( int i = 0; i < ultra_sensor_num; i++)
 		{
-			ret = rs485_ultra_raw_dist(g_sensor_list[i].addr, g_avoid_fd);
+			sensor = &g_sensor_list[i];
+			ret = rs485_ultra_raw_dist(sensor->addr, g_avoid_fd);
 			if (ret < 0)
 			{
 				syslog(LOG_ERR,"sensor %d read failed\n", g_sensor_list[i].addr);
 				return ERROR;
 			}
-
-			list_for_every_entry(&g_avoid_client, client, struct avoid_client, node)
-			{
-				switch(g_sensor_list[i].type)
-				{
-					case BOTTOM:
-						if ( ret > client->thres_bottom )
-						{
-							thres_r |= (0x1 << g_sensor_list[i].addr);
-							syslog(LOG_INFO, "!!!!!! [%#X] BOTTOM sensor %d triggerd emergency stop: %d\n",
-								thres_r, g_sensor_list[i].addr, ret);
-
-							client->cb(g_sensor_list[i].addr, ret, TRUE);
-						} else {
-							if (thres_r & (0x1 << g_sensor_list[i].addr))
-							{
-								if (++b > RETRY_NUM)
-								{
-									thres_r ^= (0x1 << g_sensor_list[i].addr);
-									b = 0;
-									syslog(LOG_INFO, "!!!!!! [%#X] BOTTOM sensor %d exit emergency stop: %d\n",
-										thres_r, g_sensor_list[i].addr, ret);
-								}
-							}
-						}
-						break;
-
-					case SIDE:
-						if ( ret < client->thres_side )
-						{
-							thres_r |= (0x1 << g_sensor_list[i].addr);
-							syslog(LOG_INFO, "!!!!!![%#X] SIDE sensor %d triggerd emergency stop: %d\n",
-								thres_r, g_sensor_list[i].addr, ret);
-
-							client->cb(g_sensor_list[i].addr, ret, TRUE);
-						} else {
-							if (thres_r & (0x1 << g_sensor_list[i].addr))
-							{
-								if (++s > RETRY_NUM)
-								{
-									thres_r ^= (0x1 << g_sensor_list[i].addr);
-									s = 0;
-									syslog(LOG_INFO, "!!!!!! [%#X] SIDE sensor %d exit emergency stop: %d\n",
-										thres_r, g_sensor_list[i].addr, ret);
-								}
-							}
-						}
-						break;
-
-					case FRONT:
-						if ( ret < client->thres_front)
-						{
-							thres_r |= (0x1 << g_sensor_list[i].addr);
-							syslog(LOG_INFO, "!!!!!! [%#X] FRONT sensor %d triggerd emergency stop: %d\n",
-								thres_r, g_sensor_list[i].addr, ret);
-
-							client->cb(g_sensor_list[i].addr, ret, TRUE);
-						} else {
-							if (thres_r & (0x1 << g_sensor_list[i].addr))
-							{
-								if (++f > RETRY_NUM)
-								{
-									thres_r ^= (0x1 << g_sensor_list[i].addr);
-									f = 0;
-									syslog(LOG_INFO, "!!!!!! [%#X] FRONT sensor %d exit emergency stop: %d\n",
-										thres_r, g_sensor_list[i].addr, ret);
-								}
-							}
-						}
-						break;
-
-					default:
-						syslog(LOG_ERR,"sensor type unrecognized\n");
-				}
-
-				if ( emerg_enter && !thres_r)
-				{
-					client->cb(g_sensor_list[i].addr, ret, FALSE);
-				}
-			}
+			check_client_trigger(avoid_client_list, sensor, ret);
 		}
 
 		usleep(100000);

@@ -17,6 +17,7 @@
  ****************************************************************************/
  struct avoid_client {
 	char* name;
+	int trigger;
 	struct list_node node;
 	uint16_t thres_front;
 	uint16_t thres_side;
@@ -24,17 +25,14 @@
 	void (*cb)(uint8_t addr, uint16_t dist, bool enter);
  }__attribute__((aligned(4)));
 
-
-/****************************************************************************
- * Public data
- ****************************************************************************/
-extern struct list_node g_avoid_client;
-extern int avoidance_inited;
-
  
 /****************************************************************************
  * Public Function prototypes
  ****************************************************************************/
+bool is_ultra_enabled(void);
+int get_ultra_num(void);
+bool is_avoidance_inited(void);
+struct list_node* get_avoid_client_list(void);
 void register_ultra_client(struct avoid_client * client);
 void unregister_ultra_client(struct avoid_client * client);
 

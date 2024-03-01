@@ -36,18 +36,13 @@ struct avoid_sensor
 {
 	enum sensor_type type;
 	uint8_t addr;
+	uint8_t count;
 }__attribute__((aligned(4)));
-
-/****************************************************************************
- * Public data
- ****************************************************************************/
-extern bool emerg_enter;
-extern uint8_t ultras_num;
-extern const struct avoid_sensor g_sensor_list[SENSOR_MAX];
 
 /****************************************************************************
  * Public functon prototypes
  ****************************************************************************/
+struct avoid_sensor* get_ultra_sensor_list(void);
 
 int avoid_init(void);
 int avoid_management_thread(int argc, char *argv[]);
