@@ -993,11 +993,23 @@ void motion_add_work(do_action_fun work_fun, union motion_control_data_u data)
 
 void motion_sm_stop_speed(bool stop)
 {
+  union motion_control_data_u data;
+
   g_motion_sm.stop_tag = stop;
 
   if (stop == true)
     {
-      motor_set_speed(0.0, 0.0);
+      /* Set motor speed as zero */
+      if (ST_SPEED == get_motion_sm_state())
+        {
+          data.speed_cmd.vx = 0.0;
+          data.speed_cmd.vz = 0.0;
+          motion_sm_event(EV_CMD_SPEED,data);
+        }
+      else
+        {
+          syslog(LOG_ERR,"motion state machine status unmatch \n");
+        }
     }
 }
 
