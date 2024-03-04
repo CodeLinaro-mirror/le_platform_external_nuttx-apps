@@ -71,7 +71,7 @@ static void emerg_qrc_msg_parse(struct qrc_pipe_s *pipe, struct emerg_msg_s *eme
 			return;
 	}
 
-	ret = qrc_write(pipe, (void *)&emerg_msg_reply, sizeof(struct emerg_msg_s),false);
+	ret = qrc_write(pipe, (uint8_t *)&emerg_msg_reply, sizeof(struct emerg_msg_s),false);
 	if (ret != SUCCESS)
 	{
 		syslog(LOG_ERR, "emerg_qrc_msg responde failed\n");
@@ -125,7 +125,7 @@ static void emerg_client_cb(uint8_t addr, uint16_t dist, bool enter)
 		return;
 	}
 
-	ret = qrc_write(emerg_pipe, (void*)&msg, sizeof(struct emerg_msg_s), false);
+	ret = qrc_write(emerg_pipe, (uint8_t*)&msg, sizeof(struct emerg_msg_s), false);
 	if (ret != SUCCESS)
 	{
 		syslog(LOG_ERR, "emerg send event qrc_msg failed\n");

@@ -136,7 +136,7 @@ static int send_imu_data(int16_t *raw_data, uint8_t len, struct timespec ts)
     imu_msg.data.zg = data->zg - d_data->zg;
     imu_msg.sec = ts.tv_sec;
     imu_msg.ns = ts.tv_nsec;
-    qrc_write(g_imu_pipe, (void *)&imu_msg, sizeof(struct imu_msg_s), false);
+    qrc_write(g_imu_pipe, (uint8_t *)&imu_msg, sizeof(struct imu_msg_s), false);
   }
   else
   {
