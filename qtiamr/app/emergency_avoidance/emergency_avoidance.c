@@ -35,7 +35,7 @@ static struct qrc_pipe_s *emerg_pipe = NULL;
  /*AMR could go backward if emergency stop triggered, so return TRUE if vx<0  */
  static bool emerg_motion_cb(float vx,float vz)
  {
-	 return (vx < 0) ? TRUE : FALSE;
+	 return (vx <= 0.0) ? TRUE : FALSE;
  }
 
  /*callback of qrc_message*/
@@ -115,7 +115,6 @@ static void emerg_client_cb(uint8_t addr, uint16_t dist, bool enter)
 		msg.msg_type = EVENT;
 		msg.data.event.type = EXIT;
 		msg.data.event.trigger_sensor = (int)addr;
-
 		motion_motor_stop(FALSE);
 		emerg_client.trigger =0;
 	}
