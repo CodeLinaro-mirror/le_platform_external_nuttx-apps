@@ -23,6 +23,7 @@
  ****************************************************************************/
 #define RS485_MSG_LEN (16) /* 8 bytes message len & 8 for extern */
 #define SINGLE_FRAME_LEN (6)
+#define FRAME_FULL_LEN (8)
 #define RS485_RECEIVE_TIME_OUT (2000000)
 
 #define BROADCAST_ADDR  (0xFF)

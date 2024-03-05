@@ -67,7 +67,7 @@ void check_client_trigger(struct list_node* avoid_client_list, struct avoid_sens
 		if(thres_meet)
 		{
 			client->trigger |= (0x1 << sensor->addr);
-			syslog(LOG_INFO, "!!!!!! [%#X] BOTTOM sensor %d triggerd emergency stop: %d\n",
+			syslog(LOG_INFO, "!!!!!! [%#X] Sensor %d triggerd emergency stop: %d\n",
 					client->trigger, sensor->addr, dist);
 
 			client->cb(sensor->addr, dist, TRUE);
@@ -76,7 +76,7 @@ void check_client_trigger(struct list_node* avoid_client_list, struct avoid_sens
 			{
 				client->trigger ^= (0x1 << sensor->addr);
 				sensor->count = 0;
-				syslog(LOG_INFO, "!!!!!! [%#X] BOTTOM sensor %d exit emergency stop: %d\n",
+				syslog(LOG_INFO, "!!!!!! [%#X] Sensor %d exit emergency stop: %d\n",
 							client->trigger, sensor->addr, dist);
 			}
 		}
