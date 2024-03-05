@@ -48,7 +48,7 @@ static uint16_t ulteasound_reg_arr[4] = {ADDR_REG, DIST_REG, RAWDIST_REG, TEMP_R
  * Private Functions
  ****************************************************************************/
 
-static void ultrasound_help()
+static void ultrasound_help(void)
 {
     printf("\nUsage: cap [OPTIONS]\n\n");
     printf("OPTIONS include:\n");
@@ -141,7 +141,7 @@ static void parse_args(int argc, FAR char **argv)
                     exit(1);
                 }
 
-                printf("get -a %d\n",value);
+                printf("get -a %ld\n",value);
                 g_ulteasound.addr = value;
                 index += nargs;
                 break;
@@ -152,7 +152,7 @@ static void parse_args(int argc, FAR char **argv)
                 {
                     exit(1);
                 }
-                printf("get -r %d\n",value);
+                printf("get -r %ld\n",value);
                 g_ulteasound.dir = R_SINGLE_REG;
                 g_ulteasound.reg = ulteasound_reg_arr[value];
                 index += nargs;
@@ -165,7 +165,7 @@ static void parse_args(int argc, FAR char **argv)
                     printf("out of range 0 ~ 0xFF\n");
                     exit(1);
                 }
-                printf("get -w %d\n",value);
+                printf("get -w %ld\n",value);
                 g_ulteasound.dir = W_SINGLE_REG;
                 g_ulteasound.reg = ADDR_REG;
                 g_ulteasound.cmd_data = value;
@@ -187,9 +187,9 @@ static void parse_args(int argc, FAR char **argv)
 static uint16_t crc16_modbus(const uint8_t *data, uint8_t data_len)
 {
     uint16_t ucrc = 0xffff;
-    uint8_t num =0;
+    uint8_t num;
 
-    for(uint8_t num=0; num<data_len; num++)
+    for(num=0; num<data_len; num++)
     {
         ucrc = (*data++)^ucrc;
         for(uint8_t x=0;x<8;x++)
@@ -209,24 +209,22 @@ static uint16_t crc16_modbus(const uint8_t *data, uint8_t data_len)
 }
 
 
-static int rs485_send_msg(char *buff, int len, int fd)
+static int rs485_send_msg(uint8_t *buff, int len, int fd)
 {
     uint16_t crc16;
-    uint32_t current = len;
+    uint32_t current = len-2;
     /* calculate crc */
-    crc16 = crc16_modbus(buff, len);
+    crc16 = crc16_modbus((uint8_t *)buff, len);
 
-    memcpy(&buff[current], &crc16, 2);
-    crc16 = 0;
-    current = current + 2;
+    memcpy(&buff[current], &crc16, sizeof(uint16_t));
     /* send fame to MC */
-    write(fd, buff, current);
+    write(fd, buff, len);
     printf("DEBUG send cmd: ");
-    for(int i=0;i<current;i++)
+    for(int i=0;i<len;i++)
     {
         printf("%x ",buff[i]);
     }
-    printf("\n");
+    return 0;
 }
 
 static int rs485_revice(uint8_t *rec_buff, int fd)
@@ -263,7 +261,6 @@ static void us_cmd_frame_coding(uint8_t* buff, uint8_t buff_len, struct ulteasou
 {
     int16_t data;
     uint8_t current = 0;
-    uint8_t i;
     if (buff ==NULL || us_example == NULL)
     {
         return;
@@ -285,8 +282,6 @@ static void us_cmd_frame_coding(uint8_t* buff, uint8_t buff_len, struct ulteasou
 
 int main(int argc, FAR char *argv[])
 {
-    int8_t dist;
-    int32_t addr;
     int fd;
     int ret;
 
