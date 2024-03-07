@@ -29,7 +29,7 @@ enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe, const uint8_t *data, c
 enum qrc_write_status_e qrc_sync_write(const qrc_pipe_s *pipe , const void *data, const size_t len, const void *respond_data, const size_t res_len);
 enum qrc_write_status_e qrc_write_fast(const qrc_pipe_s *pipe , const void *data, const size_t len);
 enum qrc_write_status_e qrc_response(const qrc_pipe_s *pipe , const void *data, const size_t len);
-
+bool deinit_qrc_management(void);
 
 #ifdef __cplusplus
 }

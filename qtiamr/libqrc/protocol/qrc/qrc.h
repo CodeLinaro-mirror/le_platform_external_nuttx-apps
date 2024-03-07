@@ -106,4 +106,6 @@ int start_pipe_timeout(const uint8_t pipe_id, bool *timeout);
 void qrc_bus_unlock(void);
 void qrc_bus_lock(void);
 
+bool qrc_destroy(void);
+
 #endif

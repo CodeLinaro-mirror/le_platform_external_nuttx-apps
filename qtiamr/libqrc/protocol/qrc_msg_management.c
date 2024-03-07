@@ -196,3 +196,8 @@ enum qrc_write_status_e qrc_response(const qrc_pipe_s *pipe , const void *data, 
 {
   return FAILED;
 }
+
+bool deinit_qrc_management(void)
+{
+  return qrc_destroy();
+}

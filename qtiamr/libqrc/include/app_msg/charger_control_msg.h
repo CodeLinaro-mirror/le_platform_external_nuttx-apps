@@ -48,6 +48,7 @@ enum charger_ctl_exception_e
 
 enum charger_ctl_sm_state_e
 {
+  CHR_CTL_SM_UNKNOWN,
   CHR_CTL_SM_IDLE = 1,
   CHR_CTL_SM_SEARCHING,
   CHR_CTL_SM_CONTROLLING,

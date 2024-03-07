@@ -30,11 +30,13 @@ struct qrc_s
   qrc_thread_pool control_threadpool;
   uint8_t pipe_cnt;
   bool peer_pipe_list_ready;
-  
+
   /* used for bus timeout */
   pthread_cond_t bus_lock_cond;
   pthread_mutex_t bus_lock_mutex;
   bool is_bus_timeout_busy;            /* true: bus lock in use */
+
+  pthread_t read_thread;
 };
 
 /****************************************************************************
@@ -49,11 +51,6 @@ static struct qrc_s g_qrc;
 #define QRC_FIONREAD _IO(QRC_IOC_MAGIC, 5)
 #define QRC_RESET_MCB _IO(QRC_IOC_MAGIC, 2)
 #define QRC_FD ("/dev/qrc")
-static void sig_handler(int sig)
-{
-  close(g_qrc.fd);
-  printf("actually close..........\n");
-}
 #define QRC_BOOT_APP  '2'
 #endif
 
@@ -774,7 +771,7 @@ static int qrc_hardware_sync(int qrc_fd)
       printf("DEBUG: qrc bus write SYNC try = %d \n",try);
       try --;
       sleep(1);
-      
+
     }
 
 #endif
@@ -837,12 +834,7 @@ bool qrc_init(void)
   g_qrc.tf = TF_Init(TF_MASTER);
   TF_AddGenericListener(g_qrc.tf, read_response_listener);
 
-  #ifdef QRC_RB5
-  /* close fd when triggered crtl+c in RB5 side*/
-  signal(SIGINT, sig_handler);
-  #endif
-  pthread_t t;
-  pthread_create(&t, NULL, read_thread, NULL);
+  pthread_create(&g_qrc.read_thread, NULL, read_thread, NULL);
 
   return qrc_pipe_list_init();
 }
@@ -850,4 +842,12 @@ bool qrc_init(void)
 void qrc_pipe_threads_join(void)
 {
   qrc_threads_join(g_qrc.msg_threadpool);
+}
+
+bool qrc_destroy(void)
+{
+  printf("INFO: qrc destroy\n");
+  qrc_threadpool_destroy(g_qrc.msg_threadpool);
+  pthread_cancel(g_qrc.read_thread);
+  return close(g_qrc.fd) == 0;
 }
