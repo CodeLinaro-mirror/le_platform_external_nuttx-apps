@@ -432,7 +432,7 @@ static void config_parameter_msg_parse(struct qrc_pipe_s *pipe, struct config_ms
       config_msg_reply.type = APPLY;
       config_msg_reply.data.apply.status = apply_status;
       config_msg_reply.data.apply.error_type = task_error_id;
-      result = qrc_write(pipe,(void *)&config_msg_reply, sizeof(struct config_msg_s), false);
+      result = qrc_write(pipe,(uint8_t *)&config_msg_reply, sizeof(struct config_msg_s), false);
       if (result != SUCCESS)
         {
           syslog(LOG_ERR, "config_parameter_msg_parse msg send failed %d\n", result);
