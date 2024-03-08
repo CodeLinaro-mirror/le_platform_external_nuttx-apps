@@ -131,7 +131,7 @@ int avoid_init(void)
 
 int avoid_management_thread(int argc, char *argv[])
 {
-	int ret = 0;
+	int dist = 0;
 	sigset_t set;
 
 	struct avoid_sensor *sensor;
@@ -156,16 +156,16 @@ int avoid_management_thread(int argc, char *argv[])
 		for( int i = 0; i < ultra_sensor_num; i++)
 		{
 			sensor = &g_sensor_list[i];
-			ret = rs485_ultra_raw_dist(sensor->addr, g_avoid_fd);
-			if (ret < 0)
+			dist = rs485_ultra_raw_dist(sensor->addr, g_avoid_fd);
+			if (dist <= 0)
 			{
-				syslog(LOG_ERR,"sensor %d read failed\n", g_sensor_list[i].addr);
-				return ERROR;
+				syslog(LOG_INFO,"sensor %d read fail or untrusted distance: %d \n",
+					g_sensor_list[i].addr, dist);
+				continue;
 			}
-			check_client_trigger(avoid_client_list, sensor, ret);
-		}
 
-		usleep(100000);
+			check_client_trigger(avoid_client_list, sensor, dist);
+		}
 	}
 }
 
