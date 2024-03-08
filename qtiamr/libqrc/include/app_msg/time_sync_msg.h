@@ -25,7 +25,7 @@ enum time_sync_msg_type_e
 
 struct time_sync_msg_s
 {
-  enum time_sync_msg_type_e type;
+  int type;
   long long  sec;   /* Seconds */
   long long  ns;  /* nanoseconds */
 } __attribute__((aligned(4)));

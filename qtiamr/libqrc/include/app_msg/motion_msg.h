@@ -73,14 +73,14 @@ union motion_control_data_u
 
 struct motion_control_msg_s
 {
-  enum control_msg_type_e msg_type;
+  int msg_type;
   union motion_control_data_u data;
 } __attribute__((aligned(4)));
 
 /* motion odom structure */
 struct motion_odom_s
 {
-  enum odom_msg_type_e type;
+  int type;
   long long sec;
   long long ns;
 	float x;

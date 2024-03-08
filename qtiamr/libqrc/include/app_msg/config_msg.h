@@ -118,7 +118,7 @@ struct config_obstacle_avoidance_s
 
 struct config_msg_s
 {
-  enum config_msg_type_e type;
+  int type;
   union
   {
     struct config_apply_s apply;
