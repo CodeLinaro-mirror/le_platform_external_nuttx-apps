@@ -16,8 +16,8 @@
 
 #define MCB_RESET_MAGIC_CMD 0x7102
 #define DEFAULT_TF_MSG_TYPE 0x22
-
 #define QRC_HW_SYNC_MSG "OK"
+#define QRC_CONTROL_THREAD_NUM (1)  /* must be single thread for mutex */
 
 struct qrc_s
 {
@@ -55,7 +55,7 @@ static struct qrc_s g_qrc;
 #endif
 
 #ifdef QRC_MCB
-#define QRC_THREAD_NUM (1)
+#define QRC_THREAD_NUM (2)
 #define QRC_FD ("/dev/ttyS2")
 #define QRC_FIONREAD FIONREAD
 #endif
@@ -192,7 +192,14 @@ static TF_Result read_response_listener(TinyFrame *tf, TF_Msg *msg)
       memcpy(args.data, msg->data +sizeof(qrc_frame), args.len);
       args.response = false;
       args.need_ack = qrcf.ack;
-      qrc_threadpool_add_work(g_qrc.msg_threadpool, qrc_msg_cb_work, args);
+      if (p->pipe_id == QRC_CONTROL_PIPE_ID)
+        {
+          qrc_threadpool_add_work(g_qrc.control_threadpool, qrc_msg_cb_work, args);
+        }
+      else
+        {
+          qrc_threadpool_add_work(g_qrc.msg_threadpool, qrc_msg_cb_work, args);
+        }
     }
   }
 
@@ -275,7 +282,6 @@ static void qrc_control_pipe_callback(qrc_pipe_s *pipe, void * data, size_t len,
       case QRC_WRITE_LOCK_ACK:
         {
           printf("DEBUG: qrc_control_pipe_callback get QRC_WRITE_LOCK_ACK peer_pipe_id =%d\n",pipe_id);
-          qrc_bus_lock();
           qrc_lock_stop_timeout();
           break;
         }
@@ -439,9 +445,16 @@ qrc_pipe_s *qrc_pipe_modify_by_name(const char *pipe_name, const qrc_pipe_s *new
  ****************************************************************************/
 bool qrc_frame_send(const qrc_frame *qrcf, const uint8_t *data, const size_t len, const bool qrc_write_lock)
 {
+  int status;
+
   if(true == qrc_write_lock)
   {
-    pthread_mutex_lock(&g_qrc.qrc_write_mutex);
+    status = pthread_mutex_lock(&g_qrc.qrc_write_mutex);
+    if (status != 0)
+    {
+      printf ("ERROR: qrc_frame_send: pthread_mutex_lock failed=%d\n", status);
+      return false;
+    }
   }
   TF_Msg msg;
   TF_ClearMsg(&msg);
@@ -462,7 +475,12 @@ bool qrc_frame_send(const qrc_frame *qrcf, const uint8_t *data, const size_t len
   free(msg_qrc);
   if(true == qrc_write_lock)
   {
-    pthread_mutex_unlock(&g_qrc.qrc_write_mutex);
+    status = pthread_mutex_unlock(&g_qrc.qrc_write_mutex);
+    if (status != 0)
+    {
+      printf ("ERROR: qrc_frame_send: pthread_mutex_unlock failed=%d\n", status);
+      return false;
+    }
   }
 
   return send_res;
@@ -548,7 +566,7 @@ static void stop_pipe_timeout(const uint8_t pipe_id)
   status = pthread_mutex_unlock(&p->pipe_mutex);
   if (status != 0)
     {
-       printf ("stop_pipe_timeout:ERROR pthread_mutex_unlock failed=%d\n", status);
+      printf ("stop_pipe_timeout:ERROR pthread_mutex_unlock failed=%d\n", status);
       return;
     }
 }
@@ -558,7 +576,12 @@ static void stop_pipe_timeout(const uint8_t pipe_id)
  ****************************************************************************/
 void qrc_bus_lock(void)
 {
-  pthread_mutex_lock(&g_qrc.qrc_write_mutex);
+  int status;
+  status = pthread_mutex_lock(&g_qrc.qrc_write_mutex);
+  if (status != 0)
+    {
+      printf ("qrc_bus_lock:ERROR pthread_mutex_lock failed=%d\n", status);
+    }
 }
 
 /****************************************************************************
@@ -566,7 +589,12 @@ void qrc_bus_lock(void)
  ****************************************************************************/
 void qrc_bus_unlock(void)
 {
-  pthread_mutex_unlock(&g_qrc.qrc_write_mutex);
+  int status;
+  status = pthread_mutex_unlock(&g_qrc.qrc_write_mutex);
+  if (status != 0)
+    {
+      printf ("qrc_bus_unlock:ERROR pthread_mutex_unlock failed=%d\n", status);
+    }
 }
 
 /****************************************************************************
@@ -831,6 +859,7 @@ bool qrc_init(void)
 
   g_qrc.peer_pipe_list_ready = false;
   g_qrc.msg_threadpool = qrc_thread_pool_init(QRC_THREAD_NUM);
+  g_qrc.control_threadpool = qrc_thread_pool_init(QRC_CONTROL_THREAD_NUM);
   g_qrc.tf = TF_Init(TF_MASTER);
   TF_AddGenericListener(g_qrc.tf, read_response_listener);
 
@@ -842,12 +871,14 @@ bool qrc_init(void)
 void qrc_pipe_threads_join(void)
 {
   qrc_threads_join(g_qrc.msg_threadpool);
+  qrc_threads_join(g_qrc.control_threadpool);
 }
 
 bool qrc_destroy(void)
 {
   printf("INFO: qrc destroy\n");
   qrc_threadpool_destroy(g_qrc.msg_threadpool);
+  qrc_threadpool_destroy(g_qrc.control_threadpool);
   pthread_cancel(g_qrc.read_thread);
   return close(g_qrc.fd) == 0;
 }

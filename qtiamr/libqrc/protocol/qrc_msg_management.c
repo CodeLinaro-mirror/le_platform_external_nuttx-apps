@@ -21,6 +21,7 @@ bool qrc_require_pipe(qrc_pipe_s *p)
     printf("ERROR: %s require pipe failed!\n", p->pipe_name);
     return false;
   }
+  qrc_bus_lock();
   return true;
 }
 
