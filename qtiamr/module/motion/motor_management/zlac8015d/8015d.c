@@ -429,6 +429,7 @@ static int zlac_8015d_quick_stop(void *motor)
       return ERROR;
 	}
 
+  zlac_8015d->initialized = false;
   syslog(LOG_DEBUG,"motor quick stop\n");
   result = zlac_8015d_write_single_opcode(zlac_8015d, CODE_QUICK_STOP, 0);
 
