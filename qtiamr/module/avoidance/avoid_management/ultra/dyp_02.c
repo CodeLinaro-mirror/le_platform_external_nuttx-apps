@@ -15,11 +15,12 @@
  #include <sys/ioctl.h>
 
  #include "dyp_02.h"
- 
+
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-#define RS485_RECEIVE_TIME_OUT (20) /* read time out N*10ms */
+#define RS485_RECEIVE_TIME_OUT (20) /* read time out N*100ms */
+#define RS485_RECEIVE_WAIT	(120000) /*wait time before read data from sensor*/
 
 #define FRAME_DATA_LEN 	(6)	/* RW command frame length w/o crc16 */
 #define FRAME_READ_LEN	(7)	/*  Return data frame length of read */
@@ -136,7 +137,6 @@ static void rs485_frame_coding( struct rs485_data_msg *msg, uint8_t buff_len)
 	/*send crc16 do not need convert*/
 	temp = crc16_modbus((uint8_t*)msg, FRAME_DATA_LEN);
 	msg->crc16 = temp;
-
 }
 
 
@@ -151,7 +151,7 @@ static int rs485_transmit(uint8_t *buff, int fd, bool is_read)
 
 	int retry= 0;
 	int crc16 =0, rec_crc16=0;
-	int ret, data_len,data_value;
+	int ret, data_len;
 	uint8_t rec_buff[10] = {0};
 
 	ret = write(fd, buff, FRAME_FULL_LEN);
@@ -163,7 +163,7 @@ static int rs485_transmit(uint8_t *buff, int fd, bool is_read)
 	}
 
 #if DYP_DEBUG
-	syslog(LOG_DEBUG, "DEBUG send cmd: ");
+	printf("DEBUG send cmd: ");
 	for(int i = 0; i < FRAME_FULL_LEN; i++)
 	{
 		printf("%X ",buff[i]);
@@ -172,46 +172,40 @@ static int rs485_transmit(uint8_t *buff, int fd, bool is_read)
 	syslog(LOG_DEBUG,"Waiting receive rs485 data ...\n");
 #endif
 
-	usleep(200000); /*sleep 200ms*/
-
 	if (is_read)
 		data_len = FRAME_READ_LEN;
 	else
 		data_len = FRAME_FULL_LEN;
 
-	
+	usleep(RS485_RECEIVE_WAIT);
+
 	while ( retry < RS485_RECEIVE_TIME_OUT )
 	{
 		ret = read(fd, &rec_buff, data_len);
-		
+
 		if (ret == data_len)
 		{
 			retry =0;
 			rec_crc16 = (rec_buff[data_len - 1] << 8 ) + (rec_buff[ data_len - 2 ]);
-			crc16 = crc16_modbus(rec_buff, data_len - 2); 
+			crc16 = crc16_modbus(rec_buff, data_len - 2);
 
 			if(rec_crc16 == crc16)
 			{
 #if DYP_DEBUG
-				syslog(LOG_DEBUG, "Rec data %d byte:", ret);
+				printf("Rec data %d byte:", ret);
 				for(int i=0; i < ret; i++ )
 				{
 					printf("%X ",rec_buff[i]);
 				}
 				printf("\n");
 #endif
-
-				if(is_read)
-					data_value = ((rec_buff[3] << 8) + rec_buff[4]);
-				else
-					data_value = ((rec_buff[4] << 8) + rec_buff[5]);
-
-				return data_value;
+				return ((rec_buff[data_len - 4] << 8) + rec_buff[data_len - 3]);
+			} else {
+				syslog(LOG_DEBUG, "RS485 CRC check failed\n");
+				return ERROR;
 			}
-
 		} else {
-			/*sleep 100ms*/
-			usleep(100000);
+			usleep(RS485_RECEIVE_WAIT);
 			retry++;
 		}
 	}
@@ -253,9 +247,13 @@ int rs485_ultra_raw_dist(uint8_t addr, int fd)
 	if (dist > 0)
 	{
 		deb_dist = dist_debounce(dist);
-	}
-	syslog(LOG_DEBUG, "ultra sensor %u: dist %d, after debounce %d\n",addr, dist, deb_dist);
 
-	return deb_dist;
+		syslog(LOG_DEBUG, "ultra sensor %u: dist %d, after debounce %d\n",addr, dist, deb_dist);
+		return deb_dist;
+	} else {
+		syslog(LOG_DEBUG, "ultra sensor %u read dist fail %d\n",addr, dist);
+		return dist;
+	}
+
 }
 
