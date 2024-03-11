@@ -283,8 +283,13 @@ static int do_action_emergency(union motion_control_data_u data)
     {
       g_motion_sm.emergency_done_cb(g_motion_sm.emergency_cb_data, emergency_result);
     }
-  syslog(LOG_INFO,"do_action_emergency: EXECUTED emergency = %d\n",emergency);
 
+  if (false == emergency)
+    {
+      syslog(LOG_INFO,"Motion state in INACTIVE\n");
+    }
+
+  syslog(LOG_INFO,"do_action_emergency: EXECUTED emergency = %d\n",emergency);
   return OK;
 }
 
