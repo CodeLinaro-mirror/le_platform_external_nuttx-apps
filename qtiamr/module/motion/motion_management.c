@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <debug.h>
+#include <math.h>
 
 #include "motion_management.h"
 #include "motion_sm.h"
@@ -167,6 +168,16 @@ int motion_management_init(int argc, char *argv[])
       return result;
     }
 
+  parameters.speed_line_scale = config_scales.speed_scale[0];
+  parameters.speed_angle_scale = config_scales.speed_scale[1];
+  parameters.speed_odom_line_scale = config_scales.speed_odom_scale[0];
+  parameters.speed_odom_angle_scale = config_scales.speed_odom_scale[1];
+  parameters.wheel_perimeter = fabs(config_car.wheel_perimeter);
+  parameters.wheel_space = fabs(config_car.wheel_space);
+  parameters.speed_max = fabs(config_motion.max_speed);
+  parameters.angle_speed_max = fabs(config_motion.max_angle_speed);
+  parameters.kinematic_model = config_car.kinematic_model;
+
   /* check car mode */
   if( config_car.car_model >= CAR_MODE_MAX || config_car.car_model < 0)
   {
@@ -175,15 +186,14 @@ int motion_management_init(int argc, char *argv[])
     return ERROR;
   }
 
-  parameters.speed_line_scale = config_scales.speed_scale[0];
-  parameters.speed_angle_scale = config_scales.speed_scale[1];
-  parameters.speed_odom_line_scale = config_scales.speed_odom_scale[0];
-  parameters.speed_odom_angle_scale = config_scales.speed_odom_scale[1];
-  parameters.wheel_perimeter = config_car.wheel_perimeter;
-  parameters.wheel_space = config_car.wheel_space;
-  parameters.speed_max = config_motion.max_speed;
-  parameters.angle_speed_max = config_motion.max_angle_speed;
-  parameters.kinematic_model = config_car.kinematic_model;
+  /* check speed limit */
+  if(parameters.speed_max < SPEED_RESOLUTION || parameters.angle_speed_max < SPEED_RESOLUTION)
+  {
+    syslog(LOG_ERR,"motion_management_init: speed_max=%f angle_speed=%f are invalid\n",
+            parameters.speed_max,parameters.angle_speed_max);
+    config_notify_completed(false);
+    return ERROR;
+  }
 
   /* kinematic init */
   if (OK != kinematic_init(&parameters))
