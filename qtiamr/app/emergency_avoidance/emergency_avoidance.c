@@ -26,16 +26,50 @@
  ****************************************************************************/
 static struct avoid_client emerg_client;
 static struct qrc_pipe_s *emerg_pipe = NULL;
-
+static int pre_direction;
 
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
 
  /*AMR could go backward if emergency stop triggered, so return TRUE if vx<0  */
- static bool emerg_motion_cb(float vx,float vz)
+ static bool emerg_direction_cb(float vx,float vz)
  {
-	 return (vx <= 0.0) ? TRUE : FALSE;
+	int direction = 0;
+	uint8_t sensormask = 0;
+
+	if(vx > 0)
+	{
+		if ((vz > 0 ) && (vx/abs(vz) < 1)) {
+			direction = TURN_LEFT;
+			sensormask = 0x8;
+		} else if ((vz < 0) && (vx/abs(vz) < 1)) {
+			direction = TURN_RIGHT;
+			sensormask = 0X4;
+		} else {
+			direction = FORWARD;
+			sensormask = 0X10;
+		}
+	} else if ( vx < 0) {
+		direction = BACKWARD;
+		sensormask = 0x10;
+	} else {
+		direction = MOTIONLESS;
+		sensormask = 0;
+	}
+
+	if (direction != pre_direction)
+	{
+		update_sensor_check_list(sensormask);
+		pre_direction = direction;
+	}
+
+	return 0;
+ }
+
+static bool emerg_speed_cb(float vx,float vz)
+{
+	 return (vx > 0.0) ? FALSE : TRUE;
  }
 
  /*callback of qrc_message*/
@@ -186,7 +220,8 @@ int emergency_main(int argc, char *argv[])
 		return ERROR;
 	}
 
-	register_emergency_check_speed_cb(emerg_motion_cb);
+	register_emergency_check_speed_cb(emerg_speed_cb);
+	register_speed_subscribe_cb(emerg_direction_cb);
 
 	syslog(LOG_DEBUG,"emergency avoidance init done\n");
 	config_notify_completed(true);

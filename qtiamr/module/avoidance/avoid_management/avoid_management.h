@@ -43,6 +43,9 @@ struct avoid_sensor
  * Public functon prototypes
  ****************************************************************************/
 struct avoid_sensor* get_ultra_sensor_list(void);
+void update_sensor_check_list(uint8_t mask);
+
+
 
 int avoid_init(void);
 int avoid_management_thread(int argc, char *argv[]);

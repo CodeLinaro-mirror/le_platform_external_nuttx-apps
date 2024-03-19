@@ -22,7 +22,6 @@
  ****************************************************************************/
 #define RETRY_NUM 3
 
-
 /****************************************************************************
  * Public data
  ****************************************************************************/
@@ -38,6 +37,7 @@ static struct avoid_sensor g_sensor_list[SENSOR_MAX] = {
 	{ FRONT,  0X7, 0},
 };
 
+static uint8_t ultra_sensor_masks = 0X10;
 /****************************************************************************
  * Pravite Function
  ****************************************************************************/
@@ -96,6 +96,20 @@ struct avoid_sensor* get_ultra_sensor_list(void)
 	return g_sensor_list;
 }
 
+void update_sensor_check_list(uint8_t mask)
+{
+	rmutex_t sensor_list_lock = NXRMUTEX_INITIALIZER;
+
+	if (mask)
+	{
+		nxrmutex_lock(&sensor_list_lock);
+		ultra_sensor_masks = mask;
+		nxrmutex_unlock(&sensor_list_lock);
+	}
+
+	syslog(LOG_INFO, "Ultrasound set sensor mask: %#X \n",ultra_sensor_masks);
+}
+
 int avoid_init(void)
 {
 	int ret, fd;
@@ -152,9 +166,12 @@ int avoid_management_thread(int argc, char *argv[])
 			syslog(LOG_INFO, "[avoidance mangement] receive client register...\n");
 		}
 
-		syslog(LOG_DEBUG,"[avoidance mangement]fetch ultra sensor dist, unit(mm)\n"); 
+		syslog(LOG_DEBUG,"[avoidance mangement]Ultra sensor dist, unit(mm)\n");
 		for( int i = 0; i < ultra_sensor_num; i++)
 		{
+			if(!(ultra_sensor_masks & (0x1 << i)))
+				continue;
+
 			sensor = &g_sensor_list[i];
 			dist = rs485_ultra_raw_dist(sensor->addr, g_avoid_fd);
 			if (dist <= 0)
