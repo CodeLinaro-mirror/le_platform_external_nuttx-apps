@@ -36,6 +36,7 @@
 /****************************************************************************
  * Private Data
  ****************************************************************************/
+emergency_speed_check_cb g_speed_subscribe_fun = NULL;
 
 /****************************************************************************
  * Public Data
@@ -69,6 +70,10 @@ enum motion_result_e motion_speed_control(enum control_client_e client,
           data.speed_cmd.vx = vx;
           data.speed_cmd.vz = vz;
           result = motion_sm_event(motion_event,data);
+          if (NULL != g_speed_subscribe_fun)
+            {
+              g_speed_subscribe_fun(vx,vz);
+            }
         }
       else
         {
@@ -253,5 +258,7 @@ void register_emergency_check_speed_cb(emergency_speed_check_cb check_cb)
   register_motor_emergency_check_cb(check_cb);
 }
 
-
-
+void register_speed_subscribe_cb(emergency_speed_check_cb fun_cb)
+{
+  g_speed_subscribe_fun =fun_cb;
+}

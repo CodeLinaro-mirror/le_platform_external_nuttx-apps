@@ -114,5 +114,6 @@ int motion_management_init(int argc, char *argv[]);
 
 void motion_motor_stop(bool stop);
 void register_emergency_check_speed_cb(emergency_speed_check_cb check_cb);
+void register_speed_subscribe_cb(emergency_speed_check_cb fun_cb);
 
 #endif /* __MOTION_MANAGEMENT_H */
