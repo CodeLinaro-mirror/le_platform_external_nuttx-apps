@@ -68,6 +68,7 @@ int charger_dev_sm_signal_send(int32_t sigval_int);
 int charger_dev_sm_signal_wait(struct siginfo *info, FAR const struct timespec *timeout);
 void charger_dev_sm_signal_init(void);
 void set_polling_interval(uint32_t interval);
+uint32_t get_polling_interval(void);
 void charger_dev_rwlock_init(pthread_rwlock_t *cc_rw_lock);
 void charger_dev_rwlock_rdlock_acquire(FAR pthread_rwlock_t *cc_rw_lock);
 void charger_dev_rwlock_wrlock_acquire(FAR pthread_rwlock_t *cc_rw_lock);

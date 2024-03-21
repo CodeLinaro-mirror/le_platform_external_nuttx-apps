@@ -78,6 +78,14 @@ int kinematic_init(const struct kinematic_parameter_s *parameters)
       return ERROR;
     }
 
+   /* check kinematic model */
+  if(parameters->kinematic_model< 0 ||
+      parameters->kinematic_model >= KINEMATIC_MODEL_MAX)
+    {
+      syslog(LOG_INFO,"kinematic_init: k_model=%d is invalid \n",parameters->kinematic_model);
+      return ERROR;
+    }
+
   memcpy(&g_kinematic_s.parameters, parameters,sizeof(struct kinematic_parameter_s));
   model = g_kinematic_s.parameters.kinematic_model;
   g_kinematic_s.ops = g_mode_list[model].ops;

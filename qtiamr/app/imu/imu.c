@@ -38,6 +38,8 @@
 #define DEVIATION_COUNT  (100)  /* the first 100 data used for deviation */
 #define IMU_ENABLED      (1)
 
+#define GRAVITY_ACC    (9.78)
+
 /****************************************************************************
  * Private Types
  ****************************************************************************/
@@ -130,13 +132,13 @@ static int send_imu_data(int16_t *raw_data, uint8_t len, struct timespec ts)
   {
     imu_msg.data.xa = data->xa - d_data->xa;
     imu_msg.data.ya = data->ya - d_data->ya;
-    imu_msg.data.za = data->za - d_data->za;
+    imu_msg.data.za = data->za - d_data->za + GRAVITY_ACC;
     imu_msg.data.xg = data->xg - d_data->xg;
     imu_msg.data.yg = data->yg - d_data->yg;
     imu_msg.data.zg = data->zg - d_data->zg;
     imu_msg.sec = ts.tv_sec;
     imu_msg.ns = ts.tv_nsec;
-    qrc_write(g_imu_pipe, (void *)&imu_msg, sizeof(struct imu_msg_s), false);
+    qrc_write(g_imu_pipe, (uint8_t *)&imu_msg, sizeof(struct imu_msg_s), false);
   }
   else
   {

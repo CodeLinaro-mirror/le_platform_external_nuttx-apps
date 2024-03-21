@@ -17,14 +17,41 @@
 /****************************************************************************
  * Public data
  ****************************************************************************/
-int avoidance_inited = 0;
 static int g_avoid_pid;
+static int ultras_num = 5;
+static bool ultra_enable = 0;
+static bool avoidance_inited = 0;
 static rmutex_t g_client_lock = NXRMUTEX_INITIALIZER;
 
-struct list_node g_avoid_client = LIST_INITIAL_VALUE(g_avoid_client);
+static struct list_node g_avoid_client = LIST_INITIAL_VALUE(g_avoid_client);
 /****************************************************************************
  * Public Function
  ****************************************************************************/
+bool is_ultra_enabled(void)
+{
+	return ultra_enable;
+}
+
+int get_ultra_num(void)
+{
+	if (ultra_enable)
+	{
+		return ultras_num;
+	} else {
+		syslog(LOG_INFO, "ultrasound not enabled..");
+		return 0;
+	}
+}
+
+bool is_avoidance_inited(void)
+{
+	return avoidance_inited;
+}
+
+struct list_node* get_avoid_client_list(void)
+{
+	return &g_avoid_client;
+}
 
 void register_ultra_client(struct avoid_client * client)
 {
@@ -70,7 +97,10 @@ void register_ultra_client(struct avoid_client * client)
 		config_notify_completed(false);
 		return ERROR;
 	};
-		
+
+	ultra_enable = (bool)ultra_sensor_param.ultra_enable;
+	ultras_num =(uint8_t)ultra_sensor_param.ultra_quantity;
+
 	if(!ultra_sensor_param.ultra_enable)
 	{
 		syslog(LOG_ERR, "Warning: ultra disabled\n");
@@ -78,15 +108,13 @@ void register_ultra_client(struct avoid_client * client)
 		return ret;
 	}
 
-	ultras_num =(uint8_t)ultra_sensor_param.ultra_quantity;
-
 	if (ultras_num <= 0)
 	{
 		syslog(LOG_ERR, "Error: ultra number invalid\n");
 		config_notify_completed(false);
 		return ERROR;
 	}
-	
+
 	if (OK != avoid_init())
 	{
 		config_notify_completed(false);
@@ -109,8 +137,9 @@ void register_ultra_client(struct avoid_client * client)
 	}
 
 	syslog(LOG_DEBUG,"ultrasound management init done\n");
-	
+
 	avoidance_inited = 1;
+
 	config_notify_completed(true);
 
 	return ret;

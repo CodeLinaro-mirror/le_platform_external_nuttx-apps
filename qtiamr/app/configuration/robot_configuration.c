@@ -28,6 +28,9 @@
 #include "remote_controller.h"
 #include "emergency_avoidance.h"
 #include "avoidance.h"
+#include "charger_management.h"
+#include "charger_controller.h"
+
 
 
 /****************************************************************************
@@ -121,7 +124,7 @@ static void print_parameters(void);
 /* Index match with enum mcb_task_id_e */
 static struct mcb_task_s mcb_tasks[] = {
   {"MOTION_MANAGEMENT",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_management_init, NULL ,0},
-  {"CHARGER_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
+  {"CHARGER_MANAGEMENT",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, charger_management,     NULL ,0},
   {"RC_MANAGEMENT",       DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, rc_management_task,     NULL ,0},
   {"AVOID_MANAGEMENT",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, avoidance_main,         NULL ,0},
   {"TIME_SYNC",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, time_sync_thread,       NULL ,0},
@@ -130,9 +133,9 @@ static struct mcb_task_s mcb_tasks[] = {
   {"MOTION_ODOM",         DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, motion_odom,            NULL ,0},
   {"ROBOT_CONTROLLER",    DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, robot_controller,       NULL ,0},
   {"CLIENT_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, client_controller,      NULL ,0},
-  {"CHARGER_CONTROLLER",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, NULL,                   NULL ,0},
   {"REMOTE_CONTROLLER",   DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, rc_controller_task,     NULL ,0},
   {"EMERGENCY",           DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, emergency_main,         NULL ,0},
+  {"CHARGER_CONTROLLER",  DEFAULT_PRIORITY, DEFAULT_STACK_SIZE, charger_controller,     NULL ,0},
 };
 
 static struct config_parameters_s g_config_parameter;
@@ -429,7 +432,7 @@ static void config_parameter_msg_parse(struct qrc_pipe_s *pipe, struct config_ms
       config_msg_reply.type = APPLY;
       config_msg_reply.data.apply.status = apply_status;
       config_msg_reply.data.apply.error_type = task_error_id;
-      result = qrc_write(pipe,(void *)&config_msg_reply, sizeof(struct config_msg_s), false);
+      result = qrc_write(pipe,(uint8_t *)&config_msg_reply, sizeof(struct config_msg_s), false);
       if (result != SUCCESS)
         {
           syslog(LOG_ERR, "config_parameter_msg_parse msg send failed %d\n", result);
@@ -522,6 +525,7 @@ void config_notify_completed(bool initialized)
 {
   int status;
 
+  usleep(10000); /* It is used to solve cond sync */
   status = pthread_mutex_lock(&g_config_parameter.config_mutex);
   if (status != 0)
     {

@@ -212,18 +212,20 @@ static uint16_t crc16_modbus(const uint8_t *data, uint8_t data_len)
 static int rs485_send_msg(uint8_t *buff, int len, int fd)
 {
     uint16_t crc16;
-    uint32_t current = len-2;
+    uint32_t current = len;
+
     /* calculate crc */
     crc16 = crc16_modbus((uint8_t *)buff, len);
-
     memcpy(&buff[current], &crc16, sizeof(uint16_t));
+
     /* send fame to MC */
-    write(fd, buff, len);
+    write(fd, buff, FRAME_FULL_LEN);
     printf("DEBUG send cmd: ");
-    for(int i=0;i<len;i++)
+    for(int i=0; i<FRAME_FULL_LEN; i++)
     {
         printf("%x ",buff[i]);
     }
+	printf("\n");
     return 0;
 }
 
@@ -274,8 +276,8 @@ static void us_cmd_frame_coding(uint8_t* buff, uint8_t buff_len, struct ulteasou
 
     data = ((us_example->reg & 0xff) << 0x8) + ((us_example->reg & 0xff00) >> 0x8);
     memcpy(&buff[current], &data, 2);
-
     current += 2;
+
     data = ((us_example->cmd_data & 0xff) << 0x8) + ((us_example->cmd_data & 0xff00) >> 0x8);
     memcpy(&buff[current], &data, 2);
 }
@@ -286,7 +288,7 @@ int main(int argc, FAR char *argv[])
     int ret;
 
     uint8_t rec_buff[RS485_MSG_LEN];
-    uint8_t send_buff[SINGLE_FRAME_LEN];
+    uint8_t send_buff[FRAME_FULL_LEN];
 
     printf("Start ultrasound test app\n");
 

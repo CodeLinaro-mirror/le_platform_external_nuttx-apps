@@ -196,6 +196,8 @@ int motor_quick_stop(bool enable)
   if (enable)
   {
     syslog(LOG_ERR,"motor_quick_stop enable = %d \n",enable);
+    /* reset mode as inactive */
+    g_motor_manager.mode = INACTIVE;
     return g_motor_manager.motor_ops->quick_stop(motor);
   }
 

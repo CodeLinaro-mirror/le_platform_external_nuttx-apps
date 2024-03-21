@@ -20,6 +20,10 @@
 #include <sys/time.h>
 #include "TinyFrame.h"
 
+/* qrc control pipe id */
+#define QRC_CONTROL_PIPE_ID 0
+#define QRC_OK 0
+#define QRC_ERROR (-1)
 enum qrc_msg_cmd
 {
     QRC_REQUEST = 1,
@@ -58,9 +62,10 @@ typedef struct qrc_pipe_s
     char pipe_name[10];
     pthread_cond_t pipe_cond;
     pthread_mutex_t pipe_mutex;
+    bool is_pipe_timeout_busy;  /* true: bus timeout in use */
     uint8_t pipe_id;
     uint8_t peer_pipe_id;
-    bool timeout_happen;
+    bool pipe_ready;
     void (*cb)(struct qrc_pipe_s *pipe, void *data, size_t len, bool response);
 } qrc_pipe_s;
 
@@ -74,6 +79,7 @@ struct qrc_msg_cb_args_s
     uint8_t *data;
     size_t len;
     bool response;
+    uint8_t need_ack;
 };
 
 typedef void (*qrc_work)(struct qrc_msg_cb_args_s args);
@@ -84,7 +90,7 @@ void qrc_threadpool_destroy(struct qrc_thread_pool_s *thpool);
 void qrc_threads_join(struct qrc_thread_pool_s * thpool);
 void qrc_pipe_threads_join(void);
 
-bool qrc_write_request(const char *pipe_name, const uint8_t pipe_id, const enum qrc_msg_cmd cmd);
+bool qrc_control_write(const struct qrc_pipe_s *pipe, const uint8_t pipe_id, const enum qrc_msg_cmd cmd);
 bool qrc_init(void);
 uint8_t get_pipe_number(void);
 qrc_pipe_s qrc_pipe_node_init(void);
@@ -94,9 +100,12 @@ qrc_pipe_s *qrc_pipe_find_by_name(const char *pipe_name);
 qrc_pipe_s *qrc_pipe_find_by_pipeid(const uint8_t pipe_id);
 qrc_pipe_s *qrc_pipe_modify_by_name(const char *pipe_name, const qrc_pipe_s *new_data);
 bool qrc_frame_send(const qrc_frame *qrcf, const uint8_t *data, const size_t len, const bool qrc_write_lock);
-bool start_timeout(const uint8_t pipe_id);
+
+int start_pipe_timeout(const uint8_t pipe_id, bool *timeout);
+
 void qrc_bus_unlock(void);
 void qrc_bus_lock(void);
-bool qrc_cmd_timeout(void);
+
+bool qrc_destroy(void);
 
 #endif
