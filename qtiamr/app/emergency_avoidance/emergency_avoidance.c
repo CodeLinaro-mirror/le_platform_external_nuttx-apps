@@ -26,7 +26,7 @@
  ****************************************************************************/
 static struct avoid_client emerg_client;
 static struct qrc_pipe_s *emerg_pipe = NULL;
-static int pre_direction;
+static int pre_direction = FORWARD;
 
 /****************************************************************************
  * Private Functions
@@ -35,34 +35,47 @@ static int pre_direction;
  /*AMR could go backward if emergency stop triggered, so return TRUE if vx<0  */
  static bool emerg_direction_cb(float vx,float vz)
  {
+	rmutex_t sensor_mask_lock = NXRMUTEX_INITIALIZER;
+
 	int direction = 0;
+	float div = 0;
 	uint8_t sensormask = 0;
 
-	if(vx > 0)
+	nxrmutex_lock(&sensor_mask_lock);
+
+	if(vx < 0.0)
 	{
-		if ((vz > 0 ) && (vx/abs(vz) < 1)) {
+		direction = BACKWARD;
+		sensormask = 0x10;
+	} else {
+		if(!vz) {
+			direction = FORWARD;
+			sensormask = 0X10;
+			goto update;
+		}
+
+		div = vx/vz;
+		syslog(LOG_DEBUG, "Emerg direction vx=%.2f, vz=%.2f, div=%.2f\n", vx, vz,div);
+
+		if ((vz > 0.0 ) && (abs(div) < 1.0)) {
 			direction = TURN_LEFT;
 			sensormask = 0x8;
-		} else if ((vz < 0) && (vx/abs(vz) < 1)) {
+		} else if ((vz < 0.0) && (abs(div) < 1.0)) {
 			direction = TURN_RIGHT;
 			sensormask = 0X4;
 		} else {
 			direction = FORWARD;
 			sensormask = 0X10;
 		}
-	} else if ( vx < 0) {
-		direction = BACKWARD;
-		sensormask = 0x10;
-	} else {
-		direction = MOTIONLESS;
-		sensormask = 0;
 	}
 
+update:
 	if (direction != pre_direction)
 	{
 		update_sensor_check_list(sensormask);
 		pre_direction = direction;
 	}
+	nxrmutex_unlock(&sensor_mask_lock);
 
 	return 0;
  }

@@ -18,7 +18,6 @@
  ********************************************************************************/
 enum move_direction
 {
-	MOTIONLESS,
 	FORWARD,
 	BACKWARD,
 	TURN_LEFT,

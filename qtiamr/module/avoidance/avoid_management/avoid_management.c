@@ -98,15 +98,7 @@ struct avoid_sensor* get_ultra_sensor_list(void)
 
 void update_sensor_check_list(uint8_t mask)
 {
-	rmutex_t sensor_list_lock = NXRMUTEX_INITIALIZER;
-
-	if (mask)
-	{
-		nxrmutex_lock(&sensor_list_lock);
-		ultra_sensor_masks = mask;
-		nxrmutex_unlock(&sensor_list_lock);
-	}
-
+	ultra_sensor_masks = mask;
 	syslog(LOG_INFO, "Ultrasound set sensor mask: %#X \n",ultra_sensor_masks);
 }
 
