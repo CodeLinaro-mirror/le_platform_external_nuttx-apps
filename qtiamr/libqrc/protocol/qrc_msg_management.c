@@ -136,21 +136,25 @@ enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe, const uint8_t *data, c
     qrcf.receiver_id = pipe->peer_pipe_id;
     qrcf.ack = (true == data_ack)?ACK:NO_ACK;
     bool send_result = qrc_frame_send(&qrcf, (uint8_t*)data, len, true);
-    if(true == data_ack && true == send_result)
+    if (true == send_result)
     {
-      if (QRC_OK != start_pipe_timeout(pipe->pipe_id,&timeout))
+      /* need ack */
+      if(true == data_ack)
+      {
+        if (QRC_OK != start_pipe_timeout(pipe->pipe_id,&timeout))
         {
-          printf("ERROR: Pipe write failed! (%s) timeout error\n", pipe->pipe_name);
-          return FAILED;
+          printf("Warning: Pipe (%s) send with no ack\n", pipe->pipe_name);
+          return SUCCESS;
         }
 
-      if(true == timeout)
-      {
-        printf("ERROR: Pipe(%s) write timeout!\n", pipe->pipe_name);
-        return TIMEOUT;
+        if(true == timeout)
+        {
+          printf("ERROR: Pipe(%s) write timeout!\n", pipe->pipe_name);
+          return TIMEOUT;
+        }
       }
+      res = SUCCESS;
     }
-    res = (true == send_result)?SUCCESS:FAILED;
   }
   return res;
 }
