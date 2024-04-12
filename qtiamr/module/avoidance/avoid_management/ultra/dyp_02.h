@@ -19,5 +19,4 @@
 int rs485_ultra_check(uint8_t addr, int fd);
 int rs485_ultra_raw_dist(uint8_t addr, int fd);
 
- #endif
-
+#endif

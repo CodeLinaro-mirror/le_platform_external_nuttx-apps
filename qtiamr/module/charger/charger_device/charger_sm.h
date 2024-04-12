@@ -44,18 +44,19 @@ enum chr_sm_event_e
   SM_EVENT_EXCEPTION
 };
 
-struct charger_sm_state_s {
-  bool sm_task_started;
-  pthread_rwlock_t  sm_rw_lock;
-  enum chr_sm_st_e  cur_state;
-  
-}__attribute__((aligned(4)));
+struct charger_sm_state_s
+{
+  bool             sm_task_started;
+  pthread_rwlock_t sm_rw_lock;
+  enum chr_sm_st_e cur_state;
+
+} __attribute__((aligned(4)));
 
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/
 
 uint32_t get_curr_state(void);
-int32_t start_sm_task(void);
+int32_t  start_sm_task(void);
 
 #endif /* __APP_CHARGER_SM_H */

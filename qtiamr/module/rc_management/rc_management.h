@@ -14,7 +14,6 @@ enum rc_action_e
   RC_MAX_INDEX,
 };
 
-
 struct rc_management_cb_s
 {
   struct rc_management_cb_s *list_nlink;
@@ -26,7 +25,7 @@ struct rc_parameter_s
 {
   float x_speed;
   float z_speed;
-  bool enable_rc_management;
+  bool  enable_rc_management;
 };
 
 struct speed_req_s

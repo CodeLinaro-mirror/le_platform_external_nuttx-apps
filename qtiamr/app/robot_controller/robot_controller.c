@@ -21,7 +21,6 @@
 
 /* switch done cb register need to do  */
 
-
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -34,7 +33,7 @@
  * Private Function Prototypes
  ****************************************************************************/
 
-static void robot_control_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response);
+static void robot_control_qrc_msg_cb(struct qrc_pipe_s *pipe, void *data, size_t len, bool response);
 static void robot_control_msg_parse(struct qrc_pipe_s *pipe, struct motion_control_msg_s *control_msg);
 static void motion_emergency_done_cb(void *user, int data);
 static void motion_drv_err_cb(void *user, int data);
@@ -56,37 +55,33 @@ struct qrc_pipe_s *g_robot_control_pipe = NULL;
 static void robot_control_msg_parse(struct qrc_pipe_s *pipe, struct motion_control_msg_s *control_msg)
 {
   enum control_msg_type_e msg_type;
-  enum control_client_e client = ROBOT_CONTROLLER;
+  enum control_client_e   client = ROBOT_CONTROLLER;
 
-  if (pipe == NULL || control_msg ==NULL)
+  if (pipe == NULL || control_msg == NULL)
     {
       return;
     }
 
   msg_type = control_msg->msg_type;
-  switch(msg_type)
+  switch (msg_type)
     {
-      case SET_SPEED:
-        {
-          motion_speed_control(client,control_msg->data.speed_cmd.vx, control_msg->data.speed_cmd.vz);
+        case SET_SPEED: {
+          motion_speed_control(client, control_msg->data.speed_cmd.vx, control_msg->data.speed_cmd.vz);
           //syslog(LOG_INFO,"Robot control msg set speed vx=%f,vz=%f\n",control_msg->data.speed_cmd.vx, control_msg->data.speed_cmd.vz);
           break;
         }
-      case SWITCH_MODE:
-        {
+        case SWITCH_MODE: {
           motion_switch_mode(control_msg->data.mode);
           /* switch done callback need to be registered */
           break;
         }
-      case SET_EMERGENCY:
-        {
+        case SET_EMERGENCY: {
           motion_set_emergency(control_msg->data.emergency);
           break;
         }
       case SET_POSITION:
-      default:
-        {
-          syslog(LOG_ERR,"Robot control msg type is invalid %d\n",msg_type);
+        default: {
+          syslog(LOG_ERR, "Robot control msg type is invalid %d\n", msg_type);
         }
     }
 }
@@ -96,37 +91,34 @@ static enum control_mode_e get_control_mode(enum motion_sm_state_e state)
   enum control_mode_e control_mode;
 
   switch (state)
-  {
-    case ST_SPEED:
-      {
-        control_mode = SPEED;
-        break;
-      }
-    case ST_DRIVER_ERR:
-      {
-        control_mode = SET_DRV_ERR;
-        break;
-      }
-    default:/* control mode is inactive */
-      {
-        control_mode = INACTIVE;
-      }
-  }
+    {
+        case ST_SPEED: {
+          control_mode = SPEED;
+          break;
+        }
+        case ST_DRIVER_ERR: {
+          control_mode = SET_DRV_ERR;
+          break;
+        }
+        default: /* control mode is inactive */
+        {
+          control_mode = INACTIVE;
+        }
+    }
 
   return control_mode;
 }
-
 
 /* robot controller motion work done callback */
 
 static void motion_switch_done_cb(void *user, int data)
 {
-  struct qrc_pipe_s *pipe = (struct qrc_pipe_s *)user;
+  struct qrc_pipe_s *         pipe = (struct qrc_pipe_s *)user;
   struct motion_control_msg_s control_msg;
-  int result;
+  int                         result;
 
-  control_msg.msg_type = SWITCH_MODE;
-  control_msg.data.mode = get_control_mode((enum motion_sm_state_e) data);
+  control_msg.msg_type  = SWITCH_MODE;
+  control_msg.data.mode = get_control_mode((enum motion_sm_state_e)data);
 
   /* write status to rb5 */
   result = qrc_write(pipe, (uint8_t *)&control_msg, sizeof(struct motion_control_msg_s), false);
@@ -138,11 +130,11 @@ static void motion_switch_done_cb(void *user, int data)
 
 static void motion_emergency_done_cb(void *user, int data)
 {
-  struct qrc_pipe_s *pipe = (struct qrc_pipe_s *)user;
+  struct qrc_pipe_s *         pipe = (struct qrc_pipe_s *)user;
   struct motion_control_msg_s control_msg;
-  int result;
+  int                         result;
 
-  control_msg.msg_type = SET_EMERGENCY;
+  control_msg.msg_type       = SET_EMERGENCY;
   control_msg.data.emergency = data;
 
   /* write status to rb5 */
@@ -155,12 +147,12 @@ static void motion_emergency_done_cb(void *user, int data)
 
 static void motion_drv_err_cb(void *user, int data)
 {
-  struct qrc_pipe_s *pipe = (struct qrc_pipe_s *)user;
+  struct qrc_pipe_s *         pipe = (struct qrc_pipe_s *)user;
   struct motion_control_msg_s control_msg;
-  int result;
+  int                         result;
 
-  control_msg.msg_type = SWITCH_MODE;
-  control_msg.data.mode = get_control_mode((enum motion_sm_state_e) data);
+  control_msg.msg_type  = SWITCH_MODE;
+  control_msg.data.mode = get_control_mode((enum motion_sm_state_e)data);
 
   /* write status to rb5 */
   result = qrc_write(pipe, (uint8_t *)&control_msg, sizeof(struct motion_control_msg_s), false);
@@ -170,15 +162,14 @@ static void motion_drv_err_cb(void *user, int data)
     }
 }
 
-
 /* robot controller qrc msg callback */
 
-static void robot_control_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response)
+static void robot_control_qrc_msg_cb(struct qrc_pipe_s *pipe, void *data, size_t len, bool response)
 {
 
   struct motion_control_msg_s *control_msg;
 
-  if (pipe == NULL || data ==NULL)
+  if (pipe == NULL || data == NULL)
     {
       return;
     }
@@ -199,10 +190,10 @@ static void robot_control_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t
 
 int robot_controller(int argc, char *argv[])
 {
-  char pipe_name[] = MOTION_PIPE;
+  char               pipe_name[] = MOTION_PIPE;
   struct qrc_pipe_s *pipe;
 
-  pipe =  qrc_get_pipe(pipe_name);
+  pipe = qrc_get_pipe(pipe_name);
   if (pipe == NULL)
     {
       config_notify_completed(false);
@@ -211,7 +202,7 @@ int robot_controller(int argc, char *argv[])
 
   if (!qrc_register_message_cb(pipe, robot_control_qrc_msg_cb))
     {
-      syslog(LOG_ERR,"qrc register robot control cb error\n");
+      syslog(LOG_ERR, "qrc register robot control cb error\n");
       config_notify_completed(false);
       return -1;
     }

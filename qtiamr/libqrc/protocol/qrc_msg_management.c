@@ -16,11 +16,11 @@ static uint8_t g_pipe_write_lock_owner = 255;
 bool qrc_require_pipe(qrc_pipe_s *p)
 {
   g_pipe_write_lock_owner = p->pipe_id;
-  if(false == qrc_control_write(p, p->pipe_id, QRC_WRITE_LOCK))
-  {
-    printf("ERROR: %s require pipe failed!\n", p->pipe_name);
-    return false;
-  }
+  if (false == qrc_control_write(p, p->pipe_id, QRC_WRITE_LOCK))
+    {
+      printf("ERROR: %s require pipe failed!\n", p->pipe_name);
+      return false;
+    }
   qrc_bus_lock();
   return true;
 }
@@ -31,18 +31,18 @@ bool qrc_require_pipe(qrc_pipe_s *p)
  ****************************************************************************/
 bool qrc_release_pipe(qrc_pipe_s *p)
 {
-  if(g_pipe_write_lock_owner != p->pipe_id)
-  {
-    printf("ERROR: %s releases pipe failed! owner of lock is not you!\n", p->pipe_name);
-    return false;
-  }
+  if (g_pipe_write_lock_owner != p->pipe_id)
+    {
+      printf("ERROR: %s releases pipe failed! owner of lock is not you!\n", p->pipe_name);
+      return false;
+    }
 
   qrc_bus_unlock();
-  if(false == qrc_control_write(p, p->pipe_id, QRC_WRITE_UNLOCK))
-  {
-    printf("ERROR: %s releases pipe failed!\n", p->pipe_name);
-    return false;
-  }
+  if (false == qrc_control_write(p, p->pipe_id, QRC_WRITE_UNLOCK))
+    {
+      printf("ERROR: %s releases pipe failed!\n", p->pipe_name);
+      return false;
+    }
 
   return true;
 }
@@ -64,30 +64,30 @@ qrc_pipe_s *qrc_get_pipe(const char *pipe_name)
 {
   int pipe_name_len = (int)strlen(pipe_name);
   if (pipe_name_len > 10)
-  {
-    printf("\nERROR: Pipe name(%s) is too long!\n", pipe_name);
-    return NULL;
-  }
+    {
+      printf("\nERROR: Pipe name(%s) is too long!\n", pipe_name);
+      return NULL;
+    }
   qrc_pipe_s *p = qrc_pipe_insert(pipe_name);
-  if(NULL == p)
-  {
-    printf("ERROR: Pipe(%s) create failed!\n", pipe_name);
-    return NULL;
-  }
+  if (NULL == p)
+    {
+      printf("ERROR: Pipe(%s) create failed!\n", pipe_name);
+      return NULL;
+    }
 
   if (true == p->pipe_ready)
-  {
-    /* pipe has been initialized */
-    return p;
-  }
+    {
+      /* pipe has been initialized */
+      return p;
+    }
 
-  if(false == qrc_control_write(p, p->pipe_id, QRC_REQUEST))
-  {
-    printf("ERROR: Pipe(%s) send peer request failed!\n", pipe_name);
-    return NULL;
-  }
+  if (false == qrc_control_write(p, p->pipe_id, QRC_REQUEST))
+    {
+      printf("ERROR: Pipe(%s) send peer request failed!\n", pipe_name);
+      return NULL;
+    }
 
-  printf("DEBUG: Pipe(%s) create done id=%d\n", pipe_name,p->pipe_id);
+  printf("DEBUG: Pipe(%s) create done id=%d\n", pipe_name, p->pipe_id);
   return p;
 }
 
@@ -100,10 +100,10 @@ qrc_pipe_s *qrc_get_pipe(const char *pipe_name)
 bool qrc_register_message_cb(qrc_pipe_s *pipe, qrc_msg_cb fun_cb)
 {
   if (pipe == NULL)
-  {
-    printf("ERROR: Register callback function failed! Pipe is NULL!\n");
-    return false;
-  }
+    {
+      printf("ERROR: Register callback function failed! Pipe is NULL!\n");
+      return false;
+    }
   pipe->cb = fun_cb;
   return true;
 }
@@ -119,43 +119,43 @@ bool qrc_register_message_cb(qrc_pipe_s *pipe, qrc_msg_cb fun_cb)
 enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe, const uint8_t *data, const size_t len, const bool data_ack)
 {
   enum qrc_write_status_e res = FAILED;
-  bool timeout;
+  bool                    timeout;
 
-  if(NULL == pipe || pipe->pipe_id >= get_pipe_number())
-  {
-    printf("ERROR: No such pipe! Write failed!\n");
-    return res;
-  }
-  if(255 == pipe->peer_pipe_id)
-  {
-    printf("ERROR: Pipe write failed! (%s) doesn't have peer pipe!\n", pipe->pipe_name);
-  }
-  else
-  {
-    qrc_frame qrcf;
-    qrcf.receiver_id = pipe->peer_pipe_id;
-    qrcf.ack = (true == data_ack)?ACK:NO_ACK;
-    bool send_result = qrc_frame_send(&qrcf, (uint8_t*)data, len, true);
-    if (true == send_result)
+  if (NULL == pipe || pipe->pipe_id >= get_pipe_number())
     {
-      /* need ack */
-      if(true == data_ack)
-      {
-        if (QRC_OK != start_pipe_timeout(pipe->pipe_id,&timeout))
-        {
-          printf("Warning: Pipe (%s) send with no ack\n", pipe->pipe_name);
-          return SUCCESS;
-        }
-
-        if(true == timeout)
-        {
-          printf("ERROR: Pipe(%s) write timeout!\n", pipe->pipe_name);
-          return TIMEOUT;
-        }
-      }
-      res = SUCCESS;
+      printf("ERROR: No such pipe! Write failed!\n");
+      return res;
     }
-  }
+  if (255 == pipe->peer_pipe_id)
+    {
+      printf("ERROR: Pipe write failed! (%s) doesn't have peer pipe!\n", pipe->pipe_name);
+    }
+  else
+    {
+      qrc_frame qrcf;
+      qrcf.receiver_id = pipe->peer_pipe_id;
+      qrcf.ack         = (true == data_ack) ? ACK : NO_ACK;
+      bool send_result = qrc_frame_send(&qrcf, (uint8_t *)data, len, true);
+      if (true == send_result)
+        {
+          /* need ack */
+          if (true == data_ack)
+            {
+              if (QRC_OK != start_pipe_timeout(pipe->pipe_id, &timeout))
+                {
+                  printf("Warning: Pipe (%s) send with no ack\n", pipe->pipe_name);
+                  return SUCCESS;
+                }
+
+              if (true == timeout)
+                {
+                  printf("ERROR: Pipe(%s) write timeout!\n", pipe->pipe_name);
+                  return TIMEOUT;
+                }
+            }
+          res = SUCCESS;
+        }
+    }
   return res;
 }
 
@@ -169,19 +169,19 @@ enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe, const uint8_t *data, c
 enum qrc_write_status_e qrc_write_fast(const qrc_pipe_s *pipe, const void *data, const size_t len)
 {
   enum qrc_write_status_e res = FAILED;
-  if(255 == pipe->peer_pipe_id)
-  {
-    printf("ERROR: Pipe write failed! (%s) doesn't have peer pipe!\n", pipe->pipe_name);
-    return FAILED;
-  }
+  if (255 == pipe->peer_pipe_id)
+    {
+      printf("ERROR: Pipe write failed! (%s) doesn't have peer pipe!\n", pipe->pipe_name);
+      return FAILED;
+    }
   else
-  {
-    qrc_frame qrcf;
-    qrcf.receiver_id = pipe->peer_pipe_id;
-    qrcf.ack = NO_ACK;
-    bool send_result = qrc_frame_send(&qrcf, data, len, false);
-    res = (true == send_result)?SUCCESS:FAILED;
-  }
+    {
+      qrc_frame qrcf;
+      qrcf.receiver_id = pipe->peer_pipe_id;
+      qrcf.ack         = NO_ACK;
+      bool send_result = qrc_frame_send(&qrcf, data, len, false);
+      res              = (true == send_result) ? SUCCESS : FAILED;
+    }
 
   return res;
 }
@@ -197,7 +197,7 @@ enum qrc_write_status_e qrc_sync_write(const qrc_pipe_s *pipe, const void *data,
 /*
 * wait for implement
 */
-enum qrc_write_status_e qrc_response(const qrc_pipe_s *pipe , const void *data, const size_t len)
+enum qrc_write_status_e qrc_response(const qrc_pipe_s *pipe, const void *data, const size_t len)
 {
   return FAILED;
 }

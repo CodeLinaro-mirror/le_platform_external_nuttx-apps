@@ -81,7 +81,7 @@ int motion_odom(int argc, char *argv[])
 
   /* get qrc pipe */
 
-  g_odom_pipe =  qrc_get_pipe(pipe_name);
+  g_odom_pipe = qrc_get_pipe(pipe_name);
   if (g_odom_pipe == NULL)
     {
       config_notify_completed(false);

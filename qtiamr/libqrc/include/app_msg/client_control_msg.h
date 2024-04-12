@@ -34,7 +34,6 @@ struct client_msg_s
 {
   int msg_type;
   int client;
-}__attribute__((aligned(4)));
-
+} __attribute__((aligned(4)));
 
 #endif

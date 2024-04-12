@@ -23,22 +23,21 @@
 #include "main.h"
 #include "config_msg.h"
 
-
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-#define IMU_BIT(n)  (1 << (n))
-#define IMU_READ_FREQ   50 //default 50HZ
-#define AMR_IMU_PRIORITY   200
-#define AMR_IMU_STACKSIZE  (2048)
-#define IMU_DEV  "/dev/icm"
-#define MAX_IMU_DATA_ROW     (32767)
-#define MAX_IMU_GYRO     (1000)   /* ± 1000 deg/sec */
-#define MAX_IMU_ACCEL    (8*9.8) /* ± 8g */
-#define DEVIATION_COUNT  (100)  /* the first 100 data used for deviation */
-#define IMU_ENABLED      (1)
+#define IMU_BIT(n)        (1 << (n))
+#define IMU_READ_FREQ     50 //default 50HZ
+#define AMR_IMU_PRIORITY  200
+#define AMR_IMU_STACKSIZE (2048)
+#define IMU_DEV           "/dev/icm"
+#define MAX_IMU_DATA_ROW  (32767)
+#define MAX_IMU_GYRO      (1000)    /* ± 1000 deg/sec */
+#define MAX_IMU_ACCEL     (8 * 9.8) /* ± 8g */
+#define DEVIATION_COUNT   (100)     /* the first 100 data used for deviation */
+#define IMU_ENABLED       (1)
 
-#define GRAVITY_ACC    (9.78)
+#define GRAVITY_ACC (9.78)
 
 /****************************************************************************
  * Private Types
@@ -52,7 +51,7 @@ static int amr_imu_init(void);
 /****************************************************************************
  * Private Data
  ****************************************************************************/
-static struct imu_pkg_s  g_amr_imu;
+static struct imu_pkg_s   g_amr_imu;
 static struct qrc_pipe_s *g_imu_pipe = NULL;
 
 /****************************************************************************
@@ -98,10 +97,10 @@ void amr_imu_deinit(void)
  */
 static int send_imu_data(int16_t *raw_data, uint8_t len, struct timespec ts)
 {
-  struct imu_data_s *data = &g_amr_imu.data;
+  struct imu_data_s *data   = &g_amr_imu.data;
   struct imu_data_s *d_data = &g_amr_imu.deviation_data;
-  struct imu_msg_s imu_msg;
-  static int deviation_count = DEVIATION_COUNT;
+  struct imu_msg_s   imu_msg;
+  static int         deviation_count = DEVIATION_COUNT;
 
   if (NULL == raw_data)
     {
@@ -129,37 +128,37 @@ static int send_imu_data(int16_t *raw_data, uint8_t len, struct timespec ts)
   */
 
   if (deviation_count == 0)
-  {
-    imu_msg.data.xa = data->xa - d_data->xa;
-    imu_msg.data.ya = data->ya - d_data->ya;
-    imu_msg.data.za = data->za - d_data->za + GRAVITY_ACC;
-    imu_msg.data.xg = data->xg - d_data->xg;
-    imu_msg.data.yg = data->yg - d_data->yg;
-    imu_msg.data.zg = data->zg - d_data->zg;
-    imu_msg.sec = ts.tv_sec;
-    imu_msg.ns = ts.tv_nsec;
-    qrc_write(g_imu_pipe, (uint8_t *)&imu_msg, sizeof(struct imu_msg_s), false);
-  }
-  else
-  {
-    d_data->xa += data->xa;
-    d_data->ya += data->ya;
-    d_data->za += data->za;
-    d_data->xg += data->xg;
-    d_data->yg += data->yg;
-    d_data->zg += data->zg;
-
-    deviation_count--;
-    if (deviation_count == 0)
     {
-      d_data->xa /= DEVIATION_COUNT;
-      d_data->ya /= DEVIATION_COUNT;
-      d_data->za /= DEVIATION_COUNT;
-      d_data->xg /= DEVIATION_COUNT;
-      d_data->yg /= DEVIATION_COUNT;
-      d_data->zg /= DEVIATION_COUNT;
+      imu_msg.data.xa = data->xa - d_data->xa;
+      imu_msg.data.ya = data->ya - d_data->ya;
+      imu_msg.data.za = data->za - d_data->za + GRAVITY_ACC;
+      imu_msg.data.xg = data->xg - d_data->xg;
+      imu_msg.data.yg = data->yg - d_data->yg;
+      imu_msg.data.zg = data->zg - d_data->zg;
+      imu_msg.sec     = ts.tv_sec;
+      imu_msg.ns      = ts.tv_nsec;
+      qrc_write(g_imu_pipe, (uint8_t *)&imu_msg, sizeof(struct imu_msg_s), false);
     }
-  }
+  else
+    {
+      d_data->xa += data->xa;
+      d_data->ya += data->ya;
+      d_data->za += data->za;
+      d_data->xg += data->xg;
+      d_data->yg += data->yg;
+      d_data->zg += data->zg;
+
+      deviation_count--;
+      if (deviation_count == 0)
+        {
+          d_data->xa /= DEVIATION_COUNT;
+          d_data->ya /= DEVIATION_COUNT;
+          d_data->za /= DEVIATION_COUNT;
+          d_data->xg /= DEVIATION_COUNT;
+          d_data->yg /= DEVIATION_COUNT;
+          d_data->zg /= DEVIATION_COUNT;
+        }
+    }
 
   return OK;
 }
@@ -173,16 +172,16 @@ static int send_imu_data(int16_t *raw_data, uint8_t len, struct timespec ts)
  ****************************************************************************/
 int imu_task(int argc, char *argv[])
 {
-  char pipe_name[] = IMU_PIPE;
-  int ret, i;
-  uint8_t buf_len = IMU_DATA_LEN_7 *2;
-  int16_t tempbuff[IMU_DATA_LEN_7] = {0}; /* 0 temp;1-3 acc; 4-6 gyro; */
-  struct timespec ts;
+  char                   pipe_name[] = IMU_PIPE;
+  int                    ret, i;
+  uint8_t                buf_len                  = IMU_DATA_LEN_7 * 2;
+  int16_t                tempbuff[IMU_DATA_LEN_7] = { 0 }; /* 0 temp;1-3 acc; 4-6 gyro; */
+  struct timespec        ts;
   struct config_sensor_s config;
-  int result;
+  int                    result;
 
   /* get qrc pipe */
-  g_imu_pipe =  qrc_get_pipe(pipe_name);
+  g_imu_pipe = qrc_get_pipe(pipe_name);
   if (g_imu_pipe == NULL)
     {
       /* notify error */
@@ -194,7 +193,7 @@ int imu_task(int argc, char *argv[])
   result = get_configuration_parameters(SENSOR, (void *)&config);
   if (result != OK)
     {
-      syslog(LOG_INFO,"IMU: get config Failed \n");
+      syslog(LOG_INFO, "IMU: get config Failed \n");
       config_notify_completed(false);
       return result;
     }
@@ -202,7 +201,7 @@ int imu_task(int argc, char *argv[])
   if (config.imu_enable != IMU_ENABLED)
     {
       config_notify_completed(true);
-      syslog(LOG_INFO,"IMU disabled\n");
+      syslog(LOG_INFO, "IMU disabled\n");
       return 0;
     }
 
@@ -220,19 +219,19 @@ int imu_task(int argc, char *argv[])
   while (true)
     {
       /* read imu data*/
-      usleep(1000000/IMU_READ_FREQ);
+      usleep(1000000 / IMU_READ_FREQ);
 
       ret = read(g_amr_imu.fd_imu, g_amr_imu.raw_data, buf_len);
       clock_gettime(CLOCK_REALTIME, &ts);
       if (ret != buf_len)
         {
-          syslog(LOG_INFO,"amr_imu_task: read data failed : %u\n",ret);
+          syslog(LOG_INFO, "amr_imu_task: read data failed : %u\n", ret);
           continue;
         }
       else
         {
-          for(i = 0; i < IMU_DATA_LEN_7; i++)
-            tempbuff[i] = (int16_t) ((g_amr_imu.raw_data[ 2 * i ] << 8) | g_amr_imu.raw_data[ 2 * i + 1 ]);
+          for (i = 0; i < IMU_DATA_LEN_7; i++)
+            tempbuff[i] = (int16_t)((g_amr_imu.raw_data[2 * i] << 8) | g_amr_imu.raw_data[2 * i + 1]);
         }
 
       send_imu_data(tempbuff, IMU_DATA_LEN_7, ts);

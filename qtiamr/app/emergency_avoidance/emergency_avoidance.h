@@ -18,10 +18,10 @@
  ********************************************************************************/
 enum move_direction
 {
-	FORWARD,
-	BACKWARD,
-	TURN_LEFT,
-	TURN_RIGHT,
+  FORWARD,
+  BACKWARD,
+  TURN_LEFT,
+  TURN_RIGHT,
 };
 
 /********************************************************************************
@@ -30,4 +30,3 @@ enum move_direction
 int emergency_main(int argc, char *argv[]);
 
 #endif
-

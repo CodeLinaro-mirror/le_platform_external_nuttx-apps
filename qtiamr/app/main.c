@@ -26,7 +26,7 @@ int main(int argc, FAR char *argv[])
 
   /* main function */
   printf("\n\n\n#############################\n");
-  printf("#MCB firmware version:%.3f #\n",VERSION);
+  printf("#MCB firmware version:%.3f #\n", VERSION);
   printf("#############################\n\n");
 
   syslog(LOG_INFO, "main: qtiamr  main start\n");

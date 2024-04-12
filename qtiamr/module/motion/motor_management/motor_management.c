@@ -18,7 +18,6 @@
 #include "motion_management.h"
 #include "motor_management.h"
 
-
 #include "motion_management.h"
 #include "motion_sm.h"
 #include "kinematics.h"
@@ -31,7 +30,7 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-#define MOTOR_HAL HAL_8015D
+#define MOTOR_HAL             HAL_8015D
 #define MOTOR_THREAD_FRQUENCY 50
 
 /****************************************************************************
@@ -42,17 +41,18 @@
 
 struct motor_management_s
 {
-  enum control_mode_e mode;
-  void *motor_hal;
+  enum control_mode_e   mode;
+  void *                motor_hal;
   struct motor_hal_ops *motor_ops;
-  motion_odom_cb motion_odom_cb;
-  motor_notify_cb pose_done_cb;
-  motor_notify_cb switch_done_cb;
-  uint32_t frequency;
-}__attribute__((aligned(4)));
+  motion_odom_cb        motion_odom_cb;
+  motor_notify_cb       pose_done_cb;
+  motor_notify_cb       switch_done_cb;
+  uint32_t              frequency;
+} __attribute__((aligned(4)));
 
 /* hal object */
-enum motor_hal_index_e {
+enum motor_hal_index_e
+{
   HAL_8015D,
   HAL_MAX,
 };
@@ -60,8 +60,8 @@ enum motor_hal_index_e {
 struct motor_hal_s
 {
   enum motor_hal_index_e index;
-  void *motor;
-  struct motor_hal_ops *hal_ops;
+  void *                 motor;
+  struct motor_hal_ops * hal_ops;
 };
 
 /****************************************************************************
@@ -76,18 +76,17 @@ static int motor_speed_odom_cb(union motion_control_data_u data);
  * Private Data
  ****************************************************************************/
 static const struct motor_hal_s g_hal_list[] = {
-  {HAL_8015D, &g_zlac_8015d, &zlac_8015d_ops},
+  { HAL_8015D, &g_zlac_8015d, &zlac_8015d_ops },
 };
 
-static struct motor_management_s g_motor_manager =
-{
-  .mode = INACTIVE,
-  .motor_hal = NULL,
-  .motor_ops = NULL,
+static struct motor_management_s g_motor_manager = {
+  .mode           = INACTIVE,
+  .motor_hal      = NULL,
+  .motor_ops      = NULL,
   .motion_odom_cb = NULL,
-  .pose_done_cb = NULL,
+  .pose_done_cb   = NULL,
   .switch_done_cb = NULL,
-  .frequency = MOTOR_THREAD_FRQUENCY,
+  .frequency      = MOTOR_THREAD_FRQUENCY,
 };
 
 /****************************************************************************
@@ -100,23 +99,23 @@ static struct motor_management_s g_motor_manager =
 
 static int motor_get_speed_odom(float *vx, float *vz)
 {
-  int result;
-  void *motor = g_motor_manager.motor_hal;
+  int                   result;
+  void *                motor   = g_motor_manager.motor_hal;
   struct motor_hal_ops *hal_ops = g_motor_manager.motor_ops;
-  float left_rpm,right_rpm;
+  float                 left_rpm, right_rpm;
 
-  if( g_motor_manager.mode != SPEED )
+  if (g_motor_manager.mode != SPEED)
     {
-      syslog(LOG_ERR,"motor_get_speed failed \n");
+      syslog(LOG_ERR, "motor_get_speed failed \n");
       return ERROR;
     }
 
   result = hal_ops->get_rpm(motor, &left_rpm, &right_rpm);
   if (result == OK)
     {
-      if (false== speed_rpm_transfer_to_odom(left_rpm, right_rpm, vx, vz))
+      if (false == speed_rpm_transfer_to_odom(left_rpm, right_rpm, vx, vz))
         {
-          syslog(LOG_ERR,"speed_rpm_transfer_to_odom failed\n");
+          syslog(LOG_ERR, "speed_rpm_transfer_to_odom failed\n");
           result = ERROR;
         }
     }
@@ -126,29 +125,29 @@ static int motor_get_speed_odom(float *vx, float *vz)
 static int motor_speed_odom_cb(union motion_control_data_u data)
 {
   struct motion_odom_s odom;
-  int result;
-  struct timespec timestamp;
+  int                  result;
+  struct timespec      timestamp;
 
   /* get speed odometry */
 
   odom.type = ODOM_SPEED;
   clock_gettime(CLOCK_REALTIME, &timestamp);
   odom.sec = timestamp.tv_sec;
-  odom.ns = timestamp.tv_nsec;
+  odom.ns  = timestamp.tv_nsec;
   /* call callback */
 
   if (g_motor_manager.motion_odom_cb != NULL)
-  {
-    result = motor_get_speed_odom(&odom.x, &odom.z);
-    if (OK == result)
-      {
-        g_motor_manager.motion_odom_cb(odom);
-      }
-    else
-      {
-        syslog(LOG_ERR,"get odom failed result=%d\n",result);
-      }
-  }
+    {
+      result = motor_get_speed_odom(&odom.x, &odom.z);
+      if (OK == result)
+        {
+          g_motor_manager.motion_odom_cb(odom);
+        }
+      else
+        {
+          syslog(LOG_ERR, "get odom failed result=%d\n", result);
+        }
+    }
   return OK;
 }
 
@@ -169,20 +168,20 @@ int motor_set_pid(enum control_mode_e control_mode, struct motion_pid_s pid)
 
 int motor_set_speed(float vx, float vz)
 {
-  int16_t left_rpm,right_rpm;
-  int result;
-  void *motor = g_motor_manager.motor_hal;
+  int16_t               left_rpm, right_rpm;
+  int                   result;
+  void *                motor   = g_motor_manager.motor_hal;
   struct motor_hal_ops *hal_ops = g_motor_manager.motor_ops;
 
   if (speed_inverse_kinematics(vx, vz, &left_rpm, &right_rpm))
     {
-        /* speed control */
-        result = hal_ops->set_speed(motor, left_rpm, right_rpm);
-        syslog(LOG_INFO,"motor_set_speed l_rpm=%d,r_rpm=%d\n",left_rpm,right_rpm);
+      /* speed control */
+      result = hal_ops->set_speed(motor, left_rpm, right_rpm);
+      syslog(LOG_INFO, "motor_set_speed l_rpm=%d,r_rpm=%d\n", left_rpm, right_rpm);
     }
   else
     {
-      syslog(LOG_ERR,"motor_set_speed speed_inverse_kinematics failed\n");
+      syslog(LOG_ERR, "motor_set_speed speed_inverse_kinematics failed\n");
       result = ERROR;
     }
 
@@ -194,19 +193,19 @@ int motor_quick_stop(bool enable)
   void *motor = g_motor_manager.motor_hal;
 
   if (enable)
-  {
-    syslog(LOG_ERR,"motor_quick_stop enable = %d \n",enable);
-    /* reset mode as inactive */
-    g_motor_manager.mode = INACTIVE;
-    return g_motor_manager.motor_ops->quick_stop(motor);
-  }
+    {
+      syslog(LOG_ERR, "motor_quick_stop enable = %d \n", enable);
+      /* reset mode as inactive */
+      g_motor_manager.mode = INACTIVE;
+      return g_motor_manager.motor_ops->quick_stop(motor);
+    }
 
   return OK;
 }
 
 enum motor_err_e motor_get_status_code(void)
 {
-    return OK;
+  return OK;
 }
 
 int motor_switch_mode(enum control_mode_e mode)
@@ -218,18 +217,19 @@ int motor_switch_mode(enum control_mode_e mode)
     {
       if (g_motor_manager.mode == mode)
         {
-          result =true;
+          result = true;
         }
       else
         {
           result = motor_management_init();
         }
-      return (result == true)?OK:ERROR;
+      return (result == true) ? OK : ERROR;
     }
   else
     {
-      syslog(LOG_ERR,"motor switch error present_mode=%d\n,"
-                      "target_mode=%d",g_motor_manager.mode,mode);
+      syslog(LOG_ERR, "motor switch error present_mode=%d\n,"
+                      "target_mode=%d",
+             g_motor_manager.mode, mode);
       return ERROR;
     }
 }
@@ -260,12 +260,12 @@ void motor_set_odom_frquency(uint32_t frequency)
   g_motor_manager.frequency = frequency;
 }
 
-
 bool motor_management_init(void)
 {
-  bool result = false;
-  void * motor = g_hal_list[MOTOR_HAL].motor;
-  struct motor_hal_ops *ops = g_hal_list[MOTOR_HAL].hal_ops;;
+  bool                  result = false;
+  void *                motor  = g_hal_list[MOTOR_HAL].motor;
+  struct motor_hal_ops *ops    = g_hal_list[MOTOR_HAL].hal_ops;
+  ;
 
   /* get hal */
   g_motor_manager.motor_hal = motor;
@@ -275,12 +275,12 @@ bool motor_management_init(void)
   result = g_motor_manager.motor_ops->motor_hal_init(motor);
   if (result != true)
     {
-      syslog(LOG_ERR,"ERROR:init_motor:  motor init failed\n");
+      syslog(LOG_ERR, "ERROR:init_motor:  motor init failed\n");
       return false;
     }
   /* default mode is speed mode */
   g_motor_manager.mode = SPEED;
-  syslog(LOG_INFO,"init_motor:  motor init done\n");
+  syslog(LOG_INFO, "init_motor:  motor init done\n");
   return result;
 }
 
@@ -291,16 +291,16 @@ bool motor_management_init(void)
 
 int motor_management_thread(int argc, char *argv[])
 {
-  uint32_t frequency = g_motor_manager.frequency;
-  enum motion_sm_state_e control_state;
+  uint32_t                    frequency = g_motor_manager.frequency;
+  enum motion_sm_state_e      control_state;
   union motion_control_data_u motion_data;
 
-  syslog(LOG_INFO,"motor_management_thread:  starting \n");
+  syslog(LOG_INFO, "motor_management_thread:  starting \n");
 
-  while(true)
+  while (true)
     {
       /* set frequency */
-      usleep(1000000/frequency);
+      usleep(1000000 / frequency);
 
       control_state = get_motion_sm_state();
       if (control_state == ST_SPEED)

@@ -11,7 +11,6 @@
 
 #include "amr_signal.h"
 
-
 /****************************************************************************
  * Privite Functions
  ****************************************************************************/
@@ -32,7 +31,7 @@
 
 int amr_signo_avail(uint8_t signo)
 {
-  if(signo != SIGUSR1 && signo != SIGUSR2)
+  if (signo != SIGUSR1 && signo != SIGUSR2)
     {
       return ERROR;
     }
@@ -64,24 +63,24 @@ int amr_signal_init(struct amr_signal_s *amr_signal, pid_t pid, uint8_t signo)
   int ret = OK;
   DEBUGASSERT(amr_signal);
 
-  if(amr_signal->init == TRUE || amr_signal->event.sigev_signo == signo)
-  {
-    syslog(LOG_ERR,"amr_signal_init: The signal(%d) has been initialized.\n",signo);
-    ret = ERROR;
-    goto errout;
-  }
-  if(amr_signo_avail(signo) != OK)
-  {
-    syslog(LOG_ERR,"amr_signal_send_int: The signal number is not valid.\n");
-    ret = ERROR;
-    goto errout;
-  }
-  amr_signal->pid = pid;
-  amr_signal->event.sigev_signo = signo;
+  if (amr_signal->init == TRUE || amr_signal->event.sigev_signo == signo)
+    {
+      syslog(LOG_ERR, "amr_signal_init: The signal(%d) has been initialized.\n", signo);
+      ret = ERROR;
+      goto errout;
+    }
+  if (amr_signo_avail(signo) != OK)
+    {
+      syslog(LOG_ERR, "amr_signal_send_int: The signal number is not valid.\n");
+      ret = ERROR;
+      goto errout;
+    }
+  amr_signal->pid                = pid;
+  amr_signal->event.sigev_signo  = signo;
   amr_signal->event.sigev_notify = SIGEV_SIGNAL;
-  amr_signal->init = TRUE;
-  syslog(LOG_INFO,"amr_signal_init:amr signal init done! addr:%p,pid = %d, signo = %d, sigev_notify = %d\n",amr_signal,\
-      amr_signal->pid,amr_signal->event.sigev_signo,amr_signal->event.sigev_notify);
+  amr_signal->init               = TRUE;
+  syslog(LOG_INFO, "amr_signal_init:amr signal init done! addr:%p,pid = %d, signo = %d, sigev_notify = %d\n", amr_signal,
+         amr_signal->pid, amr_signal->event.sigev_signo, amr_signal->event.sigev_notify);
 errout:
   return ret;
 }
@@ -109,32 +108,32 @@ errout:
 int amr_signal_wait(struct amr_signal_s *amr_signal, struct siginfo *info, FAR const struct timespec *timeout)
 {
   sigset_t set;
-  int ret;
+  int      ret;
 
   DEBUGASSERT(amr_signal);
-  if(amr_signal->init != TRUE)
-  {
-    syslog(LOG_ERR,"amr_signal_wait: The signal hasn't been initialized.\n");
-    ret = ERROR;
-    goto errout;
-  }
-  if(amr_signo_avail(amr_signal->event.sigev_signo) != OK)
-  {
-    syslog(LOG_ERR,"amr_signal_send_int: The signal number is not valid.\n");
-    ret = ERROR;
-    goto errout;
-  }
+  if (amr_signal->init != TRUE)
+    {
+      syslog(LOG_ERR, "amr_signal_wait: The signal hasn't been initialized.\n");
+      ret = ERROR;
+      goto errout;
+    }
+  if (amr_signo_avail(amr_signal->event.sigev_signo) != OK)
+    {
+      syslog(LOG_ERR, "amr_signal_send_int: The signal number is not valid.\n");
+      ret = ERROR;
+      goto errout;
+    }
   sigemptyset(&set);
-    sigaddset(&set, amr_signal->event.sigev_signo);
-  if(timeout == NULL)
+  sigaddset(&set, amr_signal->event.sigev_signo);
+  if (timeout == NULL)
     ret = sigwaitinfo(&set, info);
   else
     ret = sigtimedwait(&set, info, timeout);
   if (ret < 0)
-  {
-        int errcode = errno;
-        syslog(LOG_ERR,"amr_signal: ERROR: sigwaitinfo() failed: %d\n",errcode);
-  }
+    {
+      int errcode = errno;
+      syslog(LOG_ERR, "amr_signal: ERROR: sigwaitinfo() failed: %d\n", errcode);
+    }
 
 errout:
   return ret;
@@ -159,29 +158,29 @@ errout:
  *
  ****************************************************************************/
 
-int amr_signal_send(struct amr_signal_s *amr_signal,union sigval sigev_value)
+int amr_signal_send(struct amr_signal_s *amr_signal, union sigval sigev_value)
 {
   int ret;
   DEBUGASSERT(amr_signal);
-  if(amr_signal->init != TRUE)
-  {
-    syslog(LOG_ERR,"amr_signal_send_int: The signal hasn't been initialized.\n");
-    ret = ERROR;
-    goto errout;
-  }
-  if(amr_signo_avail(amr_signal->event.sigev_signo) != OK)
-  {
-    syslog(LOG_ERR,"amr_signal_send_int: The signal number is not valid.\n");
-    ret = ERROR;
-    goto errout;
-  }
+  if (amr_signal->init != TRUE)
+    {
+      syslog(LOG_ERR, "amr_signal_send_int: The signal hasn't been initialized.\n");
+      ret = ERROR;
+      goto errout;
+    }
+  if (amr_signo_avail(amr_signal->event.sigev_signo) != OK)
+    {
+      syslog(LOG_ERR, "amr_signal_send_int: The signal number is not valid.\n");
+      ret = ERROR;
+      goto errout;
+    }
   amr_signal->event.sigev_value = sigev_value;
-    ret =  nxsig_notification(amr_signal->pid,&amr_signal->event,SI_QUEUE,&amr_signal->work);
+  ret                           = nxsig_notification(amr_signal->pid, &amr_signal->event, SI_QUEUE, &amr_signal->work);
   if (ret < 0)
-  {
-    syslog(LOG_WARNING,"ERROR: nxsig_notification event ID=%d failed: %d\n",(int)amr_signal->event.sigev_signo, ret);
-    ret = ERROR;
-  }
+    {
+      syslog(LOG_WARNING, "ERROR: nxsig_notification event ID=%d failed: %d\n", (int)amr_signal->event.sigev_signo, ret);
+      ret = ERROR;
+    }
 errout:
   return ret;
 }

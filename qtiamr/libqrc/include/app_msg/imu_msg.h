@@ -25,9 +25,10 @@ struct imu_data_s
   float zg;
 };
 
-struct imu_msg_s{
-  long long sec;   /* seconds */
-  long long ns;  /* nanoseconds */
+struct imu_msg_s
+{
+  long long         sec; /* seconds */
+  long long         ns;  /* nanoseconds */
   struct imu_data_s data;
 } __attribute__((aligned(4)));
 

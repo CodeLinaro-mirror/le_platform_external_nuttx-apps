@@ -21,6 +21,6 @@ struct rc_hal_ops_s
 int rc_dev_manag_hal_init(void);
 int get_vx_vz_speed_from_hal(struct speed_req_s *speed);
 int rc_dev_manage_release(void);
-int set_rc_hal_max_speed (float x_speed,float z_speed);
+int set_rc_hal_max_speed(float x_speed, float z_speed);
 
 #endif

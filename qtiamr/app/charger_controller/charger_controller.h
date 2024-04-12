@@ -5,7 +5,6 @@
  *
  ****************************************************************************/
 
-
 #ifndef __APP_CHARGER_CONTROLLER_H
 #define __APP_CHARGER_CONTROLLER_H
 
