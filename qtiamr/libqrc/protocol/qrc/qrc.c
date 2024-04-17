@@ -29,12 +29,12 @@ struct qrc_s
   qrc_thread_pool   msg_threadpool;
   qrc_thread_pool   control_threadpool;
   uint8_t           pipe_cnt;
-  bool              peer_pipe_list_ready;
+  volatile bool     peer_pipe_list_ready;
 
   /* used for bus timeout */
   pthread_cond_t  bus_lock_cond;
   pthread_mutex_t bus_lock_mutex;
-  bool            is_bus_timeout_busy; /* true: bus lock in use */
+  volatile bool   is_bus_timeout_busy; /* true: bus lock in use */
 
   pthread_t read_thread;
 };
@@ -475,6 +475,17 @@ bool qrc_frame_send(const qrc_frame *qrcf, const uint8_t *data, const size_t len
   return send_res;
 }
 
+bool is_pipe_timeout_busy(const uint8_t pipe_id)
+{
+  qrc_pipe_s *p = qrc_pipe_find_by_pipeid(pipe_id);
+  if (p == NULL)
+    {
+      printf("ERROR: input pipe id is invalid\n");
+      return QRC_ERROR;
+    }
+  return p->is_pipe_timeout_busy = true;
+}
+
 /****************************************************************************
  * @intro: start the timeout of pipe whose pipe id is pipe_id
  * @param pipe_id: pipe id
@@ -526,6 +537,7 @@ static void stop_pipe_timeout(const uint8_t pipe_id)
 {
   qrc_pipe_s *p = qrc_pipe_find_by_pipeid(pipe_id);
   int         status;
+
   if (p == NULL)
     {
       printf("ERROR: stop_pipe_timeout input pipe id is invalid\n");
@@ -534,8 +546,7 @@ static void stop_pipe_timeout(const uint8_t pipe_id)
 
   if (false == p->is_pipe_timeout_busy)
     {
-      printf("WARNING: stop_pipe_timeout  timeout in idle\n");
-      return;
+      printf("WARNING: stop_pipe_timeout timeout in idle\n");
     }
 
   status = pthread_mutex_lock(&p->pipe_mutex);
@@ -547,7 +558,7 @@ static void stop_pipe_timeout(const uint8_t pipe_id)
 
   if (0 != pthread_cond_signal(&p->pipe_cond))
     {
-      printf("\nERROR: Can not wake up main thread!\n");
+      printf("\nERROR: Can not wake up ack pipe(%s) thread!\n", p->pipe_name);
       pthread_mutex_unlock(&p->pipe_mutex);
       return;
     }
@@ -606,7 +617,6 @@ static int qrc_lock_start_timeout(bool *timeout)
   outtime.tv_nsec = now.tv_usec;
 
   *timeout = false;
-  printf("debug: bus lock starting TIME\n");
   pthread_mutex_lock(&g_qrc.bus_lock_mutex);
   g_qrc.is_bus_timeout_busy = true;
   if (0 != pthread_cond_timedwait(&g_qrc.bus_lock_cond, &g_qrc.bus_lock_mutex, &outtime))
@@ -633,7 +643,6 @@ static void qrc_lock_stop_timeout(void)
       return;
     }
   pthread_mutex_unlock(&g_qrc.bus_lock_mutex);
-  printf("debug: bus lock stop TIMEOUT done \n");
 }
 
 /****************************************************************************
@@ -873,5 +882,11 @@ bool qrc_destroy(void)
   qrc_threadpool_destroy(g_qrc.msg_threadpool);
   qrc_threadpool_destroy(g_qrc.control_threadpool);
   pthread_cancel(g_qrc.read_thread);
+
+#ifdef QRC_RB5
+  /* reset MCB */
+  ioctl(g_qrc.fd, QRC_RESET_MCB);
+#endif
+
   return close(g_qrc.fd) == 0;
 }

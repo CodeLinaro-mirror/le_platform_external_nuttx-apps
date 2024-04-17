@@ -62,7 +62,7 @@ typedef struct qrc_pipe_s
   char            pipe_name[10];
   pthread_cond_t  pipe_cond;
   pthread_mutex_t pipe_mutex;
-  bool            is_pipe_timeout_busy; /* true: bus timeout in use */
+  volatile bool   is_pipe_timeout_busy; /* true: bus timeout in use */
   uint8_t         pipe_id;
   uint8_t         peer_pipe_id;
   bool            pipe_ready;
@@ -101,7 +101,8 @@ qrc_pipe_s *qrc_pipe_find_by_pipeid(const uint8_t pipe_id);
 qrc_pipe_s *qrc_pipe_modify_by_name(const char *pipe_name, const qrc_pipe_s *new_data);
 bool        qrc_frame_send(const qrc_frame *qrcf, const uint8_t *data, const size_t len, const bool qrc_write_lock);
 
-int start_pipe_timeout(const uint8_t pipe_id, bool *timeout);
+bool is_pipe_timeout_busy(const uint8_t pipe_id);
+int  start_pipe_timeout(const uint8_t pipe_id, bool *timeout);
 
 void qrc_bus_unlock(void);
 void qrc_bus_lock(void);

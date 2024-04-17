@@ -135,11 +135,21 @@ enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe, const uint8_t *data, c
       qrc_frame qrcf;
       qrcf.receiver_id = pipe->peer_pipe_id;
       qrcf.ack         = (true == data_ack) ? ACK : NO_ACK;
+
+      if (ACK == qrcf.ack)
+        {
+          if (true == is_pipe_timeout_busy(pipe->pipe_id))
+            {
+              printf("Warning: Pipe (%s) send with nack by timer is using\n", pipe->pipe_name);
+              qrcf.ack = NO_ACK;
+            }
+        }
+
       bool send_result = qrc_frame_send(&qrcf, (uint8_t *)data, len, true);
       if (true == send_result)
         {
           /* need ack */
-          if (true == data_ack)
+          if (true == qrcf.ack)
             {
               if (QRC_OK != start_pipe_timeout(pipe->pipe_id, &timeout))
                 {
