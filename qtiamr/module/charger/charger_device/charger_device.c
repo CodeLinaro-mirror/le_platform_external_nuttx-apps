@@ -88,26 +88,43 @@ static const char *exception_labels[] = {
 
 static void charger_find_pile_event_in_searching(void)
 {
-  bool    pile_stats;
+  bool pile_stats;
   int32_t ret;
-  ret = charger_dev_get_pile_stats(&pile_stats);
-  if (ret != OK)
+  clock_t elapsed;
+  clock_t start;
+  start = clock_systime_ticks();
+  while(1)
     {
-      charger_exception_notify(CHARGER_PILE_STAT_ERROR);
-      if (charger_dev_p->sm.sm_task_started)
-        charger_dev_sm_signal_send((int32_t)SM_EVENT_EXCEPTION);
-      return;
-    }
-  syslog(LOG_DEBUG, "CHARGER: searching state: pile_stats = (%d) !\n", pile_stats);
-  if (pile_stats == TRUE)
-    {
-      if (charger_dev_p->sm.sm_task_started)
-        charger_dev_sm_signal_send((int32_t)SM_EVENT_FIND_PILE);
-    }
-  else
-    {
-      if (charger_dev_p->sm.sm_task_started)
-        charger_dev_sm_signal_send((int32_t)SM_EVENT_BACK_TO_IDLE);
+      ret = charger_dev_get_pile_stats(&pile_stats);
+      if(ret != OK)
+      {
+        charger_exception_notify(CHARGER_PILE_STAT_ERROR);
+        if(charger_dev_p->sm.sm_task_started)
+          charger_dev_sm_signal_send((int32_t)SM_EVENT_EXCEPTION);
+        return;
+      }
+      elapsed = clock_systime_ticks() - start;
+      syslog(LOG_DEBUG, "CHARGER: searching state: pile_stats = (%d)! timeout = %ld\n", pile_stats, TICK2SEC(elapsed));
+      if(pile_stats == TRUE)
+        {
+          if(charger_dev_p->sm.sm_task_started)
+            {
+              charger_dev_sm_signal_send((int32_t)SM_EVENT_FIND_PILE);
+              break;
+            }
+        }
+      else
+        {
+          if(elapsed >= CHR_SEARCH_MODE_TIMEOUT)
+            {
+              if(charger_dev_p->sm.sm_task_started)
+                {
+                  charger_dev_sm_signal_send((int32_t)SM_EVENT_BACK_TO_IDLE);
+                  break;
+                }
+            }
+          sleep(1);
+        }
     }
 }
 
