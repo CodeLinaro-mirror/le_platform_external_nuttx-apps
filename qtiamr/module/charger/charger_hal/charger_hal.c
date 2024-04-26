@@ -12,7 +12,6 @@
 #include "voltage_adc.h"
 #include "charger_hal.h"
 
-
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -21,10 +20,11 @@
  * Private Types
  ****************************************************************************/
 
-struct chr_dev_table_s{
+struct chr_dev_table_s
+{
   char *name;
   int32_t (*init_func)(void);
-}__attribute__((aligned(4)));
+} __attribute__((aligned(4)));
 
 /****************************************************************************
  * Private Function Prototypes
@@ -48,13 +48,14 @@ struct charger_drv_ops_s *g_drv_ops = NULL;
  * Public Functions
  ****************************************************************************/
 
-int32_t charger_dev_ops_cb_register(struct charger_drv_ops_s *ops){
+int32_t charger_dev_ops_cb_register(struct charger_drv_ops_s *ops)
+{
 
-  if(ops == NULL)
-   {
-    syslog(LOG_ERR, "CHARGER: charger_dev_ops_cb_register: ERROR Failed to register charger device ops callback function\n");
-    return ERROR;
-   }
+  if (ops == NULL)
+    {
+      syslog(LOG_ERR, "CHARGER: charger_dev_ops_cb_register: ERROR Failed to register charger device ops callback function\n");
+      return ERROR;
+    }
   g_drv_ops = ops;
   return OK;
 }
@@ -76,7 +77,7 @@ int32_t get_charging_current_hal(float *current)
 int32_t get_speed_hal(float *vx, float *vz)
 {
   if ((g_drv_ops != NULL) && (g_drv_ops->get_speed))
-    return g_drv_ops->get_speed(vx,vz);
+    return g_drv_ops->get_speed(vx, vz);
   return ERROR;
 }
 
@@ -101,10 +102,9 @@ int32_t get_all_stats_hal(float *voltage, float *current, bool *infrared_stat, b
   return ERROR;
 }
 
-struct chr_dev_table_s charger_drv_table[] =
-{
-    {"ec130", ec130_and_adc_driver_init},
-    // add more driver here
+struct chr_dev_table_s charger_drv_table[] = {
+  { "ec130", ec130_and_adc_driver_init },
+  // add more driver here
 };
 
 int32_t charger_dirver_init_hal(const char *name)
@@ -113,24 +113,24 @@ int32_t charger_dirver_init_hal(const char *name)
   int drv_num;
   int i;
   int32_t (*init_func)(void);
-  drv_num = sizeof(charger_drv_table) / sizeof(struct chr_dev_table_s);
+  drv_num   = sizeof(charger_drv_table) / sizeof(struct chr_dev_table_s);
   init_func = NULL;
   for (i = 0; i < drv_num; i++)
-  {
-    if (!strcmp(name, charger_drv_table[i].name))
-      {
-        init_func = charger_drv_table[i].init_func;
-      }
-  }
+    {
+      if (!strcmp(name, charger_drv_table[i].name))
+        {
+          init_func = charger_drv_table[i].init_func;
+        }
+    }
 
-  if(init_func)
+  if (init_func)
     {
       syslog(LOG_DEBUG, "CHARGER: charger_dirver_init_hal:(%s) driver found\n", name);
       if (init_func() != OK)
-      {
-        syslog(LOG_ERR, "CHARGER: charger_dirver_init_hal:(%s) driver init failed\n", name);
-        return ERROR;
-      }
+        {
+          syslog(LOG_ERR, "CHARGER: charger_dirver_init_hal:(%s) driver init failed\n", name);
+          return ERROR;
+        }
       syslog(LOG_DEBUG, "CHARGER: charger_dirver_init_hal:(%s) driver init successfully\n", name);
     }
   else

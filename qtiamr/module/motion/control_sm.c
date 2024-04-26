@@ -17,7 +17,7 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-#define DEFAULT_CLIENT  (ST_ROBOT_CONTROLLING)
+#define DEFAULT_CLIENT (ST_ROBOT_CONTROLLING)
 
 /****************************************************************************
  * Private Types
@@ -45,9 +45,9 @@ struct control_sm_transform_s
 struct control_sm_s
 {
   enum control_sm_state_e control_state;
-  pthread_rwlock_t control_rwlock;
-  control_sm_notify_cb cb_list[MAX_CLIENT];
-  int num_cb;
+  pthread_rwlock_t        control_rwlock;
+  control_sm_notify_cb    cb_list[MAX_CLIENT];
+  int                     num_cb;
 } __attribute__((aligned(4)));
 
 /****************************************************************************
@@ -58,7 +58,7 @@ static int client_sm_state(enum control_sm_state_e *state);
 
 static int client_contrl_sm_event(enum control_sm_event_e event);
 
-static int control_sm_state_trans(struct control_sm_transform_s *statetrans);
+static int  control_sm_state_trans(struct control_sm_transform_s *statetrans);
 static void do_action(enum control_sm_state_e state);
 
 /****************************************************************************
@@ -67,22 +67,22 @@ static void do_action(enum control_sm_state_e state);
 
 struct control_sm_s g_control_sm;
 
-struct control_sm_transform_s statetrans_robot_control[]={
-  {EV_CMD_ROBOT_CONTROL,    ST_ROBOT_CONTROLLING,   ST_ROBOT_CONTROLLING},
-  {EV_CMD_CHARGER_CONTROL,  ST_ROBOT_CONTROLLING,   ST_CHARGER_CONTROLLING},
-  {EV_CMD_REMOTE_CONTROL,   ST_ROBOT_CONTROLLING,   ST_REMOTE_CONTROLLING},
+struct control_sm_transform_s statetrans_robot_control[] = {
+  { EV_CMD_ROBOT_CONTROL, ST_ROBOT_CONTROLLING, ST_ROBOT_CONTROLLING },
+  { EV_CMD_CHARGER_CONTROL, ST_ROBOT_CONTROLLING, ST_CHARGER_CONTROLLING },
+  { EV_CMD_REMOTE_CONTROL, ST_ROBOT_CONTROLLING, ST_REMOTE_CONTROLLING },
 };
 
-struct control_sm_transform_s statetrans_charger_control[]={
-  {EV_CMD_ROBOT_CONTROL,    ST_CHARGER_CONTROLLING, ST_ROBOT_CONTROLLING},
-  {EV_CMD_CHARGER_CONTROL,  ST_CHARGER_CONTROLLING, ST_CHARGER_CONTROLLING},
-  {EV_CMD_REMOTE_CONTROL,   ST_CHARGER_CONTROLLING, ST_REMOTE_CONTROLLING},
+struct control_sm_transform_s statetrans_charger_control[] = {
+  { EV_CMD_ROBOT_CONTROL, ST_CHARGER_CONTROLLING, ST_ROBOT_CONTROLLING },
+  { EV_CMD_CHARGER_CONTROL, ST_CHARGER_CONTROLLING, ST_CHARGER_CONTROLLING },
+  { EV_CMD_REMOTE_CONTROL, ST_CHARGER_CONTROLLING, ST_REMOTE_CONTROLLING },
 };
 
-struct control_sm_transform_s statetrans_remote_control[]={
-  {EV_CMD_ROBOT_CONTROL,    ST_REMOTE_CONTROLLING, ST_ROBOT_CONTROLLING},
-  {EV_CMD_CHARGER_CONTROL,  ST_REMOTE_CONTROLLING, ST_CHARGER_CONTROLLING},
-  {EV_CMD_REMOTE_CONTROL,   ST_REMOTE_CONTROLLING, ST_REMOTE_CONTROLLING},
+struct control_sm_transform_s statetrans_remote_control[] = {
+  { EV_CMD_ROBOT_CONTROL, ST_REMOTE_CONTROLLING, ST_ROBOT_CONTROLLING },
+  { EV_CMD_CHARGER_CONTROL, ST_REMOTE_CONTROLLING, ST_CHARGER_CONTROLLING },
+  { EV_CMD_REMOTE_CONTROL, ST_REMOTE_CONTROLLING, ST_REMOTE_CONTROLLING },
 };
 
 /****************************************************************************
@@ -96,11 +96,11 @@ struct control_sm_transform_s statetrans_remote_control[]={
 static int control_sm_state_trans(struct control_sm_transform_s *statetrans)
 {
   enum control_sm_state_e *curr_state;
-  int status;
+  int                      status;
 
-  if(NULL == statetrans)
+  if (NULL == statetrans)
     {
-      syslog(LOG_ERR,"pointer statetrans is invalid \n");
+      syslog(LOG_ERR, "pointer statetrans is invalid \n");
       return ERROR;
     }
 
@@ -108,8 +108,8 @@ static int control_sm_state_trans(struct control_sm_transform_s *statetrans)
   status = pthread_rwlock_wrlock(&g_control_sm.control_rwlock);
   if (status != 0)
     {
-      syslog(LOG_ERR,"pthread_rwlock: "
-             "ERROR Failed to open rwlock for control_sm_state_trans. Status: %d\n",
+      syslog(LOG_ERR, "pthread_rwlock: "
+                      "ERROR Failed to open rwlock for control_sm_state_trans. Status: %d\n",
              status);
       ASSERT(false);
     }
@@ -125,8 +125,9 @@ static int control_sm_state_trans(struct control_sm_transform_s *statetrans)
   status = pthread_rwlock_unlock(&g_control_sm.control_rwlock);
   if (status != 0)
     {
-      syslog(LOG_ERR,"pthread_rwlock: "
-             "ERROR Failed to unlock lock. Status: %d\n", status);
+      syslog(LOG_ERR, "pthread_rwlock: "
+                      "ERROR Failed to unlock lock. Status: %d\n",
+             status);
       ASSERT(false);
     }
 
@@ -136,10 +137,10 @@ static int control_sm_state_trans(struct control_sm_transform_s *statetrans)
 /* control sm action function */
 static void do_action(enum control_sm_state_e state)
 {
-  int num;
+  int                  num;
   control_sm_notify_cb fun_cb;
 
-  for(num = 0; num < MAX_CLIENT; num++)
+  for (num = 0; num < MAX_CLIENT; num++)
     {
       if (NULL != g_control_sm.cb_list[num])
         {
@@ -163,8 +164,9 @@ static int client_sm_state(enum control_sm_state_e *state)
   status = pthread_rwlock_unlock(&g_control_sm.control_rwlock);
   if (status != 0)
     {
-      syslog(LOG_ERR,"pthread_rwlock: "
-             "ERROR Failed to unlock lock. Status: %d\n", status);
+      syslog(LOG_ERR, "pthread_rwlock: "
+                      "ERROR Failed to unlock lock. Status: %d\n",
+             status);
       ASSERT(false);
     }
   return status;
@@ -177,7 +179,7 @@ static int client_sm_state(enum control_sm_state_e *state)
 static int client_contrl_sm_event(enum control_sm_event_e event)
 {
   enum control_sm_state_e state;
-  int result;
+  int                     result;
 
   result = client_sm_state(&state);
 
@@ -185,22 +187,19 @@ static int client_contrl_sm_event(enum control_sm_event_e event)
     {
       switch (state)
         {
-          case ST_ROBOT_CONTROLLING:
-            {
+            case ST_ROBOT_CONTROLLING: {
               result = control_sm_state_trans(&statetrans_robot_control[event]);
               break;
             }
-          case ST_CHARGER_CONTROLLING:
-            {
+            case ST_CHARGER_CONTROLLING: {
               result = control_sm_state_trans(&statetrans_charger_control[event]);
               break;
             }
-          case ST_REMOTE_CONTROLLING:
-            {
+            case ST_REMOTE_CONTROLLING: {
               result = control_sm_state_trans(&statetrans_remote_control[event]);
               break;
             }
-          default :
+          default:
             syslog(LOG_ERR, "ERROR client_sm_state , state=%d\n", state);
             break;
         }
@@ -231,12 +230,12 @@ void client_sm_init(void)
   /* Set default control client state */
   g_control_sm.control_state = DEFAULT_CLIENT;
 
-  for (i=0; i<MAX_CLIENT; i++)
+  for (i = 0; i < MAX_CLIENT; i++)
     {
       g_control_sm.cb_list[i] = NULL;
     }
   g_control_sm.num_cb = 0;
-  syslog(LOG_INFO," client state machine init ok\n");
+  syslog(LOG_INFO, " client state machine init ok\n");
 }
 
 /****************************************************************************
@@ -245,31 +244,28 @@ void client_sm_init(void)
 
 enum control_client_e get_current_client(void)
 {
-  int result;
+  int                     result;
   enum control_sm_state_e state;
-  enum control_client_e client = MAX_CLIENT;
+  enum control_client_e   client = MAX_CLIENT;
 
   result = client_sm_state(&state);
   if (result == 0)
     {
       switch (state)
         {
-          case ST_ROBOT_CONTROLLING:
-            {
+            case ST_ROBOT_CONTROLLING: {
               client = ROBOT_CONTROLLER;
               break;
             }
-          case ST_CHARGER_CONTROLLING:
-            {
+            case ST_CHARGER_CONTROLLING: {
               client = CHARGER_CONTROLLER;
               break;
             }
-          case ST_REMOTE_CONTROLLING:
-            {
+            case ST_REMOTE_CONTROLLING: {
               client = REMOTE_CONTROLLER;
               break;
             }
-          default :
+          default:
             syslog(LOG_ERR, "ERROR client_sm_state , state=%d\n", state);
             break;
         }
@@ -288,23 +284,19 @@ int set_control_client(enum control_client_e client)
 
   switch (client)
     {
-      case ROBOT_CONTROLLER:
-        {
+        case ROBOT_CONTROLLER: {
           event = EV_CMD_ROBOT_CONTROL;
           break;
         }
-      case CHARGER_CONTROLLER:
-        {
+        case CHARGER_CONTROLLER: {
           event = EV_CMD_CHARGER_CONTROL;
           break;
         }
-      case REMOTE_CONTROLLER:
-        {
+        case REMOTE_CONTROLLER: {
           event = EV_CMD_REMOTE_CONTROL;
           break;
         }
-      default :
-        {
+        default: {
           syslog(LOG_ERR, "ERROR client =%d\n", client);
           return ERROR;
         }

@@ -22,15 +22,15 @@
 
 enum charger_ctl_cmd_e
 {
-	GET_CTL_VOLTAGE = 10,
-	GET_CTL_CURRENT,
-	GET_CTL_SM_STATE,
-	GET_CTL_EXCEPTION,
-	GET_CTL_PILE_STATE,
-	GET_CTL_IS_CHARGING,
-	GET_CTL_ALL_STATE,
-	START_CTL_CHARGING,
-	STOP_CTL_CHARGING
+  GET_CTL_VOLTAGE = 10,
+  GET_CTL_CURRENT,
+  GET_CTL_SM_STATE,
+  GET_CTL_EXCEPTION,
+  GET_CTL_PILE_STATE,
+  GET_CTL_IS_CHARGING,
+  GET_CTL_ALL_STATE,
+  START_CTL_CHARGING,
+  STOP_CTL_CHARGING
 };
 
 enum charger_ctl_exception_e
@@ -62,14 +62,14 @@ struct charger_ctl_msg_s
 {
   uint32_t cmd_type;
   union
-    {
-      float voltage;
-      float current;
-      uint32_t pile_stats;
-      uint32_t is_charging;
-      uint32_t sm_state;
-      uint32_t exception_value;
-    }cmd_data;
-}__attribute__((aligned(4)));
+  {
+    float    voltage;
+    float    current;
+    uint32_t pile_stats;
+    uint32_t is_charging;
+    uint32_t sm_state;
+    uint32_t exception_value;
+  } cmd_data;
+} __attribute__((aligned(4)));
 
 #endif /* __APP_CHARGER_CONTROL_MSG_H */

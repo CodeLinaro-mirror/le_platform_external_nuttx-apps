@@ -17,6 +17,6 @@
 struct watchdog_msg
 {
   uint8_t count;
-}__attribute__((aligned(4)));
+} __attribute__((aligned(4)));
 
 #endif

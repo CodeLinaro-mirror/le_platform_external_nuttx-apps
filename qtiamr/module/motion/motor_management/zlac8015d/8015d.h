@@ -33,11 +33,11 @@ enum driver_bus_mode_e
 
 struct motor_zlac_8015d_s
 {
-  int driver_fd;
-  bool bus_mode;
-  pthread_mutex_t motor_mutex;
+  int                 driver_fd;
+  bool                bus_mode;
+  pthread_mutex_t     motor_mutex;
   enum control_mode_e mode;
-  bool initialized;
+  bool                initialized;
 } __attribute__((aligned(4)));
 
 /****************************************************************************
@@ -45,7 +45,7 @@ struct motor_zlac_8015d_s
  ****************************************************************************/
 
 /* motor management IF */
-extern struct motor_hal_ops zlac_8015d_ops;
+extern struct motor_hal_ops      zlac_8015d_ops;
 extern struct motor_zlac_8015d_s g_zlac_8015d;
 
 #endif /* __MOTOR_ZLAC_8015d_H */

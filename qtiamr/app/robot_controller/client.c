@@ -31,7 +31,7 @@
  * Private Function Prototypes
  ****************************************************************************/
 
-static void client_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response);
+static void client_qrc_msg_cb(struct qrc_pipe_s *pipe, void *data, size_t len, bool response);
 static void client_msg_parse(struct qrc_pipe_s *pipe, struct client_msg_s *client_msg);
 
 /****************************************************************************
@@ -49,58 +49,55 @@ struct qrc_pipe_s *g_client_pipe = NULL;
 static void client_msg_parse(struct qrc_pipe_s *pipe, struct client_msg_s *client_msg)
 {
   enum client_msg_type_e msg_type;
-  struct client_msg_s  msg;
-  int result;
+  struct client_msg_s    msg;
+  int                    result;
 
-  if (pipe == NULL || client_msg ==NULL)
+  if (pipe == NULL || client_msg == NULL)
     {
       return;
     }
 
   msg_type = client_msg->msg_type;
-  switch(msg_type)
+  switch (msg_type)
     {
-      case SET_CLIENT:
-        {
-          syslog(LOG_INFO,"client msg SET_CLIENT =  %d\n",client_msg->client);
+        case SET_CLIENT: {
+          syslog(LOG_INFO, "client msg SET_CLIENT =  %d\n", client_msg->client);
           set_control_client(client_msg->client);
           /* REPLY set client done */
-          msg.client = get_current_client();
+          msg.client   = get_current_client();
           msg.msg_type = SET_CLIENT;
-          result = qrc_write(pipe, (uint8_t*)&msg, sizeof(struct client_msg_s), false);
+          result       = qrc_write(pipe, (uint8_t *)&msg, sizeof(struct client_msg_s), false);
           if (result != SUCCESS)
             {
-              syslog(LOG_ERR,"client msg send error  %d\n",result);
+              syslog(LOG_ERR, "client msg send error  %d\n", result);
             }
           break;
         }
-      case GET_CLIENT:
-        {
-          msg.client = get_current_client();
+        case GET_CLIENT: {
+          msg.client   = get_current_client();
           msg.msg_type = GET_CLIENT;
-          result = qrc_write(pipe, (uint8_t*)&msg, sizeof(struct client_msg_s), false);
+          result       = qrc_write(pipe, (uint8_t *)&msg, sizeof(struct client_msg_s), false);
           if (result != SUCCESS)
             {
-              syslog(LOG_ERR,"client msg send error  %d\n",result);
+              syslog(LOG_ERR, "client msg send error  %d\n", result);
             }
           break;
         }
-      default :
-        {
-          syslog(LOG_ERR,"client msg type is invalid %d\n",msg_type);
+        default: {
+          syslog(LOG_ERR, "client msg type is invalid %d\n", msg_type);
         }
     }
 }
 
 /* client qrc msg callback */
 
-static void client_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, bool response)
+static void client_qrc_msg_cb(struct qrc_pipe_s *pipe, void *data, size_t len, bool response)
 {
   struct client_msg_s *client_msg;
 
-  syslog(LOG_INFO,"client msg cb get type=%d\n",*(int*)data);
+  syslog(LOG_INFO, "client msg cb get type=%d\n", *(int *)data);
 
-  if (pipe == NULL || data ==NULL)
+  if (pipe == NULL || data == NULL)
     {
       return;
     }
@@ -111,7 +108,7 @@ static void client_qrc_msg_cb(struct qrc_pipe_s *pipe,void * data, size_t len, b
     }
   else
     {
-      syslog(LOG_ERR,"client msg size mismatch size=%d, len=%d\n",sizeof(struct client_msg_s),len);
+      syslog(LOG_ERR, "client msg size mismatch size=%d, len=%d\n", sizeof(struct client_msg_s), len);
     }
 }
 
@@ -131,7 +128,7 @@ int client_controller(int argc, char *argv[])
 
   /* get pipe */
 
-  pipe =  qrc_get_pipe(pipe_name);
+  pipe = qrc_get_pipe(pipe_name);
   if (pipe == NULL)
     {
       config_notify_completed(false);
@@ -140,14 +137,13 @@ int client_controller(int argc, char *argv[])
 
   if (!qrc_register_message_cb(pipe, client_qrc_msg_cb))
     {
-      syslog(LOG_ERR,"qrc register client cb error\n");
+      syslog(LOG_ERR, "qrc register client cb error\n");
       config_notify_completed(false);
       return -1;
     }
 
   /* notify ok */
   config_notify_completed(true);
-  syslog(LOG_INFO,"client_controller client exit \n");
+  syslog(LOG_INFO, "client_controller client exit \n");
   return 0;
 }
-

@@ -32,11 +32,11 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-typedef bool (*emergency_speed_check_cb)(float vx, float vz);  /* emergency check speed callback */
+typedef bool (*emergency_speed_check_cb)(float vx, float vz); /* emergency check speed callback */
 
 /* Pose type, used to position control */
 #define POSE_ANGLE (false)
-#define POSE_DIST (true)
+#define POSE_DIST  (true)
 
 /****************************************************************************
  * Public Types
@@ -63,7 +63,7 @@ struct motion_pid_s
 enum motion_result_e
 {
   DRV_ERR = -1,
-  M_OK = 0,
+  M_OK    = 0,
   DRV_BUSY,
   CLIENT_ERR,
   SM_ERR,
@@ -71,36 +71,35 @@ enum motion_result_e
 
 struct motion_management_s
 {
-  bool initialized;
-  struct motion_sm_s *motion_sm;
+  bool                 initialized;
+  struct motion_sm_s * motion_sm;
   struct control_sm_s *control_sm;
-}__attribute__((aligned(4)));
+} __attribute__((aligned(4)));
 
+typedef void (*control_sm_notify_cb)(enum control_sm_state_e state); /* control sm cb for state switch */
 
-typedef void (*control_sm_notify_cb)(enum control_sm_state_e state);  /* control sm cb for state switch */
+typedef void (*motion_odom_cb)(struct motion_odom_s motion_odom); /* motion odom cb */
 
-typedef void (*motion_odom_cb)(struct motion_odom_s motion_odom);  /* motion odom cb */
-
-typedef void (*motion_action_done_cb)(void *pipe,void * data, size_t len, bool response);
+typedef void (*motion_action_done_cb)(void *pipe, void *data, size_t len, bool response);
 
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/
 /* Client control SM */
 
-void client_sm_init(void);
+void                  client_sm_init(void);
 enum control_client_e get_current_client(void);
-int set_control_client(enum control_client_e client);
-bool client_control_sm_register_notify_cb(control_sm_notify_cb fun_cb);
+int                   set_control_client(enum control_client_e client);
+bool                  client_control_sm_register_notify_cb(control_sm_notify_cb fun_cb);
 
 /* Motion management */
 enum motion_result_e motion_speed_control(enum control_client_e client,
                                           float vx, float vz);
 
 enum motion_result_e motion_position_control(enum control_client_e client,
-                                              float pose,int pose_type,
-                                              motion_action_done_cb position_done_cb,
-                                              void *arg);
+                                             float pose, int pose_type,
+                                             motion_action_done_cb position_done_cb,
+                                             void *                arg);
 
 enum motion_result_e motion_switch_mode(enum control_mode_e mode);
 
@@ -114,5 +113,6 @@ int motion_management_init(int argc, char *argv[]);
 
 void motion_motor_stop(bool stop);
 void register_emergency_check_speed_cb(emergency_speed_check_cb check_cb);
+void register_speed_subscribe_cb(emergency_speed_check_cb fun_cb);
 
 #endif /* __MOTION_MANAGEMENT_H */

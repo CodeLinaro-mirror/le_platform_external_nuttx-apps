@@ -25,13 +25,13 @@ enum time_sync_msg_type_e
 
 struct time_sync_msg_s
 {
-  int type;
-  long long  sec;   /* Seconds */
-  long long  ns;  /* nanoseconds */
+  int       type;
+  long long sec; /* Seconds */
+  long long ns;  /* nanoseconds */
 } __attribute__((aligned(4)));
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // __TIME_SYNC_MSG_H
+#endif // __TIME_SYNC_MSG_H
