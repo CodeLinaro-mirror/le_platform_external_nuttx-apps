@@ -1,0 +1,3 @@
+ifneq ($(CONFIG_QTI_UART_TEST_APP),)
+CONFIGURED_APPS += $(APPDIR)/uart_test_app
+endif
