@@ -296,14 +296,9 @@ static int do_action_emergency(union motion_control_data_u data)
 
 static int do_action_drv_error(union motion_control_data_u data)
 {
-  enum motion_sm_state_e state = get_motion_sm_state();
-
-  /* try stop motor driver */
-  //motor_quick_stop(true);
-
   if (NULL != g_motion_sm.drv_err_cb)
     {
-      g_motion_sm.drv_err_cb(g_motion_sm.drv_err_cb_data, state);
+      g_motion_sm.drv_err_cb(g_motion_sm.drv_err_cb_data, data.motor_driver_status);
     }
 
   syslog(LOG_INFO, "do_action_drv_error: EXECUTED \n");
