@@ -7,6 +7,7 @@
  ****************************************************************************/
 #include "qrc_msg_management.h"
 
+#define TRY_TIMES (1)
 static uint8_t g_pipe_write_lock_owner = 255;
 
 /****************************************************************************
@@ -120,6 +121,10 @@ enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe, const uint8_t *data, c
 {
   enum qrc_write_status_e res = FAILED;
   bool                    timeout;
+  int
+  try
+    = TRY_TIMES;
+  bool send_result;
 
   if (NULL == pipe || pipe->pipe_id >= get_pipe_number())
     {
@@ -134,36 +139,52 @@ enum qrc_write_status_e qrc_write(const qrc_pipe_s *pipe, const uint8_t *data, c
     {
       qrc_frame qrcf;
       qrcf.receiver_id = pipe->peer_pipe_id;
-      qrcf.ack         = (true == data_ack) ? ACK : NO_ACK;
+      qrcf.ack         = NO_ACK;
 
-      if (ACK == qrcf.ack)
+      if (data_ack == true) /* need ack transport */
         {
-          if (true == is_pipe_timeout_busy(pipe->pipe_id))
+          while (try >= 0)
             {
-              printf("Warning: Pipe (%s) send with nack by timer is using\n", pipe->pipe_name);
-              qrcf.ack = NO_ACK;
+              try
+                =
+                try
+                  -1;
+
+              if (true == is_pipe_timeout_busy(pipe->pipe_id))
+                {
+                  printf("Warning: Pipe (%s) send with nack by timer is using\n", pipe->pipe_name);
+                  send_result = qrc_frame_send(&qrcf, (uint8_t *)data, len, true);
+                  res         = (send_result) ? SUCCESS : FAILED;
+                  break;
+                }
+              else /* add ack in frame and start timer */
+                {
+                  qrcf.ack    = ACK;
+                  send_result = qrc_frame_send(&qrcf, (uint8_t *)data, len, true);
+                  if (true == send_result)
+                    {
+                      if (QRC_OK != start_pipe_timeout(pipe->pipe_id, &timeout))
+                        {
+                          res = ACK_ERR;
+                          break;
+                        }
+                      if (true == timeout)
+                        {
+                          res = TIMEOUT;
+                          printf("Warning: Pipe (%s) timeout, try to send again \n", pipe->pipe_name);
+                          continue;
+                        }
+                      res = SUCCESS;
+                      break;
+                    }
+                  break;
+                }
             }
         }
-
-      bool send_result = qrc_frame_send(&qrcf, (uint8_t *)data, len, true);
-      if (true == send_result)
+      else /* no ack transport */
         {
-          /* need ack */
-          if (true == qrcf.ack)
-            {
-              if (QRC_OK != start_pipe_timeout(pipe->pipe_id, &timeout))
-                {
-                  printf("Warning: Pipe (%s) send with no ack\n", pipe->pipe_name);
-                  return SUCCESS;
-                }
-
-              if (true == timeout)
-                {
-                  printf("ERROR: Pipe(%s) write timeout!\n", pipe->pipe_name);
-                  return TIMEOUT;
-                }
-            }
-          res = SUCCESS;
+          send_result = qrc_frame_send(&qrcf, (uint8_t *)data, len, true);
+          res         = (send_result) ? SUCCESS : FAILED;
         }
     }
   return res;
