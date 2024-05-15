@@ -151,8 +151,8 @@ static void motion_drv_err_cb(void *user, int data)
   struct motion_control_msg_s control_msg;
   int                         result;
 
-  control_msg.msg_type  = SWITCH_MODE;
-  control_msg.data.mode = get_control_mode((enum motion_sm_state_e)data);
+  control_msg.msg_type                 = MOTOR_DRIVER_STATUS;
+  control_msg.data.motor_driver_status = data;
 
   /* write status to rb5 */
   result = qrc_write(pipe, (uint8_t *)&control_msg, sizeof(struct motion_control_msg_s), false);

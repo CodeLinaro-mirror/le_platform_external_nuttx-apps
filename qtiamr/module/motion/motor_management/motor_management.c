@@ -33,6 +33,8 @@
 #define MOTOR_HAL             HAL_8015D
 #define MOTOR_THREAD_FRQUENCY 50
 
+#define MOTOR_DRIVER_STATUS_CHECK_FRQUENCY 10
+
 /****************************************************************************
  * Private Types
  ****************************************************************************/
@@ -70,7 +72,8 @@ struct motor_hal_s
 
 static int motor_get_speed_odom(float *vx, float *vz);
 //static bool motor_check_position_reach(void);
-static int motor_speed_odom_cb(union motion_control_data_u data);
+static int motor_speed_odom_work(union motion_control_data_u data);
+static int motor_driver_status_work(union motion_control_data_u data);
 
 /****************************************************************************
  * Private Data
@@ -103,6 +106,7 @@ static int motor_get_speed_odom(float *vx, float *vz)
   void *                motor   = g_motor_manager.motor_hal;
   struct motor_hal_ops *hal_ops = g_motor_manager.motor_ops;
   float                 left_rpm, right_rpm;
+  static int            num = 0;
 
   if (g_motor_manager.mode != SPEED)
     {
@@ -119,10 +123,19 @@ static int motor_get_speed_odom(float *vx, float *vz)
           result = ERROR;
         }
     }
+  syslog(LOG_ERR, "speed:left_rpm=%f	right_rpm=%f	vx=%f	vz=%f\n", left_rpm, right_rpm, *vx, *vz);
+  num++;
+  if (num % 20 == 0)
+    {
+      enum motor_err_e motor_status;
+      hal_ops->get_motor_status_code(motor, &motor_status);
+      syslog(LOG_ERR, "motor_status=%d", motor_status);
+    }
+
   return result;
 }
 
-static int motor_speed_odom_cb(union motion_control_data_u data)
+static int motor_speed_odom_work(union motion_control_data_u data)
 {
   struct motion_odom_s odom;
   int                  result;
@@ -146,8 +159,24 @@ static int motor_speed_odom_cb(union motion_control_data_u data)
       else
         {
           syslog(LOG_ERR, "get odom failed result=%d\n", result);
+          return ERROR;
         }
     }
+  return OK;
+}
+
+static int motor_driver_status_work(union motion_control_data_u data)
+{
+  union motion_control_data_u driver_data;
+
+  driver_data.motor_driver_status = motor_get_status_code();
+  if (driver_data.motor_driver_status != NORMAL)
+    {
+      /* send drv_err event to motion stat machine */
+      motion_sm_event(EV_DRI_ERR, driver_data);
+      syslog(LOG_ERR, "ERROR: motor driver status error \n");
+    }
+
   return OK;
 }
 
@@ -203,9 +232,16 @@ int motor_quick_stop(bool enable)
   return OK;
 }
 
+/* get motor driver status */
 enum motor_err_e motor_get_status_code(void)
 {
-  return OK;
+  enum motor_err_e      err_code = NORMAL;
+  void *                motor    = g_motor_manager.motor_hal;
+  struct motor_hal_ops *hal_ops  = g_motor_manager.motor_ops;
+
+  hal_ops->get_motor_status_code(motor, &err_code);
+
+  return err_code;
 }
 
 int motor_switch_mode(enum control_mode_e mode)
@@ -294,7 +330,8 @@ int motor_management_thread(int argc, char *argv[])
   uint32_t                    frequency = g_motor_manager.frequency;
   enum motion_sm_state_e      control_state;
   union motion_control_data_u motion_data;
-
+  uint32_t                    count      = 0;
+  uint32_t                    driver_num = frequency / MOTOR_DRIVER_STATUS_CHECK_FRQUENCY;
   syslog(LOG_INFO, "motor_management_thread:  starting \n");
 
   while (true)
@@ -305,7 +342,14 @@ int motor_management_thread(int argc, char *argv[])
       control_state = get_motion_sm_state();
       if (control_state == ST_SPEED)
         {
-          motion_add_work(motor_speed_odom_cb, motion_data);
+          motion_add_work(motor_speed_odom_work, motion_data);
+
+          /* get motor driver status */
+          count++;
+          if (count % driver_num == 0)
+            {
+              motion_add_work(motor_driver_status_work, motion_data);
+            }
         }
     }
 
