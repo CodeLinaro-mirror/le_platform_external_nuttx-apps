@@ -35,6 +35,7 @@
 #define CONTROLLING_SPEED_NOTIFY 20000    //20ms
 #define CHARGING_POLL_DELAY      2000000  //2s
 #define CHR_CTL_MODE_TIMEOUT     SEC2TICK(200)
+#define CHR_SEARCH_MODE_TIMEOUT  SEC2TICK(15)
 
 /****************************************************************************
  * Public Types

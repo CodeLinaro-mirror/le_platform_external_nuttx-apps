@@ -87,7 +87,7 @@ qrc_pipe_s *qrc_get_pipe(const char *pipe_name)
       return NULL;
     }
 
-  printf("DEBUG: Pipe(%s) create done id=%d\n", pipe_name, p->pipe_id);
+  printf("INFO: Pipe(%s) create done id=%d\n", pipe_name, p->pipe_id);
   return p;
 }
 
