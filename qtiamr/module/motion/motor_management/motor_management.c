@@ -206,7 +206,7 @@ int motor_set_speed(float vx, float vz)
     {
       /* speed control */
       result = hal_ops->set_speed(motor, left_rpm, right_rpm);
-      syslog(LOG_INFO, "motor_set_speed l_rpm=%d,r_rpm=%d\n", left_rpm, right_rpm);
+      syslog(LOG_DEBUG, "motor_set_speed l_rpm=%d,r_rpm=%d\n", left_rpm, right_rpm);
     }
   else
     {

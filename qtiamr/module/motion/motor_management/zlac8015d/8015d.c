@@ -258,7 +258,6 @@ static int zlac_8015d_write_single_opcode(struct motor_zlac_8015d_s *    motor,
     }
   else
     {
-      syslog(LOG_ERR, "zlac_8015d write opcode check error \n");
       return ERROR;
     }
 }
@@ -559,7 +558,6 @@ static int zlac_8015d_sync_speed(void *motor, int16_t left_rpm, int16_t right_rp
     }
   else
     {
-
       syslog(LOG_ERR, "zlac_8015d read dump:data:%d,%d,%d,%d,%d,%d,%d,%d\n", rec_buff.sdo_cmd, rec_buff.index_l, rec_buff.index_h, rec_buff.sub_index, rec_buff.data1_l, rec_buff.data1_h, rec_buff.data2_l, rec_buff.data2_h);
       syslog(LOG_ERR, "zlac_8015d write speed check error %d  %d \n", rec_buff.index_h, rec_buff.index_l);
       return ERROR;
@@ -608,7 +606,7 @@ static int zlac_8015d_set_pid(void *motor, enum control_mode_e mode,
           result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_LEFT_KI, ki);
           usleep(2000);
           result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SPEED_RIGHT_KI, ki);
-          syslog(LOG_INFO, "8015d set speed pid result=%d\n", result);
+          syslog(LOG_DEBUG, "8015d set speed pid result=%d\n", result);
           break;
         }
       case POSITION:
@@ -673,27 +671,26 @@ static bool zlac_8015d_init(void *motor)
   /*Default mode is SPEED*/
 
   status = zlac_8015d_write_single_opcode(motor, CODE_CAN_SYNC, 0);
-  syslog(LOG_INFO, "8015d init CODE_CAN_SYNC =%d\n", status);
   usleep(2000);
 
   status = zlac_8015d_speed_mode_init(zlac_8015d);
-  syslog(LOG_INFO, "8015d init  mode init=%d\n", status);
+  syslog(LOG_DEBUG, "8015d init  mode init=%d\n", status);
   usleep(2000);
   status |= zlac_8015d_speed_config_acc(zlac_8015d);
-  syslog(LOG_INFO, "8015d init  config ACC=%d\n", status);
+  syslog(LOG_DEBUG, "8015d init  config ACC=%d\n", status);
   usleep(2000);
   status |= zlac_8015d_enable_can(zlac_8015d);
-  syslog(LOG_INFO, "8015d init  enable CAN=%d\n", status);
+  syslog(LOG_DEBUG, "8015d init  enable CAN=%d\n", status);
   usleep(2000);
   status |= zlac_8015d_set_motor_pole(zlac_8015d);
-  syslog(LOG_INFO, "8015d init  set pole=%d\n", status);
+  syslog(LOG_DEBUG, "8015d init  set pole=%d\n", status);
   usleep(2000);
 
   /* Set pid */
   pid.kp = SPEED_KP;
   pid.ki = SPEED_KI;
   status |= zlac_8015d_set_pid(zlac_8015d, SPEED, pid);
-  syslog(LOG_INFO, "8015d init  set speed pid=%d\n", status);
+  syslog(LOG_DEBUG, "8015d init  set speed pid=%d\n", status);
 
   if (status == OK)
     {
