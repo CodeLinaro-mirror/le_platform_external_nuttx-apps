@@ -106,7 +106,6 @@ static int motor_get_speed_odom(float *vx, float *vz)
   void *                motor   = g_motor_manager.motor_hal;
   struct motor_hal_ops *hal_ops = g_motor_manager.motor_ops;
   float                 left_rpm, right_rpm;
-  static int            num = 0;
 
   if (g_motor_manager.mode != SPEED)
     {
@@ -122,14 +121,6 @@ static int motor_get_speed_odom(float *vx, float *vz)
           syslog(LOG_ERR, "speed_rpm_transfer_to_odom failed\n");
           result = ERROR;
         }
-    }
-  syslog(LOG_ERR, "speed:left_rpm=%f	right_rpm=%f	vx=%f	vz=%f\n", left_rpm, right_rpm, *vx, *vz);
-  num++;
-  if (num % 20 == 0)
-    {
-      enum motor_err_e motor_status;
-      hal_ops->get_motor_status_code(motor, &motor_status);
-      syslog(LOG_ERR, "motor_status=%d", motor_status);
     }
 
   return result;
@@ -206,7 +197,6 @@ int motor_set_speed(float vx, float vz)
     {
       /* speed control */
       result = hal_ops->set_speed(motor, left_rpm, right_rpm);
-      syslog(LOG_DEBUG, "motor_set_speed l_rpm=%d,r_rpm=%d\n", left_rpm, right_rpm);
     }
   else
     {

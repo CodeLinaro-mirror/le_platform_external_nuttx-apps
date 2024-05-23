@@ -321,7 +321,7 @@ static int do_action_speed(union motion_control_data_u data)
         }
     }
 
-  syslog(LOG_DEBUG, "do_action_speed: EXECUTED vx =%f, vz =%f \n", vx, vz);
+  //syslog(LOG_DEBUG, "do_action_speed: EXECUTED vx =%f, vz =%f \n", vx, vz);
   return motor_set_speed(vx, vz);
 }
 

@@ -101,10 +101,6 @@ static bool diff_speed_inverse_kinematics(const struct kinematic_parameter_s par
 
   *rpm_l = (int16_t)(v_left * 60 / wheel_perimeter);
   *rpm_r = (int16_t)(-v_right * 60 / wheel_perimeter);
-  syslog(LOG_DEBUG, "kinematec debug: vx_max %.3f,vz_max %.3f,vx %.3f,vz %.3f"
-                    "v_l %.3f,v_r %.3f;rpm_l %d,rpm_r %d;wheel=%.3f\n",
-         max_vx,
-         max_vz, vx, vz, v_left, v_right, *rpm_l, *rpm_r, wheel_perimeter);
 
   return true;
 }
