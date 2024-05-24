@@ -8,6 +8,7 @@
 #ifndef __MISC_H
 #define __MISC_H
 
-/* Remote controller header */
+/* misc task function */
+int misc_task(int argc, char *argv[]);
 
 #endif
