@@ -251,6 +251,9 @@ int emergency_main(int argc, char *argv[])
   register_emergency_check_speed_cb(emerg_speed_cb);
   register_speed_subscribe_cb(emerg_direction_cb);
 
+  /*Enable emergency avoidance by default*/
+  register_ultra_client(&emerg_client);
+
   syslog(LOG_DEBUG, "emergency avoidance init done\n");
   config_notify_completed(true);
 

@@ -37,7 +37,8 @@ enum control_msg_type_e
   SET_SPEED = 0,
   SWITCH_MODE,
   SET_EMERGENCY,
-  SET_POSITION
+  SET_POSITION,
+  MOTOR_DRIVER_STATUS
 };
 
 enum motor_err_e
@@ -69,6 +70,7 @@ union motion_control_data_u
   struct position_cmd_s position_cmd;
   int                   emergency;
   int                   mode;
+  int                   motor_driver_status;
 } __attribute__((aligned(4)));
 
 struct motion_control_msg_s
