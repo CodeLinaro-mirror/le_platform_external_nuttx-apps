@@ -43,6 +43,7 @@ C_INCLUDES +=  \
     -I$(QTIARM_DIR)/app/imu \
     -I$(QTIARM_DIR)/app/remote_controller \
     -I$(QTIARM_DIR)/app/emergency_avoidance \
+    -I$(QTIARM_DIR)/app/misc \
     -I$(QTIARM_DIR)/libqrc/include/app_msg \
     -I$(QTIARM_DIR)/libqrc/include/module \
     -I$(QTIARM_DIR)/libqrc/protocol/qrc \
@@ -82,6 +83,7 @@ CSRCS += $(QTIARM_DIR)/app/imu/imu.c
 CSRCS += $(QTIARM_DIR)/app/charger_controller/charger_controller.c
 CSRCS += $(QTIARM_DIR)/app/remote_controller/remote_controller.c
 CSRCS += $(QTIARM_DIR)/app/emergency_avoidance/emergency_avoidance.c
+CSRCS += $(QTIARM_DIR)/app/misc/misc.c
 
 
 # protocol/libqrc source
