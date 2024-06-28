@@ -107,7 +107,7 @@ static void emerg_qrc_msg_parse(struct qrc_pipe_s *pipe, struct emerg_msg_s *eme
       case ENABLEMENT:
         syslog(LOG_INFO, "Received emergency enablement %d \n", emerg_msg->data.value);
         emerg_msg_reply.msg_type   = ENABLEMENT;
-        emerg_msg_reply.data.value = emerg_msg->data.value;
+        emerg_msg_reply.data.value = 1;
         if (emerg_msg->data.value)
           {
             register_ultra_client(&emerg_client);
@@ -116,6 +116,7 @@ static void emerg_qrc_msg_parse(struct qrc_pipe_s *pipe, struct emerg_msg_s *eme
           {
             motion_set_emergency(FALSE);
             unregister_ultra_client(&emerg_client);
+            emerg_msg_reply.data.value = 0;
           }
         break;
 
