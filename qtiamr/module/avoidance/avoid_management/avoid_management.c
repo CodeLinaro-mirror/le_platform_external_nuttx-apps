@@ -16,7 +16,7 @@
 #include "dyp_02.h"
 #include "avoidance.h"
 #include "avoid_management.h"
-
+#include "modlog_filter.h"
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -178,7 +178,7 @@ int avoid_management_thread(int argc, char *argv[])
               return fd;
             }
         }
-      syslog(LOG_DEBUG, "[avoidance mangement]Ultra sensor dist, unit(mm)\n");
+      modlog_dbg(LOG_ULEMERG, "[avoidance mangement]Ultra sensor dist, unit(mm)\n");
       for (int i = 0; i < ultra_sensor_num; i++)
         {
           if (!(ultra_sensor_masks & (0x1 << i)))

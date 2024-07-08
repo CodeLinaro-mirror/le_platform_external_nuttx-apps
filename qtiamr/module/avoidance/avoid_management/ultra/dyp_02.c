@@ -15,6 +15,7 @@
 #include <sys/ioctl.h>
 
 #include "dyp_02.h"
+#include "modlog_filter.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -265,7 +266,7 @@ int rs485_ultra_raw_dist(uint8_t addr, int fd)
     {
       deb_dist = dist_debounce(dist);
 
-      syslog(LOG_DEBUG, "ultra sensor %u: dist %d, after debounce %d\n", addr, dist, deb_dist);
+      modlog_dbg(LOG_ULEMERG, "ultra sensor %u: dist %d, after debounce %d\n", addr, dist, deb_dist);
       return deb_dist;
     }
   else
