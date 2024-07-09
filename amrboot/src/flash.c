@@ -77,6 +77,7 @@ enum boot_flash_status boot_flash_write(void *data, uint32_t length,bool last)
         //char2word(buffer, g_flash.buffer, BOOT_SECTOR_SIZE);
         //memcpy(buffer,g_flash.buffer,BOOT_SECTOR_SIZE);
 
+        usleep(1000);
         nbytes = write(g_flash.fd, g_flash.buffer, BOOT_SECTOR_SIZE);
         if (nbytes < 0)
         {
@@ -106,6 +107,7 @@ enum boot_flash_status boot_flash_write(void *data, uint32_t length,bool last)
     if (true == last)
     {
         //char2word(buffer, g_flash.buffer, BOOT_SECTOR_SIZE);
+        usleep(1000);
         nbytes = write(g_flash.fd, g_flash.buffer, BOOT_SECTOR_SIZE);
         if (nbytes < 0)
         {
