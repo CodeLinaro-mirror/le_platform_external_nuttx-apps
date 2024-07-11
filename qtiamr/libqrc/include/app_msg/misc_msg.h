@@ -14,6 +14,16 @@
 /* MISC pipe name */
 #define MISC_PIPE "misc"
 
+/*Base error define */
+enum robot_base_error_e
+{
+  ERROR_OTHER = 1,
+  ERROR_WATCHDOG,
+  ERROR_MOTOR,
+  ERROR_CANBUS,
+  ERROR_CHARGER
+};
+
 struct watchdog_msg
 {
   uint8_t count;
