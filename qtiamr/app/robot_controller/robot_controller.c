@@ -18,6 +18,7 @@
 #include "robot_controller.h"
 #include "motion_sm.h"
 #include "main.h"
+#include "misc_msg.h"
 
 /* switch done cb register need to do  */
 
@@ -154,11 +155,18 @@ static void motion_drv_err_cb(void *user, int data)
   control_msg.msg_type                 = MOTOR_DRIVER_STATUS;
   control_msg.data.motor_driver_status = data;
 
-  /* write status to rb5 */
-  result = qrc_write(pipe, (uint8_t *)&control_msg, sizeof(struct motion_control_msg_s), false);
-  if (result != SUCCESS)
+  enum motor_err_e motor_err = (enum motor_err_e)data;
+
+  if (motor_err != NORMAL)
     {
-      syslog(LOG_ERR, "Motion drv status send failed %d\n", result);
+        control_msg.data.motor_driver_status = ERROR_MOTOR;
+
+        /* write status to rb5 */
+        result = qrc_write(pipe, (uint8_t *)&control_msg, sizeof(struct motion_control_msg_s), false);
+        if (result != SUCCESS)
+          {
+             syslog(LOG_ERR, "Motion drv status send failed %d\n", result);
+          }
     }
 }
 
