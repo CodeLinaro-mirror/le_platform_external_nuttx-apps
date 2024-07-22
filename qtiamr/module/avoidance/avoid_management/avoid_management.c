@@ -35,7 +35,7 @@ static struct avoid_sensor g_sensor_list[SENSOR_MAX] = {
   { FRONT, 0X7, 0 },
 };
 
-static uint8_t ultra_sensor_masks = 0X10;
+static uint8_t ultra_sensor_masks = 0X70;
 /****************************************************************************
  * Pravite Function
  ****************************************************************************/
@@ -99,7 +99,6 @@ struct avoid_sensor *get_ultra_sensor_list(void)
 void update_sensor_check_list(uint8_t mask)
 {
   ultra_sensor_masks = mask;
-  syslog(LOG_INFO, "Ultrasound set sensor mask: %#X \n", ultra_sensor_masks);
 }
 
 int avoid_init(void)
