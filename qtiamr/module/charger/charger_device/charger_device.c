@@ -15,6 +15,7 @@
 #include "charger_sm.h"
 #include "charger_hal.h"
 #include "amr_signal.h"
+#include "misc_msg.h"
 
 //#define CHARGER_DEBUG
 extern const char *sm_event_labels[];
@@ -525,11 +526,12 @@ void charger_exception_notify(enum charger_exception_type_e exception_err)
 {
   struct charger_msg_s exception_msg;
   exception_msg.msg_type           = KEY_EXCEPTION;
-  exception_msg.data.exception_err = exception_err;
+  exception_msg.data.exception_err = ERROR_CHARGER;
 
   if (charger_dev_p->notify_callback)
     {
       charger_dev_p->notify_callback(&exception_msg);
+      syslog(LOG_DEBUG, "CHARGER: charger_exception_notify: exception = (%s) !\n", exception_labels[exception_err]);
     }
   else
     {
