@@ -20,7 +20,6 @@ enum robot_base_error_e
   ERROR_OTHER = 1,
   ERROR_WATCHDOG,
   ERROR_MOTOR,
-  ERROR_CANBUS,
   ERROR_CHARGER
 };
 
