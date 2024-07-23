@@ -20,7 +20,7 @@
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-#define RS485_RECEIVE_RETRY_TIMES (20)    /* read time out N*100ms */
+#define RS485_RECEIVE_RETRY_TIMES (8)    /* read time out N*100ms */
 #define RS485_RECEIVE_WAIT        (15000) /*wait time before read data from sensor*/
 
 #define FRAME_DATA_LEN (6) /* RW command frame length w/o crc16 */
