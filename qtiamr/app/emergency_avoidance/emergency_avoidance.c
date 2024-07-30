@@ -91,7 +91,7 @@ update:
 
 static bool emerg_speed_cb(float vx, float vz)
 {
-  return (vx > 0.0) ? FALSE : TRUE;
+  return (vx >= 0.0) ? FALSE : TRUE;
 }
 
 /*callback of qrc_message*/
