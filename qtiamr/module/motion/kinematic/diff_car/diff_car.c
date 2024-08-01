@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <debug.h>
+#include <math.h>
 
 #include "diff_car.h"
 #include "kinematics.h"
@@ -98,9 +99,8 @@ static bool diff_speed_inverse_kinematics(const struct kinematic_parameter_s par
     }
 
   /* motor target speed limit */
-
-  *rpm_l = (int16_t)(v_left * 60 / wheel_perimeter);
-  *rpm_r = (int16_t)(-v_right * 60 / wheel_perimeter);
+  *rpm_l = (int16_t)round(v_left * 60 / wheel_perimeter);
+  *rpm_r = (int16_t)round(-v_right * 60 / wheel_perimeter);
 
   return true;
 }

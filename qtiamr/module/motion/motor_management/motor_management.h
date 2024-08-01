@@ -72,5 +72,5 @@ void motor_register_switching_done_cb(motor_notify_cb switch_done_cb);
 
 bool motor_management_init(void);
 int  motor_management_thread(int argc, char *argv[]);
-
+int  motor_pid_control_thread(int argc, char *argv[]);
 #endif /* __MOTOR_MANAGEMENT_H */

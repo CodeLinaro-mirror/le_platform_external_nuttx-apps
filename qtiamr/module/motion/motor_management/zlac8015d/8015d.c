@@ -33,6 +33,10 @@
 
 #define SPEED_KP (400)
 #define SPEED_KI (200)
+
+#define CURRENT_KP (800)
+#define CURRENT_KI (300)
+
 /****************************************************************************
  * Private Types
  ****************************************************************************/
@@ -441,13 +445,20 @@ static int zlac_8015d_read_rpm(void *motor, float *left_rpm, float *right_rpm)
   int16_t                    right;
   int16_t                    left;
   int                        result;
+  static int                 count = 0;
 
+  count ++;
   result = zlac_8015d_read_single_opcode(zlac_8015d, CODE_SPEED_READ, &left,
-                                         &right);
+                                        &right);
   if (result == OK)
     {
       *left_rpm  = left * 0.1;
       *right_rpm = right * 0.1;
+    }
+
+  if (count %200 == 0)
+    {
+      syslog(LOG_DEBUG, "get odom rpm \t%f\t%f\n",*left_rpm,*right_rpm);
     }
 
   return result;
@@ -622,6 +633,52 @@ static int zlac_8015d_set_pid(void *motor, enum control_mode_e mode,
   return result;
 }
 
+/* current pid */
+static int zlac_8015d_set_current_pid(void *motor, struct motion_pid_s pid)
+{
+  struct motor_zlac_8015d_s *zlac_8015d = (struct motor_zlac_8015d_s *)motor;
+  int                        kp, ki; /* kd is useless */
+  int                        result = ERROR;
+
+  if (zlac_8015d->initialized)
+    {
+      syslog(LOG_ERR, "ERROR: set pid zlac_8015d initialized\n");
+      return ERROR;
+    }
+
+  if (abs(pid.kp) > 30000)
+    {
+      kp = 30000;
+    }
+  else
+    {
+      kp = abs(pid.kp);
+    }
+
+  if (abs(pid.ki) > 30000)
+    {
+      ki = 30000;
+    }
+  else
+    {
+      ki = abs(pid.ki);
+    }
+
+  syslog(LOG_INFO, "SET current PID done\n");
+
+  result = zlac_8015d_write_single_opcode(zlac_8015d, CODE_SET_CURRENT_KP_LEFT, kp);
+  usleep(2000);
+  result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SET_CURRENT_KP_RIGHT, kp);
+  usleep(2000);
+  result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SET_CURRENT_KI_LEFT, ki);
+  usleep(2000);
+  result |= zlac_8015d_write_single_opcode(zlac_8015d, CODE_SET_CURRENT_KI_RIGHT, ki);
+
+  syslog(LOG_DEBUG, "8015d set current pid result=%d\n", result);
+
+  return result;
+}
+
 static bool zlac_8015d_init(void *motor)
 {
   int                        fd;
@@ -690,6 +747,12 @@ static bool zlac_8015d_init(void *motor)
   pid.kp = SPEED_KP;
   pid.ki = SPEED_KI;
   status |= zlac_8015d_set_pid(zlac_8015d, SPEED, pid);
+  syslog(LOG_DEBUG, "8015d init  set speed pid=%d\n", status);
+
+  /* set current pid */
+  pid.kp = CURRENT_KP;
+  pid.ki = CURRENT_KI;
+  status |= zlac_8015d_set_current_pid(zlac_8015d, pid);
   syslog(LOG_DEBUG, "8015d init  set speed pid=%d\n", status);
 
   if (status == OK)

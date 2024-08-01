@@ -195,7 +195,7 @@ int motion_management_init(int argc, char *argv[])
   if (parameters.speed_max < SPEED_RESOLUTION || parameters.angle_speed_max < SPEED_RESOLUTION)
     {
       syslog(LOG_ERR, "motion_management_init: speed_max=%f angle_speed=%f are invalid\n",
-             parameters.speed_max, parameters.angle_speed_max);
+              parameters.speed_max, parameters.angle_speed_max);
       config_notify_completed(false);
       return ERROR;
     }
@@ -233,6 +233,18 @@ int motion_management_init(int argc, char *argv[])
   if (result < 0)
     {
       syslog(LOG_INFO, "motion_management_init: Failed to start motor\n");
+      config_notify_completed(false);
+      return result;
+    }
+//add pid control thread
+  result = task_create("motor_pid",
+                       DEFAULT_PRIORITY,
+                       DEFAULT_STACK_SIZE,
+                       motor_pid_control_thread,
+                       NULL);
+  if (result < 0)
+    {
+      syslog(LOG_INFO, "motion_management_init: Failed to start pid\n");
       config_notify_completed(false);
       return result;
     }
