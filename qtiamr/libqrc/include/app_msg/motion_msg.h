@@ -58,6 +58,12 @@ struct speed_cmd_s
   float vz;
 };
 
+struct speed_rpm_s
+{
+  int16_t left_rpm;
+  int16_t right_rpm;
+};
+
 struct position_cmd_s
 {
   int   pose_type;
@@ -71,6 +77,7 @@ union motion_control_data_u
   int                   emergency;
   int                   mode;
   int                   motor_driver_status;
+  struct speed_rpm_s    speed_rpm;
 } __attribute__((aligned(4)));
 
 struct motion_control_msg_s
