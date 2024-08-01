@@ -36,6 +36,8 @@ static struct avoid_sensor g_sensor_list[SENSOR_MAX] = {
 };
 
 static uint8_t ultra_sensor_masks = 0X70;
+static rmutex_t avoid_lock    = NXRMUTEX_INITIALIZER;
+
 /****************************************************************************
  * Pravite Function
  ****************************************************************************/
@@ -44,6 +46,7 @@ void check_client_trigger(struct list_node *avoid_client_list, struct avoid_sens
   bool                 thres_meet = FALSE;
   struct avoid_client *client;
 
+  nxrmutex_lock(&avoid_lock);
   list_for_every_entry(avoid_client_list, client, struct avoid_client, node)
   {
     switch (sensor->type)
@@ -59,10 +62,11 @@ void check_client_trigger(struct list_node *avoid_client_list, struct avoid_sens
           break;
         default:
           syslog(LOG_ERR, "sensor type unrecognized\n");
+          nxrmutex_unlock(&avoid_lock);
           return;
       }
 
-    if (thres_meet)
+    if (thres_meet && (sensor->addr & ultra_sensor_masks))
       {
         client->trigger |= (0x1 << sensor->addr);
         syslog(LOG_INFO, "!!!!!! [%#X] Sensor %d triggerd emergency stop: %d\n",
@@ -86,6 +90,7 @@ void check_client_trigger(struct list_node *avoid_client_list, struct avoid_sens
         client->cb(sensor->addr, dist, FALSE);
       }
   }
+  nxrmutex_unlock(&avoid_lock);
 }
 
 /****************************************************************************
