@@ -187,16 +187,18 @@ int avoid_management_thread(int argc, char *argv[])
           dist   = rs485_ultra_raw_dist(sensor->addr, fd);
           if (dist <= 0)
             {
-              syslog(LOG_INFO, "sensor %d read fail or untrusted distance: %d \n",
+              syslog(LOG_DEBUG, "sensor %d read fail or untrusted distance: %d \n",
                      g_sensor_list[i].addr, dist);
-              continue;
+
+              /*As per test, receive timeout only occur if dist > 20cm */
+              dist = 250;
             }
 
           if (dist == 0XFFFD)
             {
               syslog(LOG_DEBUG, "ultra sensor %u no object detected\n", g_sensor_list[i].addr);
-              continue;
             }
+
           check_client_trigger(avoid_client_list, sensor, dist);
           usleep(1000);
         }
