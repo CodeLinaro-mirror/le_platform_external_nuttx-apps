@@ -361,15 +361,15 @@ int motor_management_thread(int argc, char *argv[])
  ****************************************************************************/
 #define   PID_CONTROL_WAIT_TIME_S (1)
 
-#define   SPPED_PID_P       (2.0)
-#define   SPPED_PID_I       (0.7)
+#define   SPPED_PID_P       (0.75)
+#define   SPPED_PID_I       (0.003)
 
 #define   MAX_SPEED         (10.0)  //rpm
 #define   MIN_SPEED         (2.0)  //rpm
 #define   MAX_SPEED_OUT     (13.0)  //rpm
 #define   ERROR_LIMIT       (0.01)   //rpm
 #define   PID_MAX_LOOP      (5)
-#define   PID_TIME_DELAY_MS (20)     //ms,200HZ
+#define   PID_TIME_DELAY_MS (15)     //ms,200HZ
 #define   LEFT_MOTOR_INDEX  (0)
 #define   RIGHT_MOTOR_INDEX (1)
 
@@ -596,7 +596,7 @@ int motor_pid_control_thread(int argc, char *argv[])
             {
               //calculate error
               error_pid[i] = (float)speed_goal[i] - speed_sensor[i];
-              syslog(LOG_ERR, "error_pid \t%f \n",error_pid[i] );
+              //syslog(LOG_ERR, "error_pid \t%f \n",error_pid[i] );
 
               //if (true == pid_control_tag[i] && (fabs(error_pid[i]) > ERROR_LIMIT))
               if (true == pid_control_tag[i])
