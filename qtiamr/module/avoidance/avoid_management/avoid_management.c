@@ -16,7 +16,7 @@
 #include "dyp_02.h"
 #include "avoidance.h"
 #include "avoid_management.h"
-
+#include "modlog_filter.h"
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -25,8 +25,6 @@
 /****************************************************************************
  * Public data
  ****************************************************************************/
-static int g_avoid_fd;
-
 static struct avoid_sensor g_sensor_list[SENSOR_MAX] = {
   { BOTTOM, 0X1, 0 },
   { BOTTOM, 0X2, 0 },
@@ -37,7 +35,9 @@ static struct avoid_sensor g_sensor_list[SENSOR_MAX] = {
   { FRONT, 0X7, 0 },
 };
 
-static uint8_t ultra_sensor_masks = 0X10;
+static uint8_t ultra_sensor_masks = 0X70;
+static rmutex_t avoid_lock    = NXRMUTEX_INITIALIZER;
+
 /****************************************************************************
  * Pravite Function
  ****************************************************************************/
@@ -46,6 +46,7 @@ void check_client_trigger(struct list_node *avoid_client_list, struct avoid_sens
   bool                 thres_meet = FALSE;
   struct avoid_client *client;
 
+  nxrmutex_lock(&avoid_lock);
   list_for_every_entry(avoid_client_list, client, struct avoid_client, node)
   {
     switch (sensor->type)
@@ -61,10 +62,11 @@ void check_client_trigger(struct list_node *avoid_client_list, struct avoid_sens
           break;
         default:
           syslog(LOG_ERR, "sensor type unrecognized\n");
+          nxrmutex_unlock(&avoid_lock);
           return;
       }
 
-    if (thres_meet)
+    if (thres_meet && (sensor->addr & ultra_sensor_masks))
       {
         client->trigger |= (0x1 << sensor->addr);
         syslog(LOG_INFO, "!!!!!! [%#X] Sensor %d triggerd emergency stop: %d\n",
@@ -88,6 +90,7 @@ void check_client_trigger(struct list_node *avoid_client_list, struct avoid_sens
         client->cb(sensor->addr, dist, FALSE);
       }
   }
+  nxrmutex_unlock(&avoid_lock);
 }
 
 /****************************************************************************
@@ -101,12 +104,12 @@ struct avoid_sensor *get_ultra_sensor_list(void)
 void update_sensor_check_list(uint8_t mask)
 {
   ultra_sensor_masks = mask;
-  syslog(LOG_INFO, "Ultrasound set sensor mask: %#X \n", ultra_sensor_masks);
 }
 
 int avoid_init(void)
 {
-  int ret, fd;
+  int fd;
+  int ret;
   int ultra_sensor_num = get_ultra_num();
 
   fd = open(ULTRASOUND_DEV, O_RDWR | O_NONBLOCK);
@@ -117,29 +120,31 @@ int avoid_init(void)
     }
 
   syslog(LOG_DEBUG, "ultrasound device open  %s done \n", ULTRASOUND_DEV);
-  g_avoid_fd = fd;
 
   usleep(100000 * 2);
 
   for (int i = 0; i < ultra_sensor_num; i++)
     {
       syslog(LOG_DEBUG, "check sensor %u \n", g_sensor_list[i].addr);
-      ret = rs485_ultra_check(g_sensor_list[i].addr, g_avoid_fd);
+      ret = rs485_ultra_check(g_sensor_list[i].addr, fd);
 
       if (ret < 0)
         {
           syslog(LOG_ERR, "ultrasound sensor %u unreachable \n", g_sensor_list[i].addr);
+          close(fd);
           return ERROR;
         }
     }
 
   syslog(LOG_DEBUG, "avoid init successfully \n");
+  close(fd);
   return OK;
 }
 
 int avoid_management_thread(int argc, char *argv[])
 {
   int      dist = 0;
+  int      fd   = -1;
   sigset_t set;
 
   struct avoid_sensor *sensor;
@@ -155,27 +160,52 @@ int avoid_management_thread(int argc, char *argv[])
     {
       if (list_is_empty(avoid_client_list))
         {
+          if (fd > 0)
+            {
+              syslog(LOG_DEBUG, "[avoidance mangement] close ultra dev %d\n", fd);
+              close(fd);
+              fd = -1;
+            }
           syslog(LOG_INFO, "[avoidance mangement] client empty, pending...\n");
           sigwaitinfo(&set, NULL);
           syslog(LOG_INFO, "[avoidance mangement] receive client register...\n");
         }
 
-      syslog(LOG_DEBUG, "[avoidance mangement]Ultra sensor dist, unit(mm)\n");
+      if (fd == -1)
+        {
+          fd = open(ULTRASOUND_DEV, O_RDWR | O_NONBLOCK);
+          syslog(LOG_DEBUG, "[avoidance mangement] open ultra dev %d\n", fd);
+
+          if (fd < 0)
+            {
+              syslog(LOG_ERR, "ultrasound device open failed \n");
+              return fd;
+            }
+        }
+      modlog_dbg(LOG_ULEMERG, "[avoidance mangement]Ultra sensor dist, unit(mm)\n");
       for (int i = 0; i < ultra_sensor_num; i++)
         {
           if (!(ultra_sensor_masks & (0x1 << i)))
             continue;
 
           sensor = &g_sensor_list[i];
-          dist   = rs485_ultra_raw_dist(sensor->addr, g_avoid_fd);
+          dist   = rs485_ultra_raw_dist(sensor->addr, fd);
           if (dist <= 0)
             {
-              syslog(LOG_INFO, "sensor %d read fail or untrusted distance: %d \n",
+              syslog(LOG_DEBUG, "sensor %d read fail or untrusted distance: %d \n",
                      g_sensor_list[i].addr, dist);
-              continue;
+
+              /*As per test, receive timeout only occur if dist > 20cm */
+              dist = 250;
+            }
+
+          if (dist == 0XFFFD)
+            {
+              syslog(LOG_DEBUG, "ultra sensor %u no object detected\n", g_sensor_list[i].addr);
             }
 
           check_client_trigger(avoid_client_list, sensor, dist);
+          usleep(1000);
         }
     }
 }

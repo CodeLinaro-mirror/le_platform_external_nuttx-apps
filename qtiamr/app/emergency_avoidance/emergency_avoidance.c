@@ -27,6 +27,7 @@
 static struct avoid_client emerg_client;
 static struct qrc_pipe_s * emerg_pipe    = NULL;
 static int                 pre_direction = FORWARD;
+static rmutex_t sensor_mask_lock = NXRMUTEX_INITIALIZER;
 
 /****************************************************************************
  * Private Functions
@@ -35,8 +36,6 @@ static int                 pre_direction = FORWARD;
 /*AMR could go backward if emergency stop triggered, so return TRUE if vx<0  */
 static bool emerg_direction_cb(float vx, float vz)
 {
-  rmutex_t sensor_mask_lock = NXRMUTEX_INITIALIZER;
-
   int     direction  = 0;
   float   div        = 0;
   uint8_t sensormask = 0;
@@ -46,14 +45,14 @@ static bool emerg_direction_cb(float vx, float vz)
   if (vx < 0.0)
     {
       direction  = BACKWARD;
-      sensormask = 0x10;
+      sensormask = 0x70;
     }
   else
     {
       if (!vz)
         {
           direction  = FORWARD;
-          sensormask = 0X10;
+          sensormask = 0X70;
           goto update;
         }
 
@@ -63,17 +62,17 @@ static bool emerg_direction_cb(float vx, float vz)
       if ((vz > 0.0) && (abs(div) < 1.0))
         {
           direction  = TURN_LEFT;
-          sensormask = 0x8;
+          sensormask = 0x38;
         }
       else if ((vz < 0.0) && (abs(div) < 1.0))
         {
           direction  = TURN_RIGHT;
-          sensormask = 0X4;
+          sensormask = 0X54;
         }
       else
         {
           direction  = FORWARD;
-          sensormask = 0X10;
+          sensormask = 0X70;
         }
     }
 
@@ -81,7 +80,9 @@ update:
   if (direction != pre_direction)
     {
       update_sensor_check_list(sensormask);
+      emerg_client.trigger &= ((sensormask << 1) | 0x1);
       pre_direction = direction;
+      syslog(LOG_INFO, "Ultrasound update sensormask: %#X ,client trigger %#X \n", sensormask, emerg_client.trigger);
     }
   nxrmutex_unlock(&sensor_mask_lock);
 
@@ -90,7 +91,7 @@ update:
 
 static bool emerg_speed_cb(float vx, float vz)
 {
-  return (vx > 0.0) ? FALSE : TRUE;
+  return (vx >= 0.0) ? FALSE : TRUE;
 }
 
 /*callback of qrc_message*/
@@ -107,7 +108,7 @@ static void emerg_qrc_msg_parse(struct qrc_pipe_s *pipe, struct emerg_msg_s *eme
       case ENABLEMENT:
         syslog(LOG_INFO, "Received emergency enablement %d \n", emerg_msg->data.value);
         emerg_msg_reply.msg_type   = ENABLEMENT;
-        emerg_msg_reply.data.value = emerg_msg->data.value;
+        emerg_msg_reply.data.value = 1;
         if (emerg_msg->data.value)
           {
             register_ultra_client(&emerg_client);
@@ -159,6 +160,7 @@ static void emerg_client_cb(uint8_t addr, uint16_t dist, bool enter)
   int                ret = 0;
   struct emerg_msg_s msg = { 0 };
 
+  nxrmutex_lock(&sensor_mask_lock);
   if (enter)
     {
       msg.msg_type                  = EVENT;
@@ -179,6 +181,7 @@ static void emerg_client_cb(uint8_t addr, uint16_t dist, bool enter)
       motion_motor_stop(FALSE);
       emerg_client.trigger = 0;
     }
+  nxrmutex_unlock(&sensor_mask_lock);
 
   if (!emerg_pipe)
     {
