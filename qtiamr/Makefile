@@ -102,6 +102,7 @@ CSRCS += $(QTIARM_DIR)/module/motion/kinematic/diff_car/diff_car.c
 CSRCS += $(QTIARM_DIR)/module/motion/motor_management/motor_management.c
 CSRCS += $(QTIARM_DIR)/module/motion/motor_management/zlac8015d/8015d.c
 CSRCS += $(QTIARM_DIR)/utils/amr_signal.c
+CSRCS += $(QTIARM_DIR)/utils/modlog_filter.c
 CSRCS += $(QTIARM_DIR)/module/charger/charger_device/charger_device.c
 CSRCS += $(QTIARM_DIR)/module/charger/charger_device/charger_sm.c
 CSRCS += $(QTIARM_DIR)/module/charger/charger_hal/charger_hal.c

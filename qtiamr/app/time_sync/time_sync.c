@@ -106,7 +106,7 @@ static void timesync_handle_cmd(void)
         {
           syslog(LOG_ERR, "timesync, timeloop send response failed\n");
         }
-      syslog(LOG_INFO, "timesync, timeloop send response done\n");
+      syslog(LOG_DEBUG, "timesync, timeloop send response done\n");
     }
   else if (g_timesync_msg.type == GET_TIME)
     {

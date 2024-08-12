@@ -214,7 +214,6 @@ static int motion_sm_do_action(struct motion_sm_transform_s *statetrans, union m
     {
       /* call action function */
       motion_add_work(statetrans->action_fun, data);
-      syslog(LOG_DEBUG, "motion sm action_fun executed \n");
       return OK;
     }
   else
@@ -296,14 +295,9 @@ static int do_action_emergency(union motion_control_data_u data)
 
 static int do_action_drv_error(union motion_control_data_u data)
 {
-  enum motion_sm_state_e state = get_motion_sm_state();
-
-  /* try stop motor driver */
-  //motor_quick_stop(true);
-
   if (NULL != g_motion_sm.drv_err_cb)
     {
-      g_motion_sm.drv_err_cb(g_motion_sm.drv_err_cb_data, state);
+      g_motion_sm.drv_err_cb(g_motion_sm.drv_err_cb_data, data.motor_driver_status);
     }
 
   syslog(LOG_INFO, "do_action_drv_error: EXECUTED \n");
@@ -327,7 +321,7 @@ static int do_action_speed(union motion_control_data_u data)
         }
     }
 
-  syslog(LOG_INFO, "do_action_speed: EXECUTED vx =%f, vz =%f \n", vx, vz);
+  //syslog(LOG_DEBUG, "do_action_speed: EXECUTED vx =%f, vz =%f \n", vx, vz);
   return motor_set_speed(vx, vz);
 }
 

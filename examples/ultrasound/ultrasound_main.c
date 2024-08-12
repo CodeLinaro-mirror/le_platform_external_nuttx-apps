@@ -36,11 +36,15 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <debug.h>
+#include <syslog.h>
 
 #include "ultrasound.h"
 
 struct ulteasound_example_s g_ulteasound;
 static uint16_t ulteasound_reg_arr[4] = {ADDR_REG, DIST_REG, RAWDIST_REG, TEMP_REG};
+static int read_delay = 200000; /*default 200ms*/
+static int addr_mask = 0x1;
+static int check_times = 1;
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
@@ -53,10 +57,13 @@ static void ultrasound_help(void)
     printf("\nUsage: cap [OPTIONS]\n\n");
     printf("OPTIONS include:\n");
     printf("  [-p ultraso] Ultrasound device path\n");
-    printf("  [-a addr] Device addr, default is broadcast address\n");
+    printf("  [-a addr] Sensor addr mask, use broadcast address if not set\n");
     printf("  [-r read] Read ultrasound reg data\n");
     printf("  [-w wirte] Wirte device addr\n");
+    printf("  [-d delay] delay time before read\n");
+    printf("  [-R Register] Register to control\n");
     printf("  [-h] Shows this message and exits\n\n");
+    printf("  [-t] read times\n\n");
 
     printf("Read options:\n");
     printf("  0: Device address\n");
@@ -107,6 +114,15 @@ static int arg_decimal(FAR char **arg, FAR long *value)
     return ret;
 }
 
+static int arg_hex(FAR char **arg, FAR unsigned int *value)
+{
+    FAR char *string;
+    int ret;
+
+    ret = arg_string(arg, &string);
+    sscanf(string,"%x", value);
+    return ret;
+}
 /****************************************************************************
  * Name: parse_args
  ****************************************************************************/
@@ -135,14 +151,14 @@ static void parse_args(int argc, FAR char **argv)
             break;
 
             case 'a':
-                nargs = arg_decimal(&argv[index], &value);
+                nargs = arg_hex(&argv[index], (unsigned int *)&value);
                 if (value < 0 || value > 0xFF)
                 {
                     exit(1);
                 }
 
-                printf("get -a %ld\n",value);
-                g_ulteasound.addr = value;
+                printf("get -a %#x\n",(unsigned int)value);
+                addr_mask = (unsigned int)value;
                 index += nargs;
                 break;
 
@@ -158,6 +174,17 @@ static void parse_args(int argc, FAR char **argv)
                 index += nargs;
                 break;
 
+            case 't':
+                nargs = arg_decimal(&argv[index], &value);
+                if (value < 0 )
+                {
+                    exit(1);
+                }
+                printf("get -t %ld\n",value);
+				check_times = (int)value;
+                index += nargs;
+                break;
+
             case 'w':
                 nargs = arg_decimal(&argv[index], &value);
                 if (value < 0 || value > 0xFF)
@@ -169,6 +196,30 @@ static void parse_args(int argc, FAR char **argv)
                 g_ulteasound.dir = W_SINGLE_REG;
                 g_ulteasound.reg = ADDR_REG;
                 g_ulteasound.cmd_data = value;
+                index += nargs;
+                break;
+
+            case 'd':
+                nargs = arg_decimal(&argv[index], &value);
+                if (value < 0 || value > 500000)
+                {
+                    printf("out of range 0 ~ 0xFF\n");
+                    exit(1);
+                }
+                printf("get -d %ld\n",value);
+                read_delay = (int) value;
+                index += nargs;
+                break;
+
+            case 'R':
+                nargs = arg_hex(&argv[index], (unsigned int*)&value);
+                if (value < 0 || value > 0X021F)
+                {
+                    printf("Register out of range 0 ~ 200ms\n");
+                    exit(1);
+                }
+                printf("get -R %#x\n",(unsigned int)value);
+                g_ulteasound.reg = (unsigned int)value;
                 index += nargs;
                 break;
 
@@ -225,7 +276,7 @@ static int rs485_send_msg(uint8_t *buff, int len, int fd)
     {
         printf("%x ",buff[i]);
     }
-	printf("\n");
+    printf("\n");
     return 0;
 }
 
@@ -233,29 +284,43 @@ static int rs485_revice(uint8_t *rec_buff, int fd)
 {
     int current= 0;
     int count =0, crc16 =0, rec_crc16=0;
-    int read_size;
-    printf("Waiting recive rs485 data ...\n");
+    int read_size, data_len;
+
+    if (g_ulteasound.dir == W_SINGLE_REG)
+        data_len = FRAME_FULL_LEN;
+    else
+        data_len = FRAME_FULL_LEN - 1;
+
+    syslog(LOG_INFO,"Waiting recive rs485 data ...\n");
+    usleep(read_delay);
+
     while ( current < RS485_RECEIVE_TIME_OUT )
     {
-        read_size = read(fd, &rec_buff[count], 1);
+        read_size = read(fd, &rec_buff[count], data_len);
+        syslog(LOG_INFO,"read %d byte data\n", read_size);
+
         if (read_size > 0)
         {
-            current =0;
-            count = read_size + count;
-            if(count > 2)
+            current = 0;
+            count += read_size;
+
+            if (count == data_len)
             {
-                rec_crc16 = (rec_buff[count - 1] << 8 ) + (rec_buff[ count - 2 ]);
-                crc16 = crc16_modbus(rec_buff, count - 2);
+                rec_crc16 = (rec_buff[data_len - 1] << 8 ) + (rec_buff[data_len - 2]);
+                crc16 = crc16_modbus(rec_buff, data_len - 2);
                 if(rec_crc16 == crc16)
                 {
+                    syslog(LOG_INFO, "Get data %d \n",
+                        ((rec_buff[data_len - 4] << 8 ) + (rec_buff[data_len - 3])));
                     return count;
                 }
             }
         }
-        usleep(RS485_RECEIVE_TIME_OUT/10);
-        current = current + RS485_RECEIVE_TIME_OUT/10;
+
+        usleep(read_delay);
+        current += read_delay;
     }
-    printf("Recive time out!\n");
+    syslog(LOG_INFO, "Recive time out!\n");
     return ERROR;
 }
 
@@ -290,7 +355,7 @@ int main(int argc, FAR char *argv[])
     uint8_t rec_buff[RS485_MSG_LEN];
     uint8_t send_buff[FRAME_FULL_LEN];
 
-    printf("Start ultrasound test app\n");
+    printf("ultrasound_main: Init..\n");
 
     ultrasound_devpath(CONFIG_EXAMPLES_ULTRASOUND_DEVPATH);
     g_ulteasound.addr = BROADCAST_ADDR;
@@ -301,7 +366,7 @@ int main(int argc, FAR char *argv[])
     /* Parse command line arguments */
     parse_args(argc, argv);
 
-    printf("ultrasound_main: Hardware initialized. Opening the ultrasound device: %s\n", g_ulteasound.devpath);
+    printf("ultrasound_main: Opening device: %s\n", g_ulteasound.devpath);
 
     fd = open(g_ulteasound.devpath, O_RDWR|O_NONBLOCK);
 
@@ -311,16 +376,30 @@ int main(int argc, FAR char *argv[])
         return 0;
     }
 
-    us_cmd_frame_coding(send_buff,SINGLE_FRAME_LEN,&g_ulteasound);
-    rs485_send_msg(send_buff,SINGLE_FRAME_LEN,fd);
-    ret = rs485_revice(rec_buff, fd);
+	for (int t = 0; t < check_times; t++)
+	{
+		for (int a = 0 ; a < 5; a++)
+		{
+			if(!(addr_mask & (0x1 << a)))
+				continue;
 
-    printf("Rec data %d byte:",ret );
-    for(int i=0;i<ret;i++)
-    {
-        printf("%x ",rec_buff[i]);
-    }
-    printf("\nExit ultrasound test app \n");
+			g_ulteasound.addr = a+1;
+			us_cmd_frame_coding(send_buff,SINGLE_FRAME_LEN,&g_ulteasound);
+			rs485_send_msg(send_buff,SINGLE_FRAME_LEN,fd);
+			ret = rs485_revice(rec_buff, fd);
+
+			printf("Rec data %d byte:",ret );
+
+			if (ret > 0)
+			{
+				for(int i=0;i<ret;i++)
+				{
+					printf("%x ",rec_buff[i]);
+				}
+				printf("\n\n");
+			}
+		}
+	}
 
   return 0;
 }

@@ -7,6 +7,10 @@
 #ifndef _LIBQRC_EMERGENCY_MSG_H
 #define _LIBQRC_EMERGENCY_MSG_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
@@ -48,5 +52,9 @@ struct emerg_msg_s
     struct emerg_msg_event_s event;
   } data;
 } __attribute__((aligned(4)));
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

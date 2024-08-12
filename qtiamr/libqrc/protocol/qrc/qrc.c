@@ -230,7 +230,6 @@ static void qrc_control_pipe_callback(qrc_pipe_s *pipe, void *data, size_t len, 
             }
           else
             {
-              printf("DEBUG: qrc_control_pipe_callback get QRC_REQUEST peer_id =%d, name(%s)\n", pipe_id, pipe_name);
               p->peer_pipe_id = pipe_id;
               p->pipe_ready   = true;
               qrc_control_write(p, p->pipe_id, QRC_RESPONSE);
@@ -245,7 +244,6 @@ static void qrc_control_pipe_callback(qrc_pipe_s *pipe, void *data, size_t len, 
             }
           else
             {
-              printf("DEBUG: qrc_control_pipe_callback get QRC_RESPONSE peer_id =%d, name(%s)\n", pipe_id, pipe_name);
               p->peer_pipe_id = pipe_id;
               p->pipe_ready   = true;
               stop_pipe_timeout(QRC_CONTROL_PIPE_ID);
@@ -254,45 +252,36 @@ static void qrc_control_pipe_callback(qrc_pipe_s *pipe, void *data, size_t len, 
         }
         case QRC_WRITE_LOCK: {
           qrc_pipe_s *p = qrc_pipe_find_by_pipeid(pipe_id);
-          printf("DEBUG: qrc_control_pipe_callback send QRC_WRITE_LOCK_ACK pipe_id =%d\n", p->pipe_id);
           qrc_control_write(p, p->pipe_id, QRC_WRITE_LOCK_ACK);
           qrc_bus_lock();
           break;
         }
         case QRC_WRITE_UNLOCK: {
           qrc_pipe_s *p = qrc_pipe_find_by_pipeid(pipe_id);
-          printf("DEBUG: qrc_control_pipe_callback send QRC_WRITE_UNLOCK_ACK pipe_id =%d\n", p->pipe_id);
           qrc_bus_unlock();
           qrc_control_write(p, p->pipe_id, QRC_WRITE_UNLOCK_ACK);
           break;
         }
         case QRC_ACK: {
           qrc_pipe_s *p = qrc_pipe_find_by_pipeid(pipe_id);
-          printf("DEBUG: qrc_control_pipe_callback get QRC_ACK pipe_id =%d\n", p->pipe_id);
           stop_pipe_timeout(p->pipe_id); /*pipe_id == user id*/
           break;
         }
         case QRC_WRITE_LOCK_ACK: {
-          printf("DEBUG: qrc_control_pipe_callback get QRC_WRITE_LOCK_ACK peer_pipe_id =%d\n", pipe_id);
           qrc_lock_stop_timeout();
           break;
         }
         case QRC_WRITE_UNLOCK_ACK: {
-          printf("DEBUG: qrc_control_pipe_callback get QRC_WRITE_UNLOCK_ACK  peer_pipe_id =%d\n", pipe_id);
           qrc_lock_stop_timeout();
           break;
         }
         case QRC_CONNECT_REQUEST: {
           qrc_pipe_s *p = qrc_pipe_find_by_pipeid(pipe_id);
-          //g_qrc.peer_pipe_list_ready = true;
-          printf("DEBUG: qrc_control_pipe_callback get QRC_CONNECT_REQUEST\n");
           qrc_control_write(p, QRC_CONTROL_PIPE_ID, QRC_CONNECT_RESPONSE);
-          //stop_pipe_timeout(QRC_CONTROL_PIPE_ID);
           break;
         }
         case QRC_CONNECT_RESPONSE: {
           g_qrc.peer_pipe_list_ready = true;
-          printf("DEBUG: qrc_control_pipe_callback get QRC_CONNECT_RESPONSE\n");
           stop_pipe_timeout(QRC_CONTROL_PIPE_ID);
           break;
         }
@@ -459,7 +448,6 @@ bool qrc_frame_send(const qrc_frame *qrcf, const uint8_t *data, const size_t len
   msg.data = msg_qrc;
   msg.len  = sizeof(qrc_frame) + len;
 
-  //printf("DEBUG qrc_frame_send data[0]=%d,data[1]=%d,data[5]=%d\n",*(int*)(msg_qrc+1),*(int*)(msg_qrc+5),*(int*)(msg_qrc+9));
   bool send_res = TF_Send(g_qrc.tf, &msg);
   free(msg_qrc);
   if (true == qrc_write_lock)
@@ -483,7 +471,7 @@ bool is_pipe_timeout_busy(const uint8_t pipe_id)
       printf("ERROR: input pipe id is invalid\n");
       return QRC_ERROR;
     }
-  return p->is_pipe_timeout_busy = true;
+  return p->is_pipe_timeout_busy;
 }
 
 /****************************************************************************
@@ -718,7 +706,8 @@ static int qrc_hardware_sync(int qrc_fd)
       printf("ERROR: qrc bus write failed!\n");
     }
 
-  printf("DEBUG: qrc start bus sync \n");
+  printf("INFO: qrc start bus sync\n");
+
   while (try > 0)
     {
       try
@@ -757,7 +746,7 @@ static int qrc_hardware_sync(int qrc_fd)
             }
           free(buf);
         }
-      printf("DEBUG: qrc bus write SYNC try = %d \n", try);
+      printf("INFO: qrc bus write SYNC try = %d \n", try);
     }
 
 #else // QRC_MCB
@@ -790,7 +779,7 @@ static int qrc_hardware_sync(int qrc_fd)
                 {
                   if (buf[count] == 'O' && buf[count + 1] == 'K')
                     {
-                      printf("DEBUG: qrc bus sync done\n");
+                      printf("INFO: qrc bus sync done\n");
                       return 0;
                     }
                   count = count + 1;
@@ -798,7 +787,7 @@ static int qrc_hardware_sync(int qrc_fd)
             }
           free(buf);
         }
-      printf("DEBUG: qrc bus write SYNC try = %d \n", try);
+      printf("INFO: qrc bus write SYNC try = %d \n", try);
       try
         --;
       sleep(1);

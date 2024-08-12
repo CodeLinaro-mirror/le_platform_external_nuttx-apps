@@ -1,0 +1,6 @@
+config QTI_UART_TEST_APP
+	tristate "QTI uart test app"
+	default n
+	---help---
+		Enable QC AMR application
+

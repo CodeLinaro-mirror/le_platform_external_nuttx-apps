@@ -60,7 +60,7 @@ int motor_quick_stop(bool enable);
 int motor_switch_mode(enum control_mode_e mode);
 int motor_set_position(bool pose_type, float pose);
 
-enum motor_err_e motor_driver_status_code(void);
+enum motor_err_e motor_get_status_code(void);
 
 /* callback register for odom */
 
