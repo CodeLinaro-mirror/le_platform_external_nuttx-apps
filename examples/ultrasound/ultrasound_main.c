@@ -189,7 +189,7 @@ static void parse_args(int argc, FAR char **argv)
             nargs = arg_decimal(&argv[index], &value);
             if (value < 0 || value > 0xFF)
               {
-                printf("out of range 0 ~ 0xFF\n");
+                printf("address out of range 0 ~ 0xFF\n");
                 exit(1);
               }
             printf("get -w %ld\n", value);
@@ -203,7 +203,7 @@ static void parse_args(int argc, FAR char **argv)
             nargs = arg_decimal(&argv[index], &value);
             if (value < 0 || value > 500000)
               {
-                printf("out of range 0 ~ 0xFF\n");
+                printf("delay time out of range 500000\n");
                 exit(1);
               }
             printf("get -d %ld\n", value);
@@ -213,9 +213,9 @@ static void parse_args(int argc, FAR char **argv)
 
           case 'R':
             nargs = arg_hex(&argv[index], (unsigned int *)&value);
-            if (value < 0 || value > 0X021F)
+            if (value < 0 || value > 0X02FF)
               {
-                printf("Register out of range 0 ~ 200ms\n");
+                printf("Register out of range 0X02FF\n");
                 exit(1);
               }
             printf("get -R %#x\n", (unsigned int)value);

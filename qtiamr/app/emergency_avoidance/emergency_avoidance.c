@@ -24,16 +24,17 @@
 /****************************************************************************
  * Public data
  ****************************************************************************/
+#define ULTRA_DIRECTION    (0)
+
 static struct avoid_client emerg_client;
 static struct qrc_pipe_s * emerg_pipe    = NULL;
-static int                 pre_direction = FORWARD;
 static rmutex_t sensor_mask_lock = NXRMUTEX_INITIALIZER;
 
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
-
-/*AMR could go backward if emergency stop triggered, so return TRUE if vx<0  */
+#if ULTRA_DIRECTION
+static int                 pre_direction = FORWARD;
 static bool emerg_direction_cb(float vx, float vz)
 {
   int     direction  = 0;
@@ -88,10 +89,12 @@ update:
 
   return 0;
 }
+#endif
 
+/*AMR could go backward if emergency stop triggered, so return TRUE if vx < 0  */
 static bool emerg_speed_cb(float vx, float vz)
 {
-  return (vx >= 0.0) ? FALSE : TRUE;
+  return (vx > 0.0) ? FALSE : TRUE;
 }
 
 /*callback of qrc_message*/
@@ -252,7 +255,10 @@ int emergency_main(int argc, char *argv[])
     }
 
   register_emergency_check_speed_cb(emerg_speed_cb);
-  register_speed_subscribe_cb(emerg_direction_cb);
+
+  #if ULTRA_DIRECTION
+    register_speed_subscribe_cb(emerg_direction_cb);
+  #endif
 
   /*Enable emergency avoidance by default*/
   register_ultra_client(&emerg_client);

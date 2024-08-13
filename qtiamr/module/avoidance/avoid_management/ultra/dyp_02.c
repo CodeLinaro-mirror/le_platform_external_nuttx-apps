@@ -213,7 +213,7 @@ static int rs485_receive_msg(int fd, bool is_read)
                 }
 
               /*return error if crc check fail*/
-              syslog(LOG_DEBUG, "RS485 CRC check failed\n");
+              modlog_dbg(LOG_ULEMERG, "RS485 CRC check failed\n");
               return ERROR;
             }
         }
@@ -223,7 +223,7 @@ static int rs485_receive_msg(int fd, bool is_read)
       retry++;
     }
 
-  syslog(LOG_INFO, "Recive time out!\n");
+  modlog_dbg(LOG_ULEMERG, "Recive time out!\n");
   return ERROR;
 }
 
