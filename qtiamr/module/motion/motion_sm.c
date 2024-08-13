@@ -19,6 +19,7 @@
 #include <time.h>
 
 #include "motion_sm.h"
+#include "modlog_filter.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -321,7 +322,8 @@ static int do_action_speed(union motion_control_data_u data)
         }
     }
 
-  syslog(LOG_DEBUG, "do_action_speed: EXECUTED vx =%f, vz =%f \n", vx, vz);
+  modlog_dbg(LOG_MOTION, "do_action_speed: EXECUTED vx =%f, vz =%f \n", vx, vz);
+
   return motor_set_speed(vx, vz);
 }
 
@@ -402,7 +404,6 @@ int motion_sm_event(enum motion_sm_event_e event, union motion_control_data_u da
           break;
         }
     }
-  //syslog(LOG_ERR, "motion state state=%d  done \n", present_state);
   return result;
 }
 
