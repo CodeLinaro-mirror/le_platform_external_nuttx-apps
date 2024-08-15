@@ -94,7 +94,7 @@ update:
 /*AMR could go backward if emergency stop triggered, so return TRUE if vx < 0  */
 static bool emerg_speed_cb(float vx, float vz)
 {
-  return (vx > 0.0) ? FALSE : TRUE;
+  return ((vx > 0) || (!vx && vz))  ? FALSE : TRUE;
 }
 
 /*callback of qrc_message*/
