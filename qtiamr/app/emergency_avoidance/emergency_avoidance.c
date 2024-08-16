@@ -118,7 +118,7 @@ static void emerg_qrc_msg_parse(struct qrc_pipe_s *pipe, struct emerg_msg_s *eme
           }
         else
           {
-            motion_set_emergency(FALSE);
+            motion_motor_stop(FALSE);
             unregister_ultra_client(&emerg_client);
           }
         break;

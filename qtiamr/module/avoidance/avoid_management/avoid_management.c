@@ -126,7 +126,7 @@ int avoid_init(void)
   for (int i = 0; i < ultra_sensor_num; i++)
     {
       syslog(LOG_DEBUG, "check sensor %u \n", g_ultra_sensor_list[i].addr);
-      ret = rs485_ultra_check(g_ultra_sensor_list[i].addr, fd);
+      ret = rs485_ultra_init(g_ultra_sensor_list[i].addr, fd);
 
       if (ret < 0)
         {

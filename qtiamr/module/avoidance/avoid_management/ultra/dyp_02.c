@@ -36,6 +36,8 @@
 #define RAWDIST_REG (0x0101) /*real-time value read only, ~100ms*/
 #define TEMP_REG    (0x0102) /*temperature read only, ~100ms*/
 #define ADDR_REG    (0x0200) /*slave address read write*/
+#define RANGE_REG   (0x021F) /*sensor range: 0(50cm),1(150cm),3(250cm),4(350cm) */
+#define SFI_REG     (0x0227) /*saem-frequency interference*/
 
 #define DEBOUNCE_ACC (1.003f) /*accuracy (1+S*0.3%)*/
 #define DYP_DEBUG    (0)
@@ -247,12 +249,42 @@ static int rs485_ultra_read(uint8_t addr, uint16_t reg, int fd)
   return ret;
 }
 
+static int rs485_ultra_write(uint8_t addr, uint16_t reg, uint16_t data, int fd)
+{
+  int                   ret;
+  struct rs485_data_msg send_data;
+
+  send_data.addr = addr;
+  send_data.cmd  = W_SINGLE_REG;
+  send_data.reg  = reg;
+  send_data.data = data;
+
+  rs485_frame_coding(&send_data, FRAME_DATA_LEN);
+
+  ret = rs485_send_msg((uint8_t *)&send_data, fd);
+
+  if (ret > 0)
+    ret = rs485_receive_msg(fd, 1);
+
+  return ret;
+}
+
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
-int rs485_ultra_check(uint8_t addr, int fd)
+int rs485_ultra_init(uint8_t addr, int fd)
 {
-  return rs485_ultra_read(addr, ADDR_REG, fd);
+  uint16_t range = 1;
+  uint16_t sfi = 0;
+  int ret = 0;
+
+  /*set sensor range to 50cm(1)*/
+  ret = (range == rs485_ultra_write(addr, RANGE_REG, range, fd));
+
+  /*disable same-frequency interference*/
+  ret &= (range == rs485_ultra_write(addr, SFI_REG, sfi, fd));
+
+  return ret;
 }
 
 int rs485_ultra_raw_dist(uint8_t addr, int fd)
