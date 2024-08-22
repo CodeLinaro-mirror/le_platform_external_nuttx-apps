@@ -115,6 +115,8 @@ static void emerg_qrc_msg_parse(struct qrc_pipe_s *pipe, struct emerg_msg_s *eme
         if (emerg_msg->data.value)
           {
             register_ultra_client(&emerg_client);
+            if ((emerg_client.trigger & 0x1))
+              motion_motor_stop(TRUE);
           }
         else
           {

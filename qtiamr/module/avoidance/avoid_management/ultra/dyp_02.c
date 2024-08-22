@@ -264,7 +264,7 @@ static int rs485_ultra_write(uint8_t addr, uint16_t reg, uint16_t data, int fd)
   ret = rs485_send_msg((uint8_t *)&send_data, fd);
 
   if (ret > 0)
-    ret = rs485_receive_msg(fd, 1);
+    ret = rs485_receive_msg(fd, 0);
 
   return ret;
 }
@@ -279,11 +279,18 @@ int rs485_ultra_init(uint8_t addr, int fd)
   int ret = 0;
 
   /*set sensor range to 50cm(1)*/
-  ret = (range == rs485_ultra_write(addr, RANGE_REG, range, fd));
+  if (range == rs485_ultra_write(addr, RANGE_REG, range, fd))
+    {
+      syslog(LOG_DEBUG, "sensor %d set range to 50cm\n", addr);
+	  ret = 1;
+    }
 
   /*disable same-frequency interference*/
-  ret &= (range == rs485_ultra_write(addr, SFI_REG, sfi, fd));
-
+  if (sfi == rs485_ultra_write(addr, SFI_REG, sfi, fd))
+    {
+      syslog(LOG_DEBUG, "sensor %d disable SFI\n", addr);
+      ret &= 1;
+    }
   return ret;
 }
 

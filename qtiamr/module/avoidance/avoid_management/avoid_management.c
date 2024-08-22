@@ -111,6 +111,7 @@ int avoid_init(void)
   int fd;
   int ret;
   int ultra_sensor_num = get_ultra_num();
+  int retry = 0;
 
   fd = open(ULTRASOUND_DEV, O_RDWR | O_NONBLOCK);
   if (fd < 0)
@@ -125,14 +126,15 @@ int avoid_init(void)
 
   for (int i = 0; i < ultra_sensor_num; i++)
     {
-      syslog(LOG_DEBUG, "check sensor %u \n", g_ultra_sensor_list[i].addr);
+      retry = 0;
       ret = rs485_ultra_init(g_ultra_sensor_list[i].addr, fd);
 
-      if (ret < 0)
+      if (ret <= 0 && retry < RETRY_NUM)
         {
-          syslog(LOG_ERR, "ultrasound sensor %u unreachable \n", g_ultra_sensor_list[i].addr);
-          close(fd);
-          return ERROR;
+          syslog(LOG_INFO, "ultrasound sensor %u unreachable, retry %d \n", g_ultra_sensor_list[i].addr, retry);
+
+          ret = rs485_ultra_init(g_ultra_sensor_list[i].addr, fd);
+          retry++;
         }
     }
 
