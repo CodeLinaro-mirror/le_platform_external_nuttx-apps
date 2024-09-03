@@ -69,8 +69,8 @@ void check_client_trigger(struct list_node *avoid_client_list, struct avoid_sens
     if (thres_meet && ((0x1 << sensor->addr) & ultra_sensor_masks))
       {
         client->trigger |= (0x1 << sensor->addr);
-        syslog(LOG_INFO, "!!!!!! [%#X] Sensor %d triggerd emergency stop: %d\n",
-               client->trigger, sensor->addr, dist);
+        syslog(LOG_INFO, "!!!!!! [%#X] Sensor %d triggerd emergency stop: %d vs %d \n",
+               client->trigger, sensor->addr, dist, client->thres_front);
 
         client->cb(sensor->addr, dist, TRUE);
       }
@@ -80,8 +80,8 @@ void check_client_trigger(struct list_node *avoid_client_list, struct avoid_sens
           {
             client->trigger ^= (0x1 << sensor->addr);
             sensor->count = 0;
-            syslog(LOG_INFO, "!!!!!! [%#X] Sensor %d exit emergency stop: %d\n",
-                   client->trigger, sensor->addr, dist);
+            syslog(LOG_INFO, "!!!!!! [%#X] Sensor %d exit emergency stop: %d vs %d\n",
+                   client->trigger, sensor->addr, dist, client->thres_front);
           }
       }
 

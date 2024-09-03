@@ -24,24 +24,27 @@
 /****************************************************************************
  * Public data
  ****************************************************************************/
-#define ULTRA_DIRECTION    (0)
+#define ULTRA_MASK_DIRECTION (0)
+#if ULTRA_MASK_DIRECTION
+static int pre_direction = FORWARD;
+#endif
 
 static struct avoid_client emerg_client;
-static struct qrc_pipe_s * emerg_pipe    = NULL;
-static rmutex_t sensor_mask_lock = NXRMUTEX_INITIALIZER;
+static struct qrc_pipe_s * emerg_pipe       = NULL;
+static rmutex_t            sensor_mask_lock = NXRMUTEX_INITIALIZER;
 
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
-#if ULTRA_DIRECTION
-static int                 pre_direction = FORWARD;
+
 static bool emerg_direction_cb(float vx, float vz)
 {
+
+#if ULTRA_MASK_DIRECTION
+
   int     direction  = 0;
   float   div        = 0;
   uint8_t sensormask = 0;
-
-  nxrmutex_lock(&sensor_mask_lock);
 
   if (vx < 0.0)
     {
@@ -85,16 +88,45 @@ update:
       pre_direction = direction;
       syslog(LOG_INFO, "Ultrasound update sensormask: %#X ,client trigger %#X \n", sensormask, emerg_client.trigger);
     }
+#endif
+
+
+  syslog(LOG_DEBUG, "Emerg stop detect speed vx=%.2f, vz=%.2f\n", vx, vz);
+  if ( emerg_client.trigger)
+    {
+      syslog(LOG_DEBUG,"Emergency stop triggered, not change threshold\n");
+      return 0;
+    }
+
+  nxrmutex_lock(&sensor_mask_lock);
+  if (vx > 0.15)
+    {
+      emerg_client.thres_front = 150;
+      emerg_client.thres_side  = 150;
+      syslog(LOG_INFO, "avoid change threshold to 15cm");
+    }
+  else if (vx > 0)
+    {
+      emerg_client.thres_front = 100;
+      emerg_client.thres_side  = 100;
+      syslog(LOG_INFO, "avoid change threshold to 10cm");
+    }
+  else if ((!vx && vz))
+    {
+      emerg_client.thres_front = 70;
+      emerg_client.thres_side = 70;
+      syslog(LOG_INFO, "avoid change threshold to 7cm");
+    }
+
   nxrmutex_unlock(&sensor_mask_lock);
 
   return 0;
 }
-#endif
 
 /*AMR could go backward if emergency stop triggered, so return TRUE if vx < 0  */
 static bool emerg_speed_cb(float vx, float vz)
 {
-  return ((vx > 0) || (!vx && vz))  ? FALSE : TRUE;
+  return ((vx > 0) || (!vx && vz)) ? FALSE : TRUE;
 }
 
 /*callback of qrc_message*/
@@ -258,9 +290,7 @@ int emergency_main(int argc, char *argv[])
 
   register_emergency_check_speed_cb(emerg_speed_cb);
 
-  #if ULTRA_DIRECTION
-    register_speed_subscribe_cb(emerg_direction_cb);
-  #endif
+  register_speed_subscribe_cb(emerg_direction_cb);
 
   /*Enable emergency avoidance by default*/
   register_ultra_client(&emerg_client);
