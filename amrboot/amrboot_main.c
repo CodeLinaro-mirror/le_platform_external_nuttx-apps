@@ -17,7 +17,7 @@
 #include "flash.h"
 #include "xmodem.h"
 
-#define VERSION (1.003)
+#define VERSION (1.004)
 
 int main(int argc, FAR char *argv[])
 {
