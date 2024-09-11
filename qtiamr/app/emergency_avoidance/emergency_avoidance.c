@@ -90,11 +90,10 @@ update:
     }
 #endif
 
-
   syslog(LOG_DEBUG, "Emerg stop detect speed vx=%.2f, vz=%.2f\n", vx, vz);
-  if ( emerg_client.trigger)
+  if (emerg_client.trigger)
     {
-      syslog(LOG_DEBUG,"Emergency stop triggered, not change threshold\n");
+      syslog(LOG_DEBUG, "Emergency stop triggered, not change threshold\n");
       return 0;
     }
 
@@ -114,7 +113,7 @@ update:
   else if ((!vx && vz))
     {
       emerg_client.thres_front = 70;
-      emerg_client.thres_side = 70;
+      emerg_client.thres_side  = 70;
       syslog(LOG_INFO, "avoid change threshold to 7cm");
     }
 
@@ -215,8 +214,12 @@ static void emerg_client_cb(uint8_t addr, uint16_t dist, bool enter)
       msg.msg_type                  = EVENT;
       msg.data.event.type           = EXIT;
       msg.data.event.trigger_sensor = (int)addr;
-      motion_motor_stop(FALSE);
-      emerg_client.trigger = 0;
+
+      if (emerg_client.trigger == 0x1)
+        {
+          motion_motor_stop(FALSE);
+          emerg_client.trigger = 0;
+        }
     }
   nxrmutex_unlock(&sensor_mask_lock);
 
