@@ -18,6 +18,7 @@
 #include "canopen.h"
 #include "motion_management.h"
 #include "8015d.h"
+#include "modlog_filter.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -458,7 +459,7 @@ static int zlac_8015d_read_rpm(void *motor, float *left_rpm, float *right_rpm)
 
   if (count %200 == 0)
     {
-      syslog(LOG_DEBUG, "get odom rpm \t%f\t%f\n",*left_rpm,*right_rpm);
+      modlog_dbg(LOG_MOTION, "get odom rpm \t%f\t%f\n",*left_rpm,*right_rpm);
     }
 
   return result;
