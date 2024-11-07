@@ -19,7 +19,7 @@
 #include "motion_management.h"
 #include "8015d.h"
 #include "modlog_filter.h"
-
+#include "config_msg.h"
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -751,11 +751,13 @@ static bool zlac_8015d_init(void *motor)
   syslog(LOG_DEBUG, "8015d init  set speed pid=%d\n", status);
 
   /* set current pid */
-  pid.kp = CURRENT_KP;
-  pid.ki = CURRENT_KI;
-  status |= zlac_8015d_set_current_pid(zlac_8015d, pid);
-  syslog(LOG_DEBUG, "8015d init  set speed pid=%d\n", status);
-
+  if (AMR_6040 == motor_get_car_mode())
+    {
+      pid.kp = CURRENT_KP;
+      pid.ki = CURRENT_KI;
+      status |= zlac_8015d_set_current_pid(zlac_8015d, pid);
+      syslog(LOG_DEBUG, "8015d init  set speed pid=%d\n", status);
+    }
   if (status == OK)
     {
       zlac_8015d->initialized = true;

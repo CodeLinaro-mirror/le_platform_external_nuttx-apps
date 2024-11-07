@@ -51,6 +51,7 @@ struct motor_management_s
   motor_notify_cb       pose_done_cb;
   motor_notify_cb       switch_done_cb;
   uint32_t              frequency;
+  enum car_model_e      car_mode;
 } __attribute__((aligned(4)));
 
 /* hal object */
@@ -98,6 +99,7 @@ static struct motor_management_s g_motor_manager = {
   .pose_done_cb   = NULL,
   .switch_done_cb = NULL,
   .frequency      = MOTOR_THREAD_FRQUENCY,
+  .car_mode       = CYCLE_CAR,
 };
 
 struct pid_control_speed_s g_pid_control_speed = {0,0,false};
@@ -289,9 +291,10 @@ void motor_register_switching_done_cb(motor_notify_cb switch_done_cb)
   g_motor_manager.switch_done_cb = switch_done_cb;
 }
 
-void motor_set_odom_frquency(uint32_t frequency)
+void motor_set_parameters(uint32_t frequency, uint32_t mode)
 {
   g_motor_manager.frequency = frequency;
+  g_motor_manager.car_mode = mode;
 }
 
 bool motor_management_init(void)
@@ -668,4 +671,8 @@ static int pid_get_rpm_work(union motion_control_data_u data)
 
   pid_notify_completed();
   return OK;
+}
+uint32_t motor_get_car_mode(void)
+{
+  return g_motor_manager.car_mode; 
 }
