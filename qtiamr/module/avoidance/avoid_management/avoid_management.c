@@ -35,8 +35,8 @@ static struct avoid_sensor g_ultra_sensor_list[SENSOR_MAX] = {
   { FRONT, 0X7, 0 },
 };
 
-static uint8_t ultra_sensor_masks = 0XF8;
-static rmutex_t avoid_lock    = NXRMUTEX_INITIALIZER;
+static uint8_t  ultra_sensor_masks = 0XF8;
+static rmutex_t avoid_lock         = NXRMUTEX_INITIALIZER;
 
 /****************************************************************************
  * Pravite Function
@@ -72,22 +72,21 @@ void check_client_trigger(struct list_node *avoid_client_list, struct avoid_sens
         syslog(LOG_INFO, "!!!!!! [%#X] Sensor %d triggerd emergency stop: %d vs %d \n",
                client->trigger, sensor->addr, dist, client->thres_front);
 
-        client->cb(sensor->addr, dist, TRUE);
+        if (((client->trigger >> sensor->addr) & 0x1) && (++(sensor->msg_count) <= RETRY_NUM))
+          client->cb(sensor->addr, dist, TRUE);
       }
     else
       {
-        if (((client->trigger >> sensor->addr) & 0x1) && (++(sensor->count) >= RETRY_NUM))
+        if (((client->trigger >> sensor->addr) & 0x1) && (++(sensor->exit_count) >= RETRY_NUM))
           {
             client->trigger ^= (0x1 << sensor->addr);
-            sensor->count = 0;
+            sensor->exit_count = 0;
+            sensor->msg_count  = 0;
             syslog(LOG_INFO, "!!!!!! [%#X] Sensor %d exit emergency stop: %d vs %d\n",
                    client->trigger, sensor->addr, dist, client->thres_front);
-          }
-      }
 
-    if (!(client->trigger ^ 0x1))
-      {
-        client->cb(sensor->addr, dist, FALSE);
+            client->cb(sensor->addr, dist, FALSE);
+          }
       }
   }
   nxrmutex_unlock(&avoid_lock);
@@ -130,19 +129,19 @@ int avoid_init(void)
         {
           ret = rs485_ultra_init(g_ultra_sensor_list[i].addr, fd);
 
-          if (ret)
+          if (ret == 1)
             break;
 
-          syslog(LOG_INFO, "ultrasound sensor %u unreachable, retry %d \n", 
-                 g_ultra_sensor_list[i].addr, (retry + 1) );
+          syslog(LOG_INFO, "ultrasound sensor %u unreachable, retry %d \n",
+                 g_ultra_sensor_list[i].addr, (retry + 1));
         }
 
-        if (!ret)
-          {
-           syslog(LOG_ERR, "ultrasound sensor %u init failed\n", g_ultra_sensor_list[i].addr);
-           close(fd);
-           return ERROR;
-          }
+      if (ret <= 0)
+        {
+          syslog(LOG_ERR, "ultrasound sensor %u init failed\n", g_ultra_sensor_list[i].addr);
+          close(fd);
+          return ERROR;
+        }
     }
 
   syslog(LOG_INFO, "avoid init successfully \n");
@@ -198,12 +197,12 @@ int avoid_management_thread(int argc, char *argv[])
           if (!(ultra_sensor_masks & (0x1 << i)))
             continue;
 
-          sensor = &g_ultra_sensor_list[i-1];
+          sensor = &g_ultra_sensor_list[i - 1];
           dist   = rs485_ultra_raw_dist(sensor->addr, fd);
           if (dist <= 0)
             {
               modlog_dbg(LOG_ULEMERG, "sensor %d read fail or untrusted distance: %d \n",
-                     sensor->addr, dist);
+                         sensor->addr, dist);
               continue;
             }
 

@@ -36,7 +36,8 @@ struct avoid_sensor
 {
   enum sensor_type type;
   uint8_t          addr;
-  uint8_t          count;
+  uint8_t          exit_count;
+  uint8_t          msg_count;
 } __attribute__((aligned(4)));
 
 /****************************************************************************
