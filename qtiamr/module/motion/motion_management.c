@@ -161,6 +161,7 @@ int motion_management_init(int argc, char *argv[])
   struct config_scale_s        config_scales;
   uint32_t                     odom_frequency;
   int                          result;
+  int                          car_mode;
 
   /* get config parameters kinematic. */
   result = get_configuration_parameters(CAR, (void *)&config_car);
@@ -222,8 +223,13 @@ int motion_management_init(int argc, char *argv[])
   syslog(LOG_INFO, "motion_management_init: client sm init done \n");
 
   /* motor management init */
+  if (parameters.wheel_space > 0.25 )
+      car_mode = AMR_6040;
+  else
+      car_mode = CYCLE_CAR;
+
   odom_frequency = config_motion.odom_frequency;
-  motor_set_odom_frquency(odom_frequency);
+  motor_set_parameters(odom_frequency,car_mode);
 
   result = task_create("motor_manag",
                        DEFAULT_PRIORITY,

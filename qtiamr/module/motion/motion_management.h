@@ -107,8 +107,6 @@ enum motion_result_e motion_set_emergency(bool enable);
 
 void register_motion_odom_cb(motion_odom_cb cb_fun);
 
-void motor_set_odom_frquency(uint32_t frequency);
-
 int motion_management_init(int argc, char *argv[]);
 
 void motion_motor_stop(bool stop);
