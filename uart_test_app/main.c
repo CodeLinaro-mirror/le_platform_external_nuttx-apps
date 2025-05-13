@@ -25,7 +25,7 @@
  ****************************************************************************/
 #define CIRC_BUF_LEN 256
 #define SERIAL_FD ("/dev/ttyS2")
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 struct serial_s
 {
   int fd;

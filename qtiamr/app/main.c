@@ -27,6 +27,7 @@ int main(int argc, FAR char *argv[])
   /* main function */
   printf("\n\n\n#############################\n");
   printf("#MCB firmware version:%.3f #\n", VERSION);
+  printf("#MCB firmware tag AMR_release.1.0.0 #\n");
   printf("#############################\n\n");
 
   syslog(LOG_INFO, "main: qtiamr  main start\n");

@@ -220,7 +220,7 @@ static void charger_normal_charging_event_in_forcecharging(void)
   float   current = 0;
   bool    is_charging;
   int32_t ret;
-  int32_t voltage_gap = charger_dev_p->full_battery_voltage - charger_dev_p->low_battery_voltage;
+  float voltage_gap = charger_dev_p->full_battery_voltage - charger_dev_p->low_battery_voltage;
 
   ret = charger_dev_get_all_stats(&voltage, &current, NULL, &is_charging);
   if (ret != OK)
