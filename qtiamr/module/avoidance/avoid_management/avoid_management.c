@@ -211,6 +211,12 @@ int avoid_management_thread(int argc, char *argv[])
               modlog_dbg(LOG_ULEMERG, "ultra sensor %u no object detected\n", sensor->addr);
             }
 
+          if (dist == 0XFFFE)
+            {
+              syslog(LOG_INFO, "[avoidance management] sensor %u same frequency interferencee\n",sensor->addr);
+              continue;
+            }
+
           check_client_trigger(avoid_client_list, sensor, dist);
           usleep(1000);
         }
